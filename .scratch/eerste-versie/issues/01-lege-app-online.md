@@ -4,11 +4,11 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent (wacht op controle op de S22: installeren en offline openen)
+**Status:** done
 
 - [x] De app is bereikbaar op een https-adres van GitHub Pages en wordt bijgewerkt met één opdracht (`npm run deploy`, die eerst de tests draait)
-- [ ] Chrome op Android biedt aan de app te installeren; na installatie opent hij als losse app
-- [ ] De geïnstalleerde app opent in vliegtuigmodus
+- [x] Chrome op Android biedt aan de app te installeren; na installatie opent hij als losse app
+- [x] De geïnstalleerde app opent in vliegtuigmodus
 - [x] Het startscherm toont dat gegevens alleen op dit apparaat staan
 - [x] De testopzet draait, met minstens één voorbeeldtest die slaagt
 - [x] De leerlogica is een aparte module die geen schermcode, opslag of systeemklok gebruikt

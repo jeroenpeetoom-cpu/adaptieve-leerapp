@@ -4,20 +4,26 @@ import { REGELVERSIE } from './versie'
 
 /**
  * Het verloop van één sessie. Na "bijna" krijgt de leerling meteen een nieuwe kans met hulp
- * "met hint"; elk ander oordeel sluit het leeritem voor nu af.
+ * "met hint"; elk ander oordeel sluit het leeritem voor nu af. Een leeritem dat niet goed ging,
+ * komt aan het eind van de sessie één keer terug.
  */
 export interface SessieToestand {
   sessieId: string
+  /** De wachtrij; groeit als een leeritem terugkomt. */
   leeritems: Leeritem[]
-  /** Index van het huidige leeritem; gelijk aan leeritems.length als de sessie klaar is. */
+  /** Positie in de wachtrij; gelijk aan leeritems.length als de sessie klaar is. */
   huidige: number
-  /** Hulp voor de volgende poging op het huidige leeritem. */
+  /** Hulp voor de volgende poging op de huidige positie. */
   volgendeHulp: Hulp
+  /** Aantal pogingen op de huidige positie. */
+  pogingenBijHuidige: number
+  /** Leeritems die al één keer zijn teruggezet. */
+  teruggezet: string[]
   pogingen: Poging[]
 }
 
 export interface Antwoord {
-  /** Wordt gemaakt als de vraag verschijnt, zodat dubbel verzenden geen dubbele poging geeft. */
+  /** Vast per poging, zodat dubbel verzenden geen dubbele poging geeft. */
   pogingId: string
   /** null als de leerling op "niet geweten" tikte. */
   antwoord: string | null
@@ -25,7 +31,15 @@ export interface Antwoord {
 }
 
 export function startSessie(sessieId: string, leeritems: Leeritem[]): SessieToestand {
-  return { sessieId, leeritems, huidige: 0, volgendeHulp: 'vrij opgehaald', pogingen: [] }
+  return {
+    sessieId,
+    leeritems,
+    huidige: 0,
+    volgendeHulp: 'vrij opgehaald',
+    pogingenBijHuidige: 0,
+    teruggezet: [],
+    pogingen: [],
+  }
 }
 
 export function huidigLeeritem(toestand: SessieToestand): Leeritem | undefined {
@@ -36,12 +50,16 @@ export function isKlaar(toestand: SessieToestand): boolean {
   return toestand.huidige >= toestand.leeritems.length
 }
 
-/** Het leeritem is afgesloten en de leerling moet eerst "volgende" kiezen. */
+/** Het leeritem op de huidige positie is afgesloten en de leerling moet eerst "volgende" kiezen. */
 export function wachtOpVolgende(toestand: SessieToestand): boolean {
-  const laatste = toestand.pogingen.at(-1)
-  const item = huidigLeeritem(toestand)
-  if (!laatste || !item || laatste.leeritemId !== item.id) return false
+  if (toestand.pogingenBijHuidige === 0) return false
+  const laatste = toestand.pogingen.at(-1)!
   return !(laatste.oordeel === 'bijna' && laatste.hulp === 'vrij opgehaald')
+}
+
+/** Aantal leeritems dat nog komt, inclusief het huidige. */
+export function nogTeGaan(toestand: SessieToestand): number {
+  return toestand.leeritems.length - toestand.huidige
 }
 
 export function beantwoord(
@@ -70,6 +88,7 @@ export function beantwoord(
     toestand: {
       ...toestand,
       volgendeHulp: nieuweKans ? 'met hint' : toestand.volgendeHulp,
+      pogingenBijHuidige: toestand.pogingenBijHuidige + 1,
       pogingen: [...toestand.pogingen, poging],
     },
     poging,
@@ -78,5 +97,15 @@ export function beantwoord(
 
 export function volgende(toestand: SessieToestand): SessieToestand {
   if (!wachtOpVolgende(toestand)) return toestand
-  return { ...toestand, huidige: toestand.huidige + 1, volgendeHulp: 'vrij opgehaald' }
+  const item = huidigLeeritem(toestand)!
+  const laatste = toestand.pogingen.at(-1)!
+  const terugzetten = laatste.oordeel !== 'goed' && !toestand.teruggezet.includes(item.id)
+  return {
+    ...toestand,
+    leeritems: terugzetten ? [...toestand.leeritems, item] : toestand.leeritems,
+    teruggezet: terugzetten ? [...toestand.teruggezet, item.id] : toestand.teruggezet,
+    huidige: toestand.huidige + 1,
+    volgendeHulp: 'vrij opgehaald',
+    pogingenBijHuidige: 0,
+  }
 }

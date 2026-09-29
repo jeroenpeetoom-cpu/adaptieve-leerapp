@@ -42,3 +42,24 @@ describe('opslag', () => {
     expect(await echt.pogingen.count()).toBe(0)
   })
 })
+
+describe('sessies', () => {
+  it('bewaart een open sessie zodat die na heropenen te hervatten is', async () => {
+    const db = maak('test')
+    const toestand = {
+      sessieId: 's1',
+      leeritems: [],
+      huidige: 0,
+      volgendeHulp: 'vrij opgehaald' as const,
+      pogingenBijHuidige: 0,
+      teruggezet: [],
+      pogingen: [],
+    }
+    await db.slaSessieOp(toestand, false, '2026-10-01T16:00:00.000Z')
+    db.close()
+    const heropend = maak('test')
+    expect((await heropend.openSessie())?.id).toBe('s1')
+    await heropend.slaSessieOp(toestand, true, '2026-10-01T16:05:00.000Z')
+    expect(await heropend.openSessie()).toBeUndefined()
+  })
+})

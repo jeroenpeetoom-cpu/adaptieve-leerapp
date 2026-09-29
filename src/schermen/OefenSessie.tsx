@@ -3,11 +3,11 @@ import {
   beantwoord,
   huidigLeeritem,
   isKlaar,
-  startSessie,
+  nogTeGaan,
   volgende,
   wachtOpVolgende,
-  type Leeritem,
   type Poging,
+  type SessieToestand,
 } from '../leerlogica'
 import type { Database } from '../opslag/database'
 
@@ -22,12 +22,14 @@ const FEEDBACK: Record<Poging['oordeel'], string> = {
 
 interface Props {
   db: Database
-  leeritems: Leeritem[]
-  onKlaar: () => void
+  begintoestand: SessieToestand
+  /** De huidige tijd; in de testfunctie komt die van de instelbare klok. */
+  nu: () => string
+  onKlaar: (toestand: SessieToestand) => void
 }
 
-export function OefenSessie({ db, leeritems, onKlaar }: Props) {
-  const [toestand, setToestand] = useState(() => startSessie(crypto.randomUUID(), leeritems))
+export function OefenSessie({ db, begintoestand, nu, onKlaar }: Props) {
+  const [toestand, setToestand] = useState(begintoestand)
   const [antwoord, setAntwoord] = useState('')
   const [storing, setStoring] = useState<string | null>(null)
   const [bezig, setBezig] = useState(false)
@@ -36,21 +38,6 @@ export function OefenSessie({ db, leeritems, onKlaar }: Props) {
   // Vast id per volgende poging in deze sessie: dubbel tikken geeft hetzelfde id en telt dus niet dubbel.
   const pogingId = `${toestand.sessieId}-${toestand.pogingen.length + 1}`
 
-  if (isKlaar(toestand)) {
-    const goed = toestand.pogingen.filter((p) => p.oordeel === 'goed' && p.hulp === 'vrij opgehaald')
-    return (
-      <section className="kaart">
-        <h2>Klaar!</h2>
-        <p>
-          Je hebt {toestand.leeritems.length} woorden geoefend. {goed.length} wist je meteen zelf.
-        </p>
-        <button className="knop" onClick={onKlaar}>
-          Terug naar het begin
-        </button>
-      </section>
-    )
-  }
-
   const item = huidigLeeritem(toestand)!
   const afgesloten = wachtOpVolgende(toestand)
   const laatste = toestand.pogingen.at(-1)
@@ -58,15 +45,13 @@ export function OefenSessie({ db, leeritems, onKlaar }: Props) {
 
   async function verstuur(tekst: string | null) {
     if (bezig) return
-    const uitkomst = beantwoord(toestand, {
-      pogingId,
-      antwoord: tekst,
-      tijdstip: new Date().toISOString(),
-    })
+    const tijdstip = nu()
+    const uitkomst = beantwoord(toestand, { pogingId, antwoord: tekst, tijdstip })
     if (!uitkomst.poging) return
     setBezig(true)
     try {
       await db.slaPogingOp(uitkomst.poging)
+      await db.slaSessieOp(uitkomst.toestand, false, tijdstip)
       setStoring(null)
       setToestand(uitkomst.toestand)
       setAntwoord('')
@@ -84,15 +69,23 @@ export function OefenSessie({ db, leeritems, onKlaar }: Props) {
     void verstuur(antwoord)
   }
 
-  function naarVolgende() {
-    setToestand(volgende(toestand))
+  async function naarVolgende() {
+    const nieuw = volgende(toestand)
+    const klaar = isKlaar(nieuw)
+    try {
+      await db.slaSessieOp(nieuw, klaar, nu())
+    } catch {
+      // De pogingen zelf zijn al opgeslagen; alleen de plek in de sessie kan verloren gaan.
+    }
+    if (klaar) return onKlaar(nieuw)
+    setToestand(nieuw)
     setTimeout(() => invoerRef.current?.focus())
   }
 
   return (
     <section className="kaart">
       <p className="voortgang">
-        Woord {toestand.huidige + 1} van {toestand.leeritems.length}
+        {nogTeGaan(toestand) === 1 ? 'Laatste woord' : `Nog ${nogTeGaan(toestand)} woorden`}
       </p>
       <p className="richting">
         {TAALNAAM[item.oefenrichting.van]} → {TAALNAAM[item.oefenrichting.naar]}
@@ -120,7 +113,7 @@ export function OefenSessie({ db, leeritems, onKlaar }: Props) {
       )}
 
       {afgesloten ? (
-        <button className="knop" onClick={naarVolgende} autoFocus>
+        <button className="knop" onClick={() => void naarVolgende()} autoFocus>
           Volgende
         </button>
       ) : (

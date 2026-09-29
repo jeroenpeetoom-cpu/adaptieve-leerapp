@@ -3,6 +3,7 @@ import {
   beantwoord,
   huidigLeeritem,
   isKlaar,
+  nogTeGaan,
   startSessie,
   volgende,
   type Leeritem,
@@ -12,6 +13,7 @@ import {
 const item = (id: string, vraag: string, antwoord: string): Leeritem => ({
   id,
   soort: 'woordpaar',
+  bronId: 'b1',
   woordpaarId: `wp-${id}`,
   bronversie: 1,
   oefenrichting: { van: 'en', naar: 'nl' },
@@ -56,7 +58,18 @@ describe('sessie', () => {
     const tweede = antwoord(eerste.toestand, 'p2', 'bridgee')
     expect(tweede.poging).toMatchObject({ oordeel: 'bijna', hulp: 'met hint' })
     expect(antwoord(tweede.toestand, 'p3', 'bridge').poging).toBeNull()
-    expect(isKlaar(volgende(tweede.toestand))).toBe(true)
+  })
+
+  it('laat een leeritem dat niet goed ging aan het eind één keer terugkomen', () => {
+    let toestand = startSessie('s1', items)
+    toestand = volgende(antwoord(toestand, 'p1', 'lucht').toestand) // bridge fout
+    toestand = volgende(antwoord(toestand, 'p2', 'wolk').toestand) // cloud goed
+    expect(nogTeGaan(toestand)).toBe(1)
+    expect(huidigLeeritem(toestand)?.id).toBe('1')
+
+    const terug = antwoord(toestand, 'p3', 'fiets')
+    expect(terug.poging).toMatchObject({ leeritemId: '1', hulp: 'vrij opgehaald', oordeel: 'fout' })
+    expect(isKlaar(volgende(terug.toestand))).toBe(true) // niet nog een keer terug
   })
 
   it('registreert niet geweten als eigen oordeel', () => {

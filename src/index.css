@@ -153,3 +153,21 @@ h2 {
   border-radius: 8px;
   margin: 0 0 1rem;
 }
+
+.tabel {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 0.75rem;
+}
+
+.tabel th,
+.tabel td {
+  text-align: left;
+  padding: 0.4rem 0.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.gedempt {
+  color: var(--gedempt);
+  font-size: 0.95rem;
+}
