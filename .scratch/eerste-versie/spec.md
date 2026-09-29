@@ -184,6 +184,8 @@ Een installeerbare website (PWA) op de Samsung Galaxy S22 van de leerling. De le
 - Een leeritem dat in de sessie fout ging, komt aan het eind van de sessie één keer terug.
 - Na het eindpunt kan de leerling "nog een rondje" kiezen; dat stelt een nieuwe sessie samen met dezelfde regels.
 - Een sessie blijft na onderbreking hervatbaar.
+- **Bron kiezen (op verzoek na de eerste echte sessies):** met meer dan één bron kiest de leerling op het startscherm welke bron hij oefent, of alles samen; "nog een rondje" blijft bij die keuze. Herhalingen van andere bronnen blijven zonder straf klaarstaan.
+- **Geen dubbele woorden:** hetzelfde woord in dezelfde richting (bijvoorbeeld uit twee bronnen) komt maar één keer in een sessie.
 
 ### Strategiestap
 
