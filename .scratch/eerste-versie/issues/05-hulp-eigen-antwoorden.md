@@ -12,3 +12,4 @@
 - [ ] Feedback is één of twee korte zinnen uit vaste sjablonen; meer uitleg is op te vragen
 - [ ] "Mijn antwoord was ook goed" voegt het antwoord toe als toegestaan antwoord; die poging krijgt de markering antwoordZelfToegevoegd en telt niet als vrij opgehaald
 - [ ] Het juiste antwoord is niet zichtbaar voordat de leerling een poging heeft gedaan of om een voorbeeld heeft gevraagd
+- [ ] Meerkeuze als opstap: na een fout of niet geweten komt de volgende poging op dat leeritem als meerkeuze (hulp herkend); na een goede meerkeuze is de volgende poging weer een typvraag; de allereerste poging is altijd een typvraag

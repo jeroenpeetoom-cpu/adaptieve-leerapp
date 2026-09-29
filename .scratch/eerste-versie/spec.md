@@ -151,6 +151,7 @@ Een installeerbare website (PWA) op de Samsung Galaxy S22 van de leerling. De le
 ### Hulp en hints (zonder AI)
 
 - Het hulpmenu biedt *hint*, *kies uit opties* (vier opties uit dezelfde bron) en *laat voorbeeld zien*.
+- **Meerkeuze als opstap (bevestigd):** was de laatste poging op een leeritem *fout* of *niet geweten*, dan komt de volgende poging als meerkeuze (vier opties uit dezelfde bron, hulp *herkend*). Is die meerkeuze goed, dan is de poging daarna weer een typvraag. De allereerste poging op een leeritem is altijd een typvraag, de voorkennischeck. Zo bouwt de hulp vanzelf af, en telt herkennen nooit als vrij opgehaald.
 - Een hint is de beschrijving van het eigen geheugenbeeld. Is er geen geheugenbeeld, dan is de hint de eerste letter plus het aantal letters.
 - Na een fout volgt één aanwijzing. Na twee fouten op hetzelfde leeritem in één sessie volgt het voorbeeld.
 - Feedbackteksten komen uit vaste sjablonen per oordeel en hulp, in korte Nederlandse zinnen.
