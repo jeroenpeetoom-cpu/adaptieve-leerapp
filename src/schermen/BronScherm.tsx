@@ -280,8 +280,10 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
   }
 
   async function wijzig(wp: Woordpaar, velden: Partial<Woordpaar>) {
-    await echteDb.woordparen.update(wp.id, velden)
+    // Eerst het scherm bijwerken en pas daarna opslaan: anders zet React het invulveld tijdens het
+    // opslaan terug naar de oude tekst en springt de cursor naar het eind.
     setParen((p) => p.map((x) => (x.id === wp.id ? { ...x, ...velden } : x)))
+    await echteDb.woordparen.update(wp.id, velden)
   }
 
   async function verwijder(wp: Woordpaar) {
@@ -321,8 +323,8 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
   }
 
   async function wijzigBron(velden: Partial<Bron>) {
-    await echteDb.bronnen.update(bronId, velden)
     setBron((b) => (b ? { ...b, ...velden } : b))
+    await echteDb.bronnen.update(bronId, velden)
   }
 
   async function kiesStrategie(nieuw: Strategie | 'geen') {

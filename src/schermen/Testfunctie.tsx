@@ -48,8 +48,8 @@ export function Testfunctie({ onTerug }: { onTerug: () => void }) {
 
   async function zetToets(dag: string) {
     const waarde = dag === '' ? null : dag
-    await testDb.schrijfMeta('toetsdag', waarde)
     setToetsdag(waarde)
+    await testDb.schrijfMeta('toetsdag', waarde)
   }
 
   async function wis() {
