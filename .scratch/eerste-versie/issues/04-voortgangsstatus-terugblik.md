@@ -4,7 +4,7 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent (gebouwd; wacht op handmatige controle op de S22)
+**Status:** done
 
 - [x] De voortgangsstatus wordt berekend uit de pogingen op de huidige bronversie sinds de laatste fout of niet geweten, volgens de specificatie
 - [x] Later nog geweten: vrij opgehaald goed op minstens twee verschillende dagen, de laatste minstens 7 dagen na de allereerste poging

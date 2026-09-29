@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent (gebouwd; wacht op handmatige controle op de S22)
+**Status:** done
 
 - [x] Het hulpmenu biedt hint (eerste letter en aantal letters), kies uit opties (vier opties uit dezelfde bron) en laat voorbeeld zien
 - [x] Elke poging registreert de hulp: vrij opgehaald, met hint, herkend of na voorbeeld

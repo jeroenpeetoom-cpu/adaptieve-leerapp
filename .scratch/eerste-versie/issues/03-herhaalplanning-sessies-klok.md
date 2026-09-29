@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent (gebouwd; wacht op handmatige controle op de S22)
+**Status:** done
 
 - [x] Intervallen per fase: 1, 3, 7, 14 dagen en daarna telkens ongeveer twee keer zo lang, zonder maximum
 - [x] Alleen de eerste poging per leeritem per kalenderdag bepaalt de herhaalplanning

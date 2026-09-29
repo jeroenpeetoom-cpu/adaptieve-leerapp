@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent (gebouwd; wacht op handmatige controle op de S22)
+**Status:** done
 
 - [x] Antwoordcontrole volgt de specificatie: normaliseren (hoofdletters, spaties, leestekens, lidwoord aan het begin), en de oordelen goed, bijna, fout en niet geweten
 - [x] "Bijna" geldt alleen bij toegestane antwoorden van vijf letters of meer en precies één bewerking (vervangen, toevoegen, weglaten of twee naast elkaar liggende letters omdraaien)
