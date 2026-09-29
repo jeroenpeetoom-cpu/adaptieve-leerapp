@@ -137,6 +137,7 @@ export function Leermoment({ item, strategie, voorgedaan, onKiesStrategie, onVoo
         maxLength={120}
         autoFocus
       />
+      <p className="gedempt tip">🎤 Tip: tik op de microfoon van je toetsenbord om je beeld in te spreken.</p>
       <label className="label" htmlFor="emoji" style={{ marginTop: '0.75rem' }}>
         Emoji erbij? <span className="gedempt">(mag, hoeft niet)</span>
       </label>

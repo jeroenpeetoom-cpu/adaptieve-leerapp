@@ -244,7 +244,7 @@ Goede tests controleren alleen extern gedrag via deze twee naden, en niet hoe he
 - Lijstvormen met uitspraak, woordsoort of voorbeeldzin (vorm 3), en lijsten met alle woorden eerst en alle betekenissen daarna (vorm 4). Deze gaan via handmatig koppelen.
 - Andere vakken en leerdoelen dan woordenschat, zoals rekenen, begrijpend lezen en spelling als apart doel.
 - Foto's bewaren na het bevestigen.
-- Inspreken, tekenen in de app, en voorlezen dat vanzelf start.
+- Inspreken met een eigen knop in de app, tekenen in de app, en voorlezen dat vanzelf start. Inspreken kan wel via de microfoon van het toetsenbord; bij het geheugenbeeld staat daar een tip voor. Alles kunnen inspreken, ook antwoorden, staat als uitbreiding in `.scratch/inspreken/`.
 - Ondersteuning specifiek voor iPhone of Safari.
 
 ## Further Notes
