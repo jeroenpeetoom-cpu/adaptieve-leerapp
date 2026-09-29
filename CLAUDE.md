@@ -19,3 +19,10 @@ Alle to-do's staan als tickets in `.scratch/<onderwerp>/issues/`, met een `Statu
 ## Productrichting
 
 Lees `docs/achtergrond/onderscheidend-vermogen.md` voordat je aan een nieuwe functie begint: het onderscheid van deze app zit niet in huiswerk omzetten in een quiz, maar in het zelfstandig leren kiezen en gebruiken van leerstrategieën. Bewaak bij elke functie dat kennisontwikkeling en strategieontwikkeling apart gevolgd worden.
+
+## Ontwikkelen
+
+- Node staat in `~/.local/node/bin` en `gh` in `~/.local/bin` (via `~/.zprofile` op het PATH). Homebrew compileert Node op deze Mac vanaf de broncode; installeer Node dus niet via `brew`.
+- `npm test` draait de tests (Vitest), `npm run dev` start de app lokaal, `npm run lint` controleert de code.
+- `npm run deploy` draait de tests, bouwt de app en zet hem op GitHub Pages (https://jeroenpeetoom-cpu.github.io/adaptieve-leerapp/). GitHub heeft daarna een paar minuten nodig: meld een nieuwe versie pas als de live site de versie onderaan het scherm echt toont.
+- De app draait op de telefoon van de leerling (Samsung Galaxy S22, als geïnstalleerde web-app). Gegevens staan alleen daar; de repository is openbaar en bevat nooit persoonlijke bestanden (zie `.gitignore`).
