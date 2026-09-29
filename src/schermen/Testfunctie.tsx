@@ -43,6 +43,7 @@ export function Testfunctie({ onTerug }: { onTerug: () => void }) {
   const [klokDagen, setKlokDagen] = useState(0)
   const [toetsdag, setToetsdag] = useState<string | null>(null)
   const [pogingen, setPogingen] = useState<Poging[]>([])
+  const [extraAntwoorden, setExtraAntwoorden] = useState<Record<string, string[]>>({})
   const [openSessie, setOpenSessie] = useState<SessieToestand | null>(null)
   const [weergave, setWeergave] = useState<Weergave>({ soort: 'overzicht' })
   const [melding, setMelding] = useState<string | null>(null)
@@ -54,15 +55,25 @@ export function Testfunctie({ onTerug }: { onTerug: () => void }) {
     setKlokDagen(await testDb.leesMeta('klokDagen', 0))
     setToetsdag(await testDb.leesMeta<string | null>('toetsdag', null))
     setPogingen(await testDb.pogingen.toArray())
-    setOpenSessie((await testDb.openSessie())?.toestand ?? null)
+    setExtraAntwoorden(await testDb.leesMeta<Record<string, string[]>>('extraAntwoorden', {}))
+    const open = await testDb.openSessie()
+    // Een gepauzeerde sessie uit een oudere versie van de app is niet te hervatten; die sluiten we af.
+    if (open && !('vorm' in open.toestand)) await testDb.slaSessieOp(open.toestand, true, open.bijgewerkt)
+    setOpenSessie(open && 'vorm' in open.toestand ? open.toestand : null)
   }, [])
 
   useEffect(() => {
     void laad()
   }, [laad])
 
+  // Door de leerling toegevoegde toegestane antwoorden gelden voortaan bij het leeritem.
+  const leeritems = testLeeritems.map((i) => ({
+    ...i,
+    toegestaneAntwoorden: [...i.toegestaneAntwoorden, ...(extraAntwoorden[i.id] ?? [])],
+  }))
+
   const samenstelling = stelSessieSamen(
-    testLeeritems,
+    leeritems,
     pogingen,
     [{ bronId: TESTBRON_ID, toetsdag, afgerond: false }],
     vandaag,
@@ -74,7 +85,7 @@ export function Testfunctie({ onTerug }: { onTerug: () => void }) {
     if (aantal === 0) return false
     const items = [...samenstelling.herhalingen, ...samenstelling.nieuw]
     setMelding(null)
-    setWeergave({ soort: 'sessie', toestand: startSessie(crypto.randomUUID(), items) })
+    setWeergave({ soort: 'sessie', toestand: startSessie(crypto.randomUUID(), items, pogingen) })
     return true
   }
 
@@ -95,6 +106,12 @@ export function Testfunctie({ onTerug }: { onTerug: () => void }) {
     await laad()
   }
 
+  async function antwoordToegevoegd(leeritemId: string, antwoord: string) {
+    const nieuw = { ...extraAntwoorden, [leeritemId]: [...(extraAntwoorden[leeritemId] ?? []), antwoord] }
+    await testDb.schrijfMeta('extraAntwoorden', nieuw)
+    setExtraAntwoorden(nieuw)
+  }
+
   async function sessieKlaar(toestand: SessieToestand) {
     await laad()
     setWeergave({ soort: 'klaar', toestand })
@@ -110,7 +127,15 @@ export function Testfunctie({ onTerug }: { onTerug: () => void }) {
     return (
       <>
         {banner}
-        <OefenSessie key={weergave.toestand.sessieId} db={testDb} begintoestand={weergave.toestand} nu={nu} onKlaar={(t) => void sessieKlaar(t)} />
+        <OefenSessie
+          key={weergave.toestand.sessieId}
+          db={testDb}
+          begintoestand={weergave.toestand}
+          bronItems={leeritems}
+          nu={nu}
+          onAntwoordToegevoegd={antwoordToegevoegd}
+          onKlaar={(t) => void sessieKlaar(t)}
+        />
         <button className="link" onClick={() => void laad().then(() => setWeergave({ soort: 'overzicht' }))}>
           ← Pauzeren
         </button>
@@ -205,7 +230,7 @@ export function Testfunctie({ onTerug }: { onTerug: () => void }) {
             </tr>
           </thead>
           <tbody>
-            {testLeeritems.map((item) => {
+            {leeritems.map((item) => {
               const planning = berekenPlanning(item.id, pogingen, instellingen)
               return (
                 <tr key={item.id}>

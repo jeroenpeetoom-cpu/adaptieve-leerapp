@@ -1,11 +1,17 @@
 import { beoordeel } from './antwoordcontrole'
-import type { Hulp, Leeritem, Poging, Tijdstip } from './types'
+import { zwaarsteHulp } from './hulp'
+import type { Hulp, Leeritem, Oordeel, Poging, Tijdstip } from './types'
 import { REGELVERSIE } from './versie'
 
+export type Vorm = 'typen' | 'meerkeuze'
+
 /**
- * Het verloop van één sessie. Na "bijna" krijgt de leerling meteen een nieuwe kans met hulp
- * "met hint"; elk ander oordeel sluit het leeritem voor nu af. Een leeritem dat niet goed ging,
- * komt aan het eind van de sessie één keer terug.
+ * Het verloop van één sessie.
+ * - Op een typvraag krijgt de leerling na "bijna" of "fout" één nieuwe kans met hulp "met hint".
+ * - Daarna, of na "niet geweten", is het leeritem afgesloten en ziet de leerling het antwoord.
+ * - Een leeritem dat niet goed ging, komt aan het eind van de sessie één keer terug.
+ * - Was de laatste poging op een leeritem fout of niet geweten, dan komt het als meerkeuze
+ *   (hulp "herkend"); na een goede meerkeuze is het weer een typvraag.
  */
 export interface SessieToestand {
   sessieId: string
@@ -13,13 +19,16 @@ export interface SessieToestand {
   leeritems: Leeritem[]
   /** Positie in de wachtrij; gelijk aan leeritems.length als de sessie klaar is. */
   huidige: number
-  /** Hulp voor de volgende poging op de huidige positie. */
-  volgendeHulp: Hulp
-  /** Aantal pogingen op de huidige positie. */
+  vorm: Vorm
+  /** Hulp die de leerling op de huidige positie al kreeg. */
+  hulp: Hulp
   pogingenBijHuidige: number
+  afgesloten: boolean
   /** Leeritems die al één keer zijn teruggezet. */
   teruggezet: string[]
   pogingen: Poging[]
+  /** Laatste oordeel per leeritem van vóór deze sessie, voor de meerkeuze-opstap. */
+  laatsteOordeelVooraf: Record<string, Oordeel>
 }
 
 export interface Antwoord {
@@ -30,16 +39,46 @@ export interface Antwoord {
   tijdstip: Tijdstip
 }
 
-export function startSessie(sessieId: string, leeritems: Leeritem[]): SessieToestand {
+function laatsteOordeel(toestand: Pick<SessieToestand, 'pogingen' | 'laatsteOordeelVooraf'>, itemId: string) {
+  return toestand.pogingen.findLast((p) => p.leeritemId === itemId)?.oordeel ?? toestand.laatsteOordeelVooraf[itemId]
+}
+
+function vormVoor(toestand: Pick<SessieToestand, 'pogingen' | 'laatsteOordeelVooraf'>, item?: Leeritem): Vorm {
+  if (!item) return 'typen'
+  const oordeel = laatsteOordeel(toestand, item.id)
+  return oordeel === 'fout' || oordeel === 'niet geweten' ? 'meerkeuze' : 'typen'
+}
+
+function opPositie(toestand: SessieToestand, positie: number): SessieToestand {
+  const vorm = vormVoor(toestand, toestand.leeritems[positie])
   return {
+    ...toestand,
+    huidige: positie,
+    vorm,
+    hulp: vorm === 'meerkeuze' ? 'herkend' : 'vrij opgehaald',
+    pogingenBijHuidige: 0,
+    afgesloten: false,
+  }
+}
+
+export function startSessie(sessieId: string, leeritems: Leeritem[], eerderePogingen: Poging[] = []): SessieToestand {
+  const laatsteOordeelVooraf: Record<string, Oordeel> = {}
+  for (const p of [...eerderePogingen].sort((a, b) => a.tijdstip.localeCompare(b.tijdstip))) {
+    laatsteOordeelVooraf[p.leeritemId] = p.oordeel
+  }
+  const leeg: SessieToestand = {
     sessieId,
     leeritems,
     huidige: 0,
-    volgendeHulp: 'vrij opgehaald',
+    vorm: 'typen',
+    hulp: 'vrij opgehaald',
     pogingenBijHuidige: 0,
+    afgesloten: false,
     teruggezet: [],
     pogingen: [],
+    laatsteOordeelVooraf,
   }
+  return opPositie(leeg, 0)
 }
 
 export function huidigLeeritem(toestand: SessieToestand): Leeritem | undefined {
@@ -52,14 +91,27 @@ export function isKlaar(toestand: SessieToestand): boolean {
 
 /** Het leeritem op de huidige positie is afgesloten en de leerling moet eerst "volgende" kiezen. */
 export function wachtOpVolgende(toestand: SessieToestand): boolean {
-  if (toestand.pogingenBijHuidige === 0) return false
-  const laatste = toestand.pogingen.at(-1)!
-  return !(laatste.oordeel === 'bijna' && laatste.hulp === 'vrij opgehaald')
+  return toestand.afgesloten
 }
 
 /** Aantal leeritems dat nog komt, inclusief het huidige. */
 export function nogTeGaan(toestand: SessieToestand): number {
   return toestand.leeritems.length - toestand.huidige
+}
+
+/** De laatste poging op de huidige positie, als die er is. */
+export function laatstePogingHier(toestand: SessieToestand): Poging | undefined {
+  return toestand.pogingenBijHuidige > 0 ? toestand.pogingen.at(-1) : undefined
+}
+
+/** De leerling vraagt om hulp: een hint, kiezen uit opties, of een voorbeeld. */
+export function vraagHulp(toestand: SessieToestand, soort: Exclude<Hulp, 'vrij opgehaald'>): SessieToestand {
+  if (toestand.afgesloten || isKlaar(toestand)) return toestand
+  return {
+    ...toestand,
+    hulp: zwaarsteHulp(toestand.hulp, soort),
+    vorm: soort === 'herkend' ? 'meerkeuze' : toestand.vorm,
+  }
 }
 
 export function beantwoord(
@@ -68,7 +120,7 @@ export function beantwoord(
 ): { toestand: SessieToestand; poging: Poging | null } {
   const item = huidigLeeritem(toestand)
   const alGezien = toestand.pogingen.some((p) => p.id === invoer.pogingId)
-  if (!item || alGezien || wachtOpVolgende(toestand)) return { toestand, poging: null }
+  if (!item || alGezien || toestand.afgesloten) return { toestand, poging: null }
 
   const oordeel = beoordeel(invoer.antwoord, item.toegestaneAntwoorden)
   const poging: Poging = {
@@ -78,34 +130,68 @@ export function beantwoord(
     bronversie: item.bronversie,
     antwoord: invoer.antwoord,
     oordeel,
-    hulp: toestand.volgendeHulp,
+    hulp: toestand.hulp,
     antwoordZelfToegevoegd: false,
     tijdstip: invoer.tijdstip,
     regelversie: REGELVERSIE,
   }
-  const nieuweKans = oordeel === 'bijna' && toestand.volgendeHulp === 'vrij opgehaald'
+  const nieuweKans =
+    (oordeel === 'bijna' || oordeel === 'fout') &&
+    toestand.vorm === 'typen' &&
+    toestand.pogingenBijHuidige === 0 &&
+    toestand.hulp !== 'na voorbeeld'
   return {
     toestand: {
       ...toestand,
-      volgendeHulp: nieuweKans ? 'met hint' : toestand.volgendeHulp,
+      hulp: nieuweKans ? zwaarsteHulp(toestand.hulp, 'met hint') : toestand.hulp,
       pogingenBijHuidige: toestand.pogingenBijHuidige + 1,
+      afgesloten: !nieuweKans,
       pogingen: [...toestand.pogingen, poging],
     },
     poging,
   }
 }
 
+/** Mag de leerling nu zeggen dat zijn antwoord ook goed was? */
+export function kanAntwoordToevoegen(toestand: SessieToestand): boolean {
+  const laatste = laatstePogingHier(toestand)
+  return (
+    laatste !== undefined &&
+    laatste.antwoord !== null &&
+    toestand.vorm === 'typen' &&
+    (laatste.oordeel === 'fout' || laatste.oordeel === 'bijna')
+  )
+}
+
+/**
+ * "Mijn antwoord was ook goed": het antwoord wordt een toegestaan antwoord voor de volgende keer.
+ * De poging wordt goed, met de markering antwoordZelfToegevoegd, en telt niet als vrij opgehaald.
+ */
+export function voegAntwoordToe(toestand: SessieToestand): { toestand: SessieToestand; poging: Poging | null } {
+  if (!kanAntwoordToevoegen(toestand)) return { toestand, poging: null }
+  const laatste = toestand.pogingen.at(-1)!
+  const poging: Poging = { ...laatste, oordeel: 'goed', antwoordZelfToegevoegd: true }
+  const antwoord = laatste.antwoord!
+  const leeritems = toestand.leeritems.map((i) =>
+    i.id === laatste.leeritemId ? { ...i, toegestaneAntwoorden: [...i.toegestaneAntwoorden, antwoord] } : i,
+  )
+  return {
+    toestand: { ...toestand, leeritems, afgesloten: true, pogingen: [...toestand.pogingen.slice(0, -1), poging] },
+    poging,
+  }
+}
+
 export function volgende(toestand: SessieToestand): SessieToestand {
-  if (!wachtOpVolgende(toestand)) return toestand
+  if (!toestand.afgesloten) return toestand
   const item = huidigLeeritem(toestand)!
   const laatste = toestand.pogingen.at(-1)!
   const terugzetten = laatste.oordeel !== 'goed' && !toestand.teruggezet.includes(item.id)
-  return {
-    ...toestand,
-    leeritems: terugzetten ? [...toestand.leeritems, item] : toestand.leeritems,
-    teruggezet: terugzetten ? [...toestand.teruggezet, item.id] : toestand.teruggezet,
-    huidige: toestand.huidige + 1,
-    volgendeHulp: 'vrij opgehaald',
-    pogingenBijHuidige: 0,
-  }
+  return opPositie(
+    {
+      ...toestand,
+      leeritems: terugzetten ? [...toestand.leeritems, item] : toestand.leeritems,
+      teruggezet: terugzetten ? [...toestand.teruggezet, item.id] : toestand.teruggezet,
+    },
+    toestand.huidige + 1,
+  )
 }

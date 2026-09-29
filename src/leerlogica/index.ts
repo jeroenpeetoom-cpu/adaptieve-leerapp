@@ -4,6 +4,7 @@
 
 export * from './antwoordcontrole'
 export * from './herhaalplanning'
+export * from './hulp'
 export * from './instellingen'
 export * from './sessie'
 export * from './sessiesamenstelling'

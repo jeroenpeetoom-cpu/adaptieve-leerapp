@@ -209,3 +209,35 @@ h2 {
 .status-2 {
   border-color: #6fd08c;
 }
+
+.feedback p {
+  margin: 0;
+}
+
+.feedback details {
+  margin-top: 0.4rem;
+  color: var(--gedempt);
+}
+
+.feedback summary {
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.opties {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
+}
+
+.optie {
+  font-size: 1.15rem;
+}
+
+.hulpmenu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
