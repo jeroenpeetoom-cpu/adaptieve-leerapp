@@ -13,3 +13,4 @@
 - [ ] Een technische storing wordt nooit als poging opgeslagen
 - [ ] De testfunctie leest en schrijft nooit in de echte database
 - [ ] Leerlogicatests via de naad "pogingen en tijd in, uitkomst uit" dekken alle oordelen
+- [ ] Een leeritem heeft een soort (nu alleen woordpaar), zodat later topografie als tweede soort kan worden toegevoegd zonder de leerlogica om te bouwen

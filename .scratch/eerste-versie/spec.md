@@ -132,7 +132,7 @@ Een installeerbare website (PWA) op de Samsung Galaxy S22 van de leerling. De le
 - **Bron**: id, leerlingId, naam, vak, optionele toetsdatum, oefenrichtingen, afgerond (ja/nee), bevestigdOp.
 - **Bronpagina**: id, bronId, origineelNummer, volgorde, verwerkingsstatus (wachtend, verwerkt, onzeker, mislukt, bevestigd), herkende tekst. De foto staat alleen tijdelijk bij de bronpagina, tot het bevestigen.
 - **Woordpaar**: id, bronId, bronpaginaId, woord, betekenis, bronversie.
-- **Leeritem**: id, woordpaarId, bronversie, oefenrichting, toegestane antwoorden.
+- **Leeritem**: id, soort (in de eerste versie alleen woordpaar; topografie volgt, zie `.scratch/topografie/`), woordpaarId, bronversie, oefenrichting, toegestane antwoorden.
 - **Geheugenbeeld**: id, leeritemId, beschrijving (verplicht), emoji (optioneel), plaatje (optioneel), routeId en plek (optioneel).
 - **Route**: id, leerlingId, naam, geordende plekken (3 tot 5).
 - **Poging**: id (uniek, zodat dubbel verzenden geen dubbele voortgang geeft), sessieId, leeritemId, bronversie, antwoord, oordeel, hulp, antwoordZelfToegevoegd, strategie, tijdstip, regelversie.
