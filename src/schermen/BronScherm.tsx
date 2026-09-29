@@ -216,9 +216,9 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
               <li key={p.id}>
                 <span>Pagina {p.volgorde}</span> <span className="gedempt">{STATUSTEKST[p.status]}</span>
                 {p.melding && <p className="gedempt">{p.melding}</p>}
-                {p.status === 'mislukt' && p.foto && (
+                {p.status !== 'bevestigd' && p.foto && (
                   <button className="link" disabled={bezig !== null} onClick={() => void opnieuw(p)}>
-                    Opnieuw proberen
+                    Opnieuw herkennen
                   </button>
                 )}
                 {p.losseRegels.length > 0 && p.status !== 'bevestigd' && (

@@ -1,4 +1,4 @@
-import { createWorker, OEM, type Worker } from 'tesseract.js'
+import { createWorker, OEM, PSM, type Worker } from 'tesseract.js'
 import type { HerkendeRegel } from '../bronverwerking'
 
 /** Voortgang van de herkenning, 0 tot 1, met een korte Nederlandse omschrijving. */
@@ -28,10 +28,17 @@ function krijgWorker(): Promise<Worker> {
     // De service worker bewaart de bestanden al; dubbel opslaan in de browser is niet nodig.
     cacheMethod: 'none',
     logger: (m) => voortgang(m.progress ?? 0, STAPPEN[m.status] ?? 'Bezig'),
-  }).catch((fout) => {
-    worker = null
-    throw fout
   })
+    .then(async (w) => {
+      // "Losse tekst": vindt elk stukje tekst met zijn positie. Werkt beter bij kolommen en tabellen
+      // naast elkaar; de bronverwerking koppelt de stukjes daarna op positie.
+      await w.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT })
+      return w
+    })
+    .catch((fout) => {
+      worker = null
+      throw fout
+    })
   return worker
 }
 
@@ -71,6 +78,8 @@ export async function herken(bestand: Blob, opVoortgang: Voortgang): Promise<Her
             zekerheid: w.confidence,
             x0: w.bbox.x0,
             x1: w.bbox.x1,
+            y0: w.bbox.y0,
+            y1: w.bbox.y1,
           })),
         })),
       ),

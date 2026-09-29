@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] De bronverwerking herkent vorm 2 (twee kolommen) op basis van de horizontale positie van woorden
+- [x] De bronverwerking herkent vorm 2 (kolommen, ook twee tabellen naast elkaar) op basis van de positie van woorden
 - [ ] De leerling kan woordparen koppelen, splitsen en samenvoegen
 - [ ] Vóór het fotograferen staat de grens van maximaal 10 pagina's per keer; er wordt nooit ongemerkt iets afgekapt
 - [ ] Bronpagina's zijn te verplaatsen, draaien, verwijderen en opnieuw te herkennen (zolang de foto er nog is)
@@ -15,4 +15,6 @@
 - [ ] Een mislukte bronpagina blijft zichtbaar in de dekkingslijst van de bron
 - [ ] Bij een onleesbare foto biedt de app opnieuw fotograferen, tekst plakken of handmatig invoeren
 - [ ] Bij een pagina zonder woordparen (zoals een rekensom) meldt de app dat dit nog niet ondersteund wordt, en maakt er geen woordenlijst van
-- [ ] Bronverwerkingstests dekken vorm 2 en een pagina zonder woordparen
+- [x] Bronverwerkingstests dekken vorm 2 en een pagina zonder woordparen
+
+Vorm 2 is naar voren gehaald omdat de woordenlijsten van de leerling in kolommen staan (vier kolommen naast elkaar, zonder scheidingsteken). De herkenner gebruikt daarvoor de modus "losse tekst" (PSM 11), die bij zo'n pagina veel beter leest dan de standaardmodus.
