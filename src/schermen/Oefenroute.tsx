@@ -167,6 +167,8 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
             geheugenroute: beelden.filter((b) => b.routeId).length,
           }}
           beeldenMetSteuntje={instellingen.beeldenMetSteuntje}
+          eerderePogingen={pogingen}
+          instellingen={instellingen}
           strategiePerBron={strategiePerBron}
           voorgedaan={voorgedaan}
           onKiesStrategie={kiesStrategie}

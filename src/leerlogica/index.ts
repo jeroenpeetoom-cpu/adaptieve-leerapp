@@ -3,6 +3,7 @@
 // systeemklok; de huidige tijd komt altijd als invoer binnen (zie spec).
 
 export * from './antwoordcontrole'
+export * from './antwoordwijze'
 export * from './bronversie'
 export * from './herhaalplanning'
 export * from './hulp'

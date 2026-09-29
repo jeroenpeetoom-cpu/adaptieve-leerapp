@@ -698,3 +698,14 @@ select.invoer {
   color: var(--gedempt);
   cursor: default;
 }
+
+.wijze {
+  margin: 0 0 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.wijze-typen {
+  border-left: 4px solid var(--accent);
+}

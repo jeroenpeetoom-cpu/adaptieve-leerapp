@@ -1,6 +1,9 @@
 import { useRef, useState, type FormEvent } from 'react'
 import {
   beantwoord,
+  bepaalAntwoordwijze,
+  berekenVoortgang,
+  kalenderdag,
   hintVoor,
   huidigLeeritem,
   isKlaar,
@@ -15,6 +18,7 @@ import {
   volgende,
   vraagHulp,
   type Leeritem,
+  type Instellingen,
   type Poging,
   type SessieToestand,
   type Strategie,
@@ -52,7 +56,13 @@ interface Props {
   /** Aantal geheugenbeelden per strategie tot nu toe, voor het afbouwen van het steuntje. */
   aantalBeelden: Record<Strategie, number>
   beeldenMetSteuntje: number
+  /** Alle pogingen van vóór deze sessie, om te bepalen of de leerling mag zeggen of moet typen. */
+  eerderePogingen: Poging[]
+  instellingen: Instellingen
 }
+
+/** Na zoveel milliseconden stilte wordt een ingesproken antwoord vanzelf gecontroleerd. */
+const WACHT_NA_INSPREKEN = 700
 
 /** Korte feedback (één of twee zinnen) en optioneel een langere uitleg. */
 function feedbackVoor(poging: Poging, afgesloten: boolean, goedAntwoord: string, item: Leeritem, beeld?: string) {
@@ -100,6 +110,8 @@ export function OefenSessie({
   laatsteReflectie,
   aantalBeelden,
   beeldenMetSteuntje,
+  eerderePogingen,
+  instellingen,
 }: Props) {
   const [toestand, setToestand] = useState(begintoestand)
   const [antwoord, setAntwoord] = useState('')
@@ -107,6 +119,9 @@ export function OefenSessie({
   const [bezig, setBezig] = useState(false)
   const [hulpOpen, setHulpOpen] = useState(false)
   const invoerRef = useRef<HTMLInputElement>(null)
+  const insprekenTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const ingesprokenRef = useRef(false)
+  const [typMelding, setTypMelding] = useState(false)
 
   // Vast id per volgende poging in deze sessie: dubbel tikken geeft hetzelfde id en telt dus niet dubbel.
   const pogingId = `${toestand.sessieId}-${toestand.pogingen.length + 1}`
@@ -132,10 +147,13 @@ export function OefenSessie({
     }
   }
 
-  async function verstuur(tekst: string | null) {
+  async function verstuur(tekst: string | null, ingesproken = false) {
     if (bezig) return
+    if (insprekenTimer.current) clearTimeout(insprekenTimer.current)
+    ingesprokenRef.current = false
+    setTypMelding(false)
     const tijdstip = nu()
-    const uitkomst = beantwoord(toestand, { pogingId, antwoord: tekst, tijdstip })
+    const uitkomst = beantwoord(toestand, { pogingId, antwoord: tekst, tijdstip, ingesproken })
     if (!uitkomst.poging) return
     if (await bewaar(uitkomst.toestand, uitkomst.poging, tijdstip)) {
       setToestand(uitkomst.toestand)
@@ -171,7 +189,33 @@ export function OefenSessie({
 
   function controleer(e: FormEvent) {
     e.preventDefault()
-    void verstuur(antwoord)
+    void verstuur(antwoord, ingesprokenRef.current)
+  }
+
+  // Zeggen of typen: opbouw per woord (spec inspreken, vraag 38).
+  const eerderHier = toestand.pogingen.slice(0, toestand.pogingen.length - toestand.pogingenBijHuidige)
+  const voorDezePositie = [...eerderePogingen.filter((p) => !toestand.pogingen.some((q) => q.id === p.id)), ...eerderHier]
+  const vandaag = kalenderdag(nu(), instellingen.tijdzone)
+  const eersteVanDeDag = !voorDezePositie.some(
+    (p) => p.leeritemId === item.id && kalenderdag(p.tijdstip, instellingen.tijdzone) === vandaag,
+  )
+  const wijze = bepaalAntwoordwijze(item, berekenVoortgang(item, voorDezePositie, instellingen).status, eersteVanDeDag)
+
+  /** Een woord dat in één keer binnenkomt (en niet letter voor letter) is ingesproken of geplakt. */
+  function opInvoer(nieuw: string) {
+    const ingesproken = nieuw.trim().length - antwoord.trim().length >= 2
+    if (insprekenTimer.current) clearTimeout(insprekenTimer.current)
+    if (ingesproken && wijze === 'typen') {
+      setAntwoord('')
+      setTypMelding(true)
+      return
+    }
+    setAntwoord(nieuw)
+    if (ingesproken) {
+      ingesprokenRef.current = true
+      setTypMelding(false)
+      insprekenTimer.current = setTimeout(() => void verstuur(nieuw, true), WACHT_NA_INSPREKEN)
+    }
   }
 
   const codewoorden = toestand.pogingen.filter(
@@ -303,6 +347,22 @@ export function OefenSessie({
         </>
       ) : (
         <form onSubmit={controleer}>
+          <p className={`wijze wijze-${wijze}`}>
+            {wijze === 'zeggen' ? (
+              <>
+                <strong>🎤 Zeg of typ het.</strong> Tik op de microfoon van je toetsenbord en zeg het woord.
+              </>
+            ) : (
+              <>
+                <strong>✍️ Typ het, letter voor letter.</strong> Zo oefen je ook de spelling.
+              </>
+            )}
+          </p>
+          {typMelding && (
+            <p className="feedback" role="status">
+              Deze keer typen, letter voor letter ✍️
+            </p>
+          )}
           <label className="label" htmlFor="antwoord">
             Wat is het in het {taal}?
           </label>
@@ -311,7 +371,7 @@ export function OefenSessie({
             ref={invoerRef}
             className="invoer"
             value={antwoord}
-            onChange={(e) => setAntwoord(e.target.value)}
+            onChange={(e) => opInvoer(e.target.value)}
             autoComplete="off"
             autoCapitalize="off"
             autoCorrect="off"

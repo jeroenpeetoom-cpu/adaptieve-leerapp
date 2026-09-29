@@ -43,6 +43,8 @@ export interface Poging {
   antwoordZelfToegevoegd: boolean
   /** De strategie waarmee het leeritem geleerd is, als die er is. Ontbreekt bij oudere pogingen. */
   strategie?: Strategie | null
+  /** Het antwoord is ingesproken in plaats van getypt. Ontbreekt bij oudere pogingen. */
+  ingesproken?: boolean
   tijdstip: Tijdstip
   regelversie: number
 }

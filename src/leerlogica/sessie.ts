@@ -43,6 +43,8 @@ export interface Antwoord {
   /** null als de leerling op "niet geweten" tikte. */
   antwoord: string | null
   tijdstip: Tijdstip
+  /** Het antwoord is ingesproken in plaats van getypt. */
+  ingesproken?: boolean
 }
 
 function laatsteOordeel(toestand: Pick<SessieToestand, 'pogingen' | 'laatsteOordeelVooraf'>, itemId: string) {
@@ -165,6 +167,7 @@ export function beantwoord(
     hulp: toestand.hulp,
     antwoordZelfToegevoegd: false,
     strategie: toestand.strategiePerItem[item.id] ?? null,
+    ingesproken: invoer.ingesproken ?? false,
     tijdstip: invoer.tijdstip,
     regelversie: REGELVERSIE,
   }
