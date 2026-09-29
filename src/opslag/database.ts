@@ -1,6 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie'
 import type { Leerling } from '../bronnen/leerling'
-import type { Bron, Bronpagina, Woordpaar } from '../bronnen/model'
+import type { Bron, Bronpagina, Geheugenbeeld, Woordpaar } from '../bronnen/model'
 import type { Poging, SessieToestand } from '../leerlogica'
 
 /** Echte gegevens en testgegevens staan in aparte databases, zodat ze nooit mengen. */
@@ -31,6 +31,7 @@ export class Database extends Dexie {
   bronpaginas!: EntityTable<Bronpagina, 'id'>
   woordparen!: EntityTable<Woordpaar, 'id'>
   leerlingen!: EntityTable<Leerling, 'id'>
+  geheugenbeelden!: EntityTable<Geheugenbeeld, 'id'>
 
   constructor(omgeving: Omgeving) {
     super(NAMEN[omgeving])
@@ -48,6 +49,9 @@ export class Database extends Dexie {
     })
     this.version(4).stores({
       leerlingen: 'id',
+    })
+    this.version(5).stores({
+      geheugenbeelden: 'id, leeritemId, routeId',
     })
   }
 

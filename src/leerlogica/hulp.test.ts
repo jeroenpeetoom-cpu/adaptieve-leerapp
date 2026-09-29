@@ -18,6 +18,11 @@ describe('hint', () => {
   it('noemt de eerste letter en het aantal letters, zonder het antwoord te verklappen', () => {
     expect(hintVoor(bron[2])).toBe('Het begint met een "s" en heeft 7 letters.')
   })
+
+  it('verwijst naar het eigen geheugenbeeld als dat er is', () => {
+    expect(hintVoor(bron[1], 'een wolk hangt aan de kapstok')).toBe('Denk aan je beeld: "een wolk hangt aan de kapstok".')
+    expect(hintVoor(bron[2], '  ')).toBe('Het begint met een "s" en heeft 7 letters.')
+  })
 })
 
 describe('opties', () => {

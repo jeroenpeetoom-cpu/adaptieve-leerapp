@@ -8,7 +8,9 @@ import {
   type Leeritem,
   type Poging,
   type SessieToestand,
+  type Strategie,
 } from '../leerlogica'
+import type { Geheugenbeeld } from '../bronnen/model'
 import type { Database } from '../opslag/database'
 import { OefenSessie } from './OefenSessie'
 import { Terugblik } from './Terugblik'
@@ -45,6 +47,9 @@ export function Oefenroute({ db, leeritems: basis, bronnen, nu, instellingen, le
   const [openSessie, setOpenSessie] = useState<SessieToestand | null>(null)
   const [weergave, setWeergaveIntern] = useState<Weergave>({ soort: 'overzicht' })
   const [melding, setMelding] = useState<string | null>(null)
+  const [beelden, setBeelden] = useState<Geheugenbeeld[]>([])
+  const [strategiePerBron, setStrategiePerBron] = useState<Record<string, Strategie | 'geen'>>({})
+  const [voorgedaan, setVoorgedaan] = useState<Strategie[]>([])
 
   const setWeergave = useCallback(
     (w: Weergave) => {
@@ -57,6 +62,9 @@ export function Oefenroute({ db, leeritems: basis, bronnen, nu, instellingen, le
   const laad = useCallback(async () => {
     setPogingen(await db.pogingen.toArray())
     setExtraAntwoorden(await db.leesMeta<Record<string, string[]>>('extraAntwoorden', {}))
+    setBeelden(await db.geheugenbeelden.toArray())
+    setStrategiePerBron(await db.leesMeta<Record<string, Strategie | 'geen'>>('strategiePerBron', {}))
+    setVoorgedaan(await db.leesMeta<Strategie[]>('voorgedaan', []))
     const open = await db.openSessie()
     // Een gepauzeerde sessie uit een oudere versie van de app is niet te hervatten; die sluiten we af.
     if (open && !('vorm' in open.toestand)) await db.slaSessieOp(open.toestand, true, open.bijgewerkt)
@@ -82,7 +90,8 @@ export function Oefenroute({ db, leeritems: basis, bronnen, nu, instellingen, le
     if (aantal === 0) return false
     const items = [...samenstelling.herhalingen, ...samenstelling.nieuw]
     setMelding(null)
-    setWeergave({ soort: 'sessie', toestand: startSessie(crypto.randomUUID(), items, pogingen) })
+    const strategiePerItem = Object.fromEntries(beelden.map((b) => [b.leeritemId, 'beelden koppelen' as const]))
+    setWeergave({ soort: 'sessie', toestand: startSessie(crypto.randomUUID(), items, pogingen, strategiePerItem) })
     return true
   }
 
@@ -90,6 +99,26 @@ export function Oefenroute({ db, leeritems: basis, bronnen, nu, instellingen, le
     const nieuw = { ...extraAntwoorden, [leeritemId]: [...(extraAntwoorden[leeritemId] ?? []), antwoord] }
     await db.schrijfMeta('extraAntwoorden', nieuw)
     setExtraAntwoorden(nieuw)
+  }
+
+  async function kiesStrategie(bronId: string, strategie: Strategie | 'geen') {
+    const nieuw = { ...strategiePerBron, [bronId]: strategie }
+    await db.schrijfMeta('strategiePerBron', nieuw)
+    setStrategiePerBron(nieuw)
+  }
+
+  async function markeerVoorgedaan(strategie: Strategie) {
+    const nieuw = [...new Set([...voorgedaan, strategie])]
+    await db.schrijfMeta('voorgedaan', nieuw)
+    setVoorgedaan(nieuw)
+  }
+
+  async function bewaarBeeld(beeld: Omit<Geheugenbeeld, 'id' | 'aangemaakt'>) {
+    const volledig: Geheugenbeeld = { ...beeld, id: crypto.randomUUID(), aangemaakt: nu() }
+    // Eén geheugenbeeld per leeritem: een nieuw beeld vervangt het oude.
+    await db.geheugenbeelden.where('leeritemId').equals(beeld.leeritemId).delete()
+    await db.geheugenbeelden.add(volledig)
+    setBeelden((b) => [...b.filter((x) => x.leeritemId !== beeld.leeritemId), volledig])
   }
 
   if (weergave.soort === 'sessie') {
@@ -103,6 +132,12 @@ export function Oefenroute({ db, leeritems: basis, bronnen, nu, instellingen, le
           nu={nu}
           onAntwoordToegevoegd={antwoordToegevoegd}
           onKlaar={(toestand) => void laad().then(() => setWeergave({ soort: 'klaar', toestand }))}
+          geheugenbeelden={Object.fromEntries(beelden.map((b) => [b.leeritemId, `${b.emoji ? b.emoji + ' ' : ''}${b.beschrijving}`]))}
+          strategiePerBron={strategiePerBron}
+          voorgedaan={voorgedaan}
+          onKiesStrategie={kiesStrategie}
+          onVoorgedaan={markeerVoorgedaan}
+          onGeheugenbeeld={bewaarBeeld}
         />
         <button className="link" onClick={() => void laad().then(() => setWeergave({ soort: 'overzicht' }))}>
           ← Pauzeren

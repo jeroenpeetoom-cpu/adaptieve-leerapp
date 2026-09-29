@@ -1,6 +1,6 @@
 import { beoordeel } from './antwoordcontrole'
 import { zwaarsteHulp } from './hulp'
-import type { Hulp, Leeritem, Oordeel, Poging, Tijdstip } from './types'
+import type { Hulp, Leeritem, Oordeel, Poging, Strategie, Tijdstip } from './types'
 import { REGELVERSIE } from './versie'
 
 export type Vorm = 'typen' | 'meerkeuze'
@@ -8,6 +8,8 @@ export type Vorm = 'typen' | 'meerkeuze'
 /**
  * Het verloop van één sessie.
  * - Op een typvraag krijgt de leerling na "bijna" of "fout" één nieuwe kans met hulp "met hint".
+ *   Bij een nieuw leeritem (de voorkennischeck) geldt dat alleen voor "bijna": wie een woord nog
+ *   niet kent, krijgt meteen een leermoment in plaats van een hint.
  * - Daarna, of na "niet geweten", is het leeritem afgesloten en ziet de leerling het antwoord.
  * - Een leeritem dat niet goed ging, komt aan het eind van de sessie één keer terug.
  * - Was de laatste poging op een leeritem fout of niet geweten, dan komt het als meerkeuze
@@ -29,6 +31,8 @@ export interface SessieToestand {
   pogingen: Poging[]
   /** Laatste oordeel per leeritem van vóór deze sessie, voor de meerkeuze-opstap. */
   laatsteOordeelVooraf: Record<string, Oordeel>
+  /** De strategie waarmee een leeritem geleerd is, om bij elke poging vast te leggen. */
+  strategiePerItem: Record<string, Strategie>
 }
 
 export interface Antwoord {
@@ -61,7 +65,12 @@ function opPositie(toestand: SessieToestand, positie: number): SessieToestand {
   }
 }
 
-export function startSessie(sessieId: string, leeritems: Leeritem[], eerderePogingen: Poging[] = []): SessieToestand {
+export function startSessie(
+  sessieId: string,
+  leeritems: Leeritem[],
+  eerderePogingen: Poging[] = [],
+  strategiePerItem: Record<string, Strategie> = {},
+): SessieToestand {
   const laatsteOordeelVooraf: Record<string, Oordeel> = {}
   for (const p of [...eerderePogingen].sort((a, b) => a.tijdstip.localeCompare(b.tijdstip))) {
     laatsteOordeelVooraf[p.leeritemId] = p.oordeel
@@ -77,6 +86,7 @@ export function startSessie(sessieId: string, leeritems: Leeritem[], eerderePogi
     teruggezet: [],
     pogingen: [],
     laatsteOordeelVooraf,
+    strategiePerItem,
   }
   return opPositie(leeg, 0)
 }
@@ -97,6 +107,25 @@ export function wachtOpVolgende(toestand: SessieToestand): boolean {
 /** Aantal leeritems dat nog komt, inclusief het huidige. */
 export function nogTeGaan(toestand: SessieToestand): number {
   return toestand.leeritems.length - toestand.huidige
+}
+
+/** Een leeritem zonder enige poging van vóór deze sessie. */
+export function isNieuwLeeritem(toestand: SessieToestand, itemId: string): boolean {
+  return !(itemId in toestand.laatsteOordeelVooraf)
+}
+
+/** Het huidige leeritem is voor het eerst aan de beurt en de leerling kende het niet: tijd om het te leren. */
+export function leermomentNodig(toestand: SessieToestand): boolean {
+  const item = huidigLeeritem(toestand)
+  const laatste = laatstePogingHier(toestand)
+  if (!item || !laatste || !toestand.afgesloten || laatste.oordeel === 'goed') return false
+  const eerdereHier = toestand.pogingen.slice(0, -toestand.pogingenBijHuidige).some((p) => p.leeritemId === item.id)
+  return isNieuwLeeritem(toestand, item.id) && !eerdereHier
+}
+
+/** Legt vast met welke strategie een leeritem geleerd wordt. */
+export function koppelStrategie(toestand: SessieToestand, itemId: string, strategie: Strategie): SessieToestand {
+  return { ...toestand, strategiePerItem: { ...toestand.strategiePerItem, [itemId]: strategie } }
 }
 
 /** De laatste poging op de huidige positie, als die er is. */
@@ -132,11 +161,13 @@ export function beantwoord(
     oordeel,
     hulp: toestand.hulp,
     antwoordZelfToegevoegd: false,
+    strategie: toestand.strategiePerItem[item.id] ?? null,
     tijdstip: invoer.tijdstip,
     regelversie: REGELVERSIE,
   }
+  const voorkennischeck = isNieuwLeeritem(toestand, item.id) && !toestand.pogingen.some((p) => p.leeritemId === item.id)
   const nieuweKans =
-    (oordeel === 'bijna' || oordeel === 'fout') &&
+    (oordeel === 'bijna' || (oordeel === 'fout' && !voorkennischeck)) &&
     toestand.vorm === 'typen' &&
     toestand.pogingenBijHuidige === 0 &&
     toestand.hulp !== 'na voorbeeld'

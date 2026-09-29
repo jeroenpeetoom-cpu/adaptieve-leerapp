@@ -49,3 +49,17 @@ export interface Woordpaar {
   bekeken: boolean
   volgorde: number
 }
+
+/** Een voorstelling die de leerling zelf bedenkt en aan één leeritem koppelt (CONTEXT.md). */
+export interface Geheugenbeeld {
+  id: string
+  leeritemId: string
+  /** Altijd een korte beschrijving in eigen woorden; die dient ook als hint. */
+  beschrijving: string
+  emoji: string
+  /** Optioneel plaatje uit de galerij, verkleind, als data-URL zodat het in een back-up past. */
+  plaatje: string | null
+  routeId: string | null
+  plek: number | null
+  aangemaakt: string
+}

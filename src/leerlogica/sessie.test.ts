@@ -3,6 +3,8 @@ import {
   beantwoord,
   huidigLeeritem,
   isKlaar,
+  koppelStrategie,
+  leermomentNodig,
   kanAntwoordToevoegen,
   nogTeGaan,
   startSessie,
@@ -30,6 +32,20 @@ const cloud = item('2', 'cloud', 'wolk')
 const t = '2026-10-01T16:00:00.000Z'
 let n = 0
 
+/** Een eerdere goede poging, zodat bridge geen nieuw leeritem meer is. */
+const eerderGoed: Poging = {
+  id: 'eerder',
+  sessieId: 's0',
+  leeritemId: '1',
+  bronversie: 1,
+  antwoord: 'brug',
+  oordeel: 'goed',
+  hulp: 'vrij opgehaald',
+  antwoordZelfToegevoegd: false,
+  tijdstip: '2026-09-30T16:00:00.000Z',
+  regelversie: 1,
+}
+
 function antwoord(toestand: SessieToestand, tekst: string | null, pogingId = `p${++n}`) {
   return beantwoord(toestand, { pogingId, antwoord: tekst, tijdstip: t })
 }
@@ -49,9 +65,9 @@ describe('sessie', () => {
     expect(huidigLeeritem(volgende(toestand))?.id).toBe('2')
   })
 
-  it('geeft na bijna of fout één nieuwe kans met hulp "met hint"', () => {
+  it('geeft bij een bekend leeritem na bijna of fout één nieuwe kans met hulp "met hint"', () => {
     for (const eerste of ['brugg', 'lucht']) {
-      const a = antwoord(startSessie('s1', [bridge]), eerste)
+      const a = antwoord(startSessie('s1', [bridge], [eerderGoed]), eerste)
       expect(a.toestand.afgesloten).toBe(false)
       const b = antwoord(a.toestand, 'brug')
       expect(b.poging).toMatchObject({ oordeel: 'goed', hulp: 'met hint' })
@@ -60,7 +76,7 @@ describe('sessie', () => {
   })
 
   it('sluit het leeritem af na de tweede fout, zodat het voorbeeld volgt', () => {
-    const a = antwoord(startSessie('s1', [bridge]), 'lucht')
+    const a = antwoord(startSessie('s1', [bridge], [eerderGoed]), 'lucht')
     const b = antwoord(a.toestand, 'fiets')
     expect(b.poging).toMatchObject({ oordeel: 'fout', hulp: 'met hint' })
     expect(b.toestand.afgesloten).toBe(true)
@@ -132,6 +148,47 @@ describe('sessie', () => {
   it('geeft na een voorbeeld geen tweede kans bij een fout', () => {
     const s = vraagHulp(startSessie('s1', [bridge]), 'na voorbeeld')
     expect(antwoord(s, 'brg').toestand.afgesloten).toBe(true)
+  })
+
+  describe('nieuw leeritem en leermoment', () => {
+    it('geeft bij de voorkennischeck geen hint-ronde na een fout, maar een leermoment', () => {
+      const { toestand } = antwoord(startSessie('s1', [bridge]), 'lucht')
+      expect(toestand.afgesloten).toBe(true)
+      expect(leermomentNodig(toestand)).toBe(true)
+    })
+
+    it('geeft bij de voorkennischeck wel een nieuwe kans na bijna', () => {
+      const brugg = item('9', 'bridge', 'bridge')
+      const { toestand } = antwoord(startSessie('s1', [brugg]), 'brigde')
+      expect(toestand.afgesloten).toBe(false)
+      const tweede = antwoord(toestand, 'fiets')
+      expect(leermomentNodig(tweede.toestand)).toBe(true)
+    })
+
+    it('geeft een leermoment bij niet geweten, maar niet bij goed', () => {
+      expect(leermomentNodig(antwoord(startSessie('s1', [bridge]), null).toestand)).toBe(true)
+      expect(leermomentNodig(antwoord(startSessie('s1', [bridge]), 'brug').toestand)).toBe(false)
+    })
+
+    it('geeft geen leermoment bij een leeritem dat al eerder geoefend is', () => {
+      expect(leermomentNodig(antwoord(startSessie('s1', [bridge], [eerderGoed]), null).toestand)).toBe(false)
+    })
+
+    it('geeft geen tweede leermoment als het leeritem aan het eind terugkomt', () => {
+      let s = startSessie('s1', [bridge])
+      s = volgende(antwoord(s, null).toestand)
+      expect(huidigLeeritem(s)?.id).toBe('1')
+      expect(leermomentNodig(antwoord(s, 'fiets').toestand)).toBe(false)
+    })
+
+    it('legt de strategie vast bij elke poging', () => {
+      let s = startSessie('s1', [bridge, cloud], [], { '2': 'beelden koppelen' })
+      s = volgende(antwoord(s, null).toestand)
+      s = koppelStrategie(s, '1', 'beelden koppelen')
+      const wolk = antwoord(s, 'wolk')
+      expect(wolk.poging?.strategie).toBe('beelden koppelen')
+      expect(antwoord(startSessie('s2', [bridge]), 'brug').poging?.strategie).toBeNull()
+    })
   })
 
   describe('mijn antwoord was ook goed', () => {

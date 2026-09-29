@@ -4,8 +4,11 @@ import {
   hintVoor,
   huidigLeeritem,
   isKlaar,
+  isNieuwLeeritem,
   kanAntwoordToevoegen,
+  koppelStrategie,
   laatstePogingHier,
+  leermomentNodig,
   nogTeGaan,
   optiesVoor,
   voegAntwoordToe,
@@ -14,8 +17,11 @@ import {
   type Leeritem,
   type Poging,
   type SessieToestand,
+  type Strategie,
 } from '../leerlogica'
+import type { Geheugenbeeld } from '../bronnen/model'
 import type { Database } from '../opslag/database'
+import { Leermoment } from './Leermoment'
 
 const TAALNAAM = { en: 'Engels', nl: 'Nederlands' } as const
 
@@ -28,10 +34,17 @@ interface Props {
   nu: () => string
   onAntwoordToegevoegd: (leeritemId: string, antwoord: string) => Promise<void>
   onKlaar: (toestand: SessieToestand) => void
+  /** Beschrijving van het eigen geheugenbeeld per leeritem, voor de hint. */
+  geheugenbeelden: Record<string, string>
+  strategiePerBron: Record<string, Strategie | 'geen'>
+  voorgedaan: Strategie[]
+  onKiesStrategie: (bronId: string, strategie: Strategie | 'geen') => Promise<void>
+  onVoorgedaan: (strategie: Strategie) => Promise<void>
+  onGeheugenbeeld: (beeld: Omit<Geheugenbeeld, 'id' | 'aangemaakt'>) => Promise<void>
 }
 
 /** Korte feedback (één of twee zinnen) en optioneel een langere uitleg. */
-function feedbackVoor(poging: Poging, afgesloten: boolean, goedAntwoord: string, item: Leeritem) {
+function feedbackVoor(poging: Poging, afgesloten: boolean, goedAntwoord: string, item: Leeritem, beeld?: string) {
   if (poging.oordeel === 'goed') {
     if (poging.antwoordZelfToegevoegd)
       return {
@@ -47,7 +60,7 @@ function feedbackVoor(poging: Poging, afgesloten: boolean, goedAntwoord: string,
   if (!afgesloten) {
     return poging.oordeel === 'bijna'
       ? { kort: 'Bijna! Kijk nog eens goed naar de letters.', uitleg: null }
-      : { kort: `Dat is het niet. Hint: ${hintVoor(item)}`, uitleg: 'Probeer het nog één keer. Lukt het niet, dan krijg je het antwoord te zien.' }
+      : { kort: `Dat is het niet. Hint: ${hintVoor(item, beeld)}`, uitleg: 'Probeer het nog één keer. Lukt het niet, dan krijg je het antwoord te zien.' }
   }
   if (poging.oordeel === 'niet geweten')
     return { kort: `Geeft niet. Het antwoord is "${goedAntwoord}". Het komt straks terug.`, uitleg: null }
@@ -57,7 +70,20 @@ function feedbackVoor(poging: Poging, afgesloten: boolean, goedAntwoord: string,
   }
 }
 
-export function OefenSessie({ db, begintoestand, bronItems, nu, onAntwoordToegevoegd, onKlaar }: Props) {
+export function OefenSessie({
+  db,
+  begintoestand,
+  bronItems,
+  nu,
+  onAntwoordToegevoegd,
+  onKlaar,
+  geheugenbeelden,
+  strategiePerBron,
+  voorgedaan,
+  onKiesStrategie,
+  onVoorgedaan,
+  onGeheugenbeeld,
+}: Props) {
   const [toestand, setToestand] = useState(begintoestand)
   const [antwoord, setAntwoord] = useState('')
   const [storing, setStoring] = useState<string | null>(null)
@@ -131,7 +157,23 @@ export function OefenSessie({ db, begintoestand, bronItems, nu, onAntwoordToegev
     void verstuur(antwoord)
   }
 
-  const feedback = laatste ? feedbackVoor(laatste, toestand.afgesloten, goedAntwoord, item) : null
+  const beeld = geheugenbeelden[item.id]
+  const feedback = laatste ? feedbackVoor(laatste, toestand.afgesloten, goedAntwoord, item, beeld) : null
+  const leermoment = leermomentNodig(toestand)
+
+  async function leermomentKlaar(nieuwBeeld: Omit<Geheugenbeeld, 'id' | 'aangemaakt'> | null) {
+    let volgendeToestand = toestand
+    if (nieuwBeeld) {
+      await onGeheugenbeeld(nieuwBeeld)
+      volgendeToestand = koppelStrategie(toestand, item.id, 'beelden koppelen')
+    }
+    setToestand(volgendeToestand)
+    const nieuw = volgende(volgendeToestand)
+    await bewaar(nieuw, null, nu())
+    if (isKlaar(nieuw)) return onKlaar(nieuw)
+    setToestand(nieuw)
+    setTimeout(() => invoerRef.current?.focus())
+  }
   const hintZichtbaar = !toestand.afgesloten && toestand.hulp === 'met hint' && !laatste
   const voorbeeldZichtbaar = !toestand.afgesloten && toestand.hulp === 'na voorbeeld'
 
@@ -143,6 +185,9 @@ export function OefenSessie({ db, begintoestand, bronItems, nu, onAntwoordToegev
       <p className="richting">
         {TAALNAAM[item.oefenrichting.van]} → {taal}
       </p>
+      {isNieuwLeeritem(toestand, item.id) && !laatste && !toestand.pogingen.some((p) => p.leeritemId === item.id) && (
+        <p className="nieuw-label">✨ Nieuw woord. Weet je het al? Anders tik je op "Weet ik niet".</p>
+      )}
       <p className="vraag" lang={item.oefenrichting.van}>
         {item.vraag}
       </p>
@@ -161,7 +206,7 @@ export function OefenSessie({ db, begintoestand, bronItems, nu, onAntwoordToegev
 
       {hintZichtbaar && (
         <p className="feedback" role="status">
-          Hint: {hintVoor(item)}
+          Hint: {hintVoor(item, beeld)}
         </p>
       )}
       {voorbeeldZichtbaar && (
@@ -182,7 +227,17 @@ export function OefenSessie({ db, begintoestand, bronItems, nu, onAntwoordToegev
         </button>
       )}
 
-      {toestand.afgesloten ? (
+      {leermoment ? (
+        <Leermoment
+          key={item.id}
+          item={item}
+          strategie={strategiePerBron[item.bronId]}
+          voorgedaan={voorgedaan.includes('beelden koppelen')}
+          onKiesStrategie={(s) => void onKiesStrategie(item.bronId, s)}
+          onVoorgedaan={() => void onVoorgedaan('beelden koppelen')}
+          onKlaar={(b) => void leermomentKlaar(b)}
+        />
+      ) : toestand.afgesloten ? (
         <button className="knop" onClick={() => void naarVolgende()} autoFocus>
           Volgende
         </button>

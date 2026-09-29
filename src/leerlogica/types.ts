@@ -28,6 +28,9 @@ export type Hulp = 'vrij opgehaald' | 'met hint' | 'herkend' | 'na voorbeeld'
 
 export type Oordeel = 'goed' | 'bijna' | 'fout' | 'niet geweten'
 
+/** Een leeraanpak die de leerling leert kiezen en zelfstandig gebruiken (CONTEXT.md). */
+export type Strategie = 'beelden koppelen' | 'geheugenroute'
+
 export interface Poging {
   id: string
   sessieId: string
@@ -38,6 +41,8 @@ export interface Poging {
   oordeel: Oordeel
   hulp: Hulp
   antwoordZelfToegevoegd: boolean
+  /** De strategie waarmee het leeritem geleerd is, als die er is. Ontbreekt bij oudere pogingen. */
+  strategie?: Strategie | null
   tijdstip: Tijdstip
   regelversie: number
 }

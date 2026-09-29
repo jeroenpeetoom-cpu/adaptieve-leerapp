@@ -8,8 +8,12 @@ export function zwaarsteHulp(a: Hulp, b: Hulp): Hulp {
   return HULP_VOLGORDE.indexOf(a) >= HULP_VOLGORDE.indexOf(b) ? a : b
 }
 
-/** Hint zonder geheugenbeeld: eerste letter en aantal letters. */
-export function hintVoor(item: Leeritem): string {
+/**
+ * Een hint verwijst naar het eigen geheugenbeeld als dat er is; anders noemt hij de eerste letter
+ * en het aantal letters.
+ */
+export function hintVoor(item: Leeritem, geheugenbeeld?: string | null): string {
+  if (geheugenbeeld && geheugenbeeld.trim() !== '') return `Denk aan je beeld: "${geheugenbeeld.trim()}".`
   const antwoord = item.toegestaneAntwoorden[0]
   const letters = antwoord.replace(/[^\p{L}]/gu, '').length
   return `Het begint met een "${antwoord[0]}" en heeft ${letters} ${letters === 1 ? 'letter' : 'letters'}.`
