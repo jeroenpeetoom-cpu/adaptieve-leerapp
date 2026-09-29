@@ -171,3 +171,41 @@ h2 {
   color: var(--gedempt);
   font-size: 0.95rem;
 }
+
+.terugblik {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+
+.terugblik li {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.5rem 0;
+}
+
+.terugblik p {
+  margin: 0.25rem 0 0;
+}
+
+.terugblik-regel {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.status {
+  font-size: 0.9rem;
+  white-space: nowrap;
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  border: 1px solid var(--gedempt);
+}
+
+.status-1 {
+  border-color: var(--accent);
+}
+
+.status-2 {
+  border-color: #6fd08c;
+}

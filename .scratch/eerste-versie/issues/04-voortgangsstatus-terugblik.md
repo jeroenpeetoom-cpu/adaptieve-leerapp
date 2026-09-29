@@ -4,10 +4,10 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** ready-for-agent (gebouwd; wacht op handmatige controle op de S22)
 
-- [ ] De voortgangsstatus wordt berekend uit de pogingen op de huidige bronversie sinds de laatste fout of niet geweten, volgens de specificatie
-- [ ] Later nog geweten: vrij opgehaald goed op minstens twee verschillende dagen, de laatste minstens 7 dagen na de allereerste poging
-- [ ] Bijna en goede antwoorden met hulp zijn geen bewijs, en zetten de status ook niet terug
-- [ ] Na een fout staat het leeritem op nog aan het leren; de terugblik toont dat het eerder al een hogere status had
-- [ ] Leerlogicatests dekken de statusovergangen met de instelbare klok
+- [x] De voortgangsstatus wordt berekend uit de pogingen op de huidige bronversie sinds de laatste fout of niet geweten, volgens de specificatie
+- [x] Later nog geweten: vrij opgehaald goed op minstens twee verschillende dagen, de laatste minstens 7 dagen na de allereerste poging
+- [x] Bijna en goede antwoorden met hulp zijn geen bewijs, en zetten de status ook niet terug
+- [x] Na een fout staat het leeritem op nog aan het leren; de terugblik toont dat het eerder al een hogere status had
+- [x] Leerlogicatests dekken de statusovergangen met de instelbare klok

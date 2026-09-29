@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   berekenPlanning,
+  berekenVoortgang,
   dagenTussen,
   kalenderdag,
   startSessie,
@@ -13,6 +14,7 @@ import { Database } from '../opslag/database'
 import { testTijd } from '../testfunctie/klok'
 import { TESTBRON_ID, testLeeritems } from '../testfunctie/testbron'
 import { OefenSessie } from './OefenSessie'
+import { StatusLabel, Terugblik } from './Terugblik'
 
 const testDb = new Database('test')
 const instellingen = STANDAARD_INSTELLINGEN
@@ -117,17 +119,10 @@ export function Testfunctie({ onTerug }: { onTerug: () => void }) {
   }
 
   if (weergave.soort === 'klaar') {
-    const vrij = weergave.toestand.pogingen.filter((p) => p.oordeel === 'goed' && p.hulp === 'vrij opgehaald')
-    const geoefend = new Set(weergave.toestand.pogingen.map((p) => p.leeritemId)).size
     return (
       <>
         {banner}
-        <section className="kaart">
-          <h2>Klaar!</h2>
-          <p>
-            Je hebt {geoefend} {geoefend === 1 ? 'woord' : 'woorden'} geoefend. {vrij.length}{' '}
-            {vrij.length === 1 ? 'keer' : 'keer'} wist je het zelf.
-          </p>
+        <Terugblik sessie={weergave.toestand} pogingen={pogingen} vandaag={vandaag} instellingen={instellingen}>
           {melding && <p className="feedback">{melding}</p>}
           <div className="knoppen">
             <button
@@ -142,7 +137,7 @@ export function Testfunctie({ onTerug }: { onTerug: () => void }) {
               Naar het overzicht
             </button>
           </div>
-        </section>
+        </Terugblik>
       </>
     )
   }
@@ -199,11 +194,12 @@ export function Testfunctie({ onTerug }: { onTerug: () => void }) {
       </section>
 
       <section className="kaart">
-        <h2>Herhaalplanning</h2>
+        <h2>Voortgang en herhaalplanning</h2>
         <table className="tabel">
           <thead>
             <tr>
               <th>Woord</th>
+              <th>Status</th>
               <th>Fase</th>
               <th>Volgende keer</th>
             </tr>
@@ -214,6 +210,9 @@ export function Testfunctie({ onTerug }: { onTerug: () => void }) {
               return (
                 <tr key={item.id}>
                   <td lang="en">{item.vraag}</td>
+                  <td>
+                    <StatusLabel status={berekenVoortgang(item, pogingen, instellingen).status} />
+                  </td>
                   <td>{planning.fase}</td>
                   <td>{relatieveDag(vandaag, planning.volgendeDag)}</td>
                 </tr>
