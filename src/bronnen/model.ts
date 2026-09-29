@@ -61,6 +61,8 @@ export interface Geheugenbeeld {
   plaatje: string | null
   routeId: string | null
   plek: number | null
+  /** Gemaakt met het steuntje van de app (invulzinnetje en tips). Ontbreekt bij oudere beelden. */
+  metHulp?: boolean
   aangemaakt: string
 }
 

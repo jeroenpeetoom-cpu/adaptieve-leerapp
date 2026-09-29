@@ -11,6 +11,10 @@ export interface Instellingen {
   toetsVoorrangDagen: number
   /** Tijdzone voor kalenderdagen. */
   tijdzone: string
+  /** Zoveel geheugenbeelden per strategie krijgt de leerling het steuntje vanzelf te zien. */
+  beeldenMetSteuntje: number
+  /** Zoveel beelden zonder steuntje zijn nodig voor de strategiestap "zelf gemaakt". */
+  drempelZelfGemaakt: number
 }
 
 export const STANDAARD_INSTELLINGEN: Instellingen = {
@@ -20,6 +24,8 @@ export const STANDAARD_INSTELLINGEN: Instellingen = {
   maxNieuwMetToets: 10,
   toetsVoorrangDagen: 7,
   tijdzone: 'Europe/Amsterdam',
+  beeldenMetSteuntje: 3,
+  drempelZelfGemaakt: 3,
 }
 
 /** Interval in dagen voor een fase (vanaf 1). */

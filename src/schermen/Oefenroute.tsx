@@ -162,6 +162,11 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
           }
           onMaakRoute={maakRoute}
           laatsteReflectie={laatsteReflectie?.tekst ?? null}
+          aantalBeelden={{
+            'beelden koppelen': beelden.filter((b) => !b.routeId).length,
+            geheugenroute: beelden.filter((b) => b.routeId).length,
+          }}
+          beeldenMetSteuntje={instellingen.beeldenMetSteuntje}
           strategiePerBron={strategiePerBron}
           voorgedaan={voorgedaan}
           onKiesStrategie={kiesStrategie}

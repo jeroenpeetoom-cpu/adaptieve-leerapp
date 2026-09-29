@@ -49,6 +49,9 @@ interface Props {
   onMaakRoute: (bronId: string, naam: string, plekken: string[]) => Promise<void>
   /** Wat de leerling vorige keer zei dat hielp, om bij een nieuwe strategiekeuze terug te geven. */
   laatsteReflectie: string | null
+  /** Aantal geheugenbeelden per strategie tot nu toe, voor het afbouwen van het steuntje. */
+  aantalBeelden: Record<Strategie, number>
+  beeldenMetSteuntje: number
 }
 
 /** Korte feedback (één of twee zinnen) en optioneel een langere uitleg. */
@@ -95,6 +98,8 @@ export function OefenSessie({
   routenaamVoor,
   onMaakRoute,
   laatsteReflectie,
+  aantalBeelden,
+  beeldenMetSteuntje,
 }: Props) {
   const [toestand, setToestand] = useState(begintoestand)
   const [antwoord, setAntwoord] = useState('')
@@ -272,6 +277,10 @@ export function OefenSessie({
           onVoorgedaan={(s) => void onVoorgedaan(s)}
           onMaakRoute={(naam, plekken) => void onMaakRoute(item.bronId, naam, plekken)}
           laatsteReflectie={laatsteReflectie}
+          steuntjeOpen={(() => {
+            const s = strategiePerBron[item.bronId]
+            return s === 'beelden koppelen' || s === 'geheugenroute' ? aantalBeelden[s] < beeldenMetSteuntje : true
+          })()}
           onKlaar={(b) => void leermomentKlaar(b)}
         />
       ) : toestand.afgesloten ? (

@@ -15,3 +15,4 @@
 - [x] Leerlogicatests dekken de strategiestappen
 
 Uitwerking: de eerste bron waarbij een strategie gebruikt wordt, telt als voorgedaan; een latere bron met dezelfde keuze als zelf gekozen. Keuzes worden met tijdstip bijgehouden; keuzes van vóór deze versie worden afgeleid uit de strategie per bron.
+- [x] Strategiestap uitgebreid naar vijf stappen met een steuntje dat geleidelijk verdwijnt (vraag 35 en 36)

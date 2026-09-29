@@ -81,7 +81,7 @@ Een vaste reeks van enkele bekende plekken, met per plek één geheugenbeeld.
 _Avoid_: geheugenpaleis, geheugenroute (dat is de strategie)
 
 **Strategiestap**:
-Hoe ver de leerling is met het zelfstandig kiezen en gebruiken van één strategie: *voorgedaan*, *zelf gekozen* of *zelfstandig toegepast* (zelf gekozen bij een nieuwe bron, en het werkte). Wordt per strategie gevolgd, los van de voortgangsstatus van leeritems.
+Hoe ver de leerling is met het zelfstandig kiezen en gebruiken van één strategie: *voorgedaan*, *met hulp gemaakt* (een beeld of route gemaakt met een steuntje van de app), *zelf gemaakt* (zonder dat steuntje), *zelf gekozen* (bij een latere bron zelf voor de strategie gekozen) of *zelfstandig toegepast* (zelf gekozen bij een nieuwe bron, en het werkte). Wordt per strategie gevolgd, los van de voortgangsstatus van leeritems; of de kennis later zonder hulpmiddel blijft, meet de voortgangsstatus.
 _Avoid_: strategieniveau, zelfstandigheidsniveau
 
 **Oefenvorm**:

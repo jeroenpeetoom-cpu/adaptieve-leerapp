@@ -50,6 +50,8 @@ interface Props {
   onVoorgedaan: (strategie: Strategie) => void
   onMaakRoute: (naam: string, plekken: string[]) => void
   laatsteReflectie: string | null
+  /** Staat het steuntje (invulzinnetje en tips) vanzelf open? Bij de eerste beelden per strategie wel. */
+  steuntjeOpen: boolean
   onKlaar: (beeld: Omit<Geheugenbeeld, 'id' | 'aangemaakt'> | null) => void
 }
 
@@ -96,6 +98,7 @@ export function Leermoment({
   onVoorgedaan,
   onMaakRoute,
   laatsteReflectie,
+  steuntjeOpen,
   onKlaar,
 }: Props) {
   const [stap, setStap] = useState(0)
@@ -106,6 +109,8 @@ export function Leermoment({
   const [naam, setNaam] = useState(routenaam)
   const [plekken, setPlekken] = useState<string[]>(Array(MAX_PLEKKEN).fill(''))
   const [doorlopen, setDoorlopen] = useState<Omit<Geheugenbeeld, 'id' | 'aangemaakt'> | null>(null)
+  const [steuntje, setSteuntje] = useState(steuntjeOpen)
+  // Het steuntje telt als gebruikt als het bij het bewaren open stond.
 
   if (strategie === undefined) {
     return (
@@ -259,6 +264,34 @@ export function Leermoment({
         autoFocus
       />
       <p className="gedempt tip">🎤 Tip: tik op de microfoon van je toetsenbord om je beeld in te spreken.</p>
+      {steuntje ? (
+        <div className="steuntje" role="note">
+          <p>
+            <strong>Hulp bij bedenken</strong>
+          </p>
+          <p>
+            Vul aan: <em>Ik zie ___ {plek ? `bij de ${plek}` : 'ergens'}, en het ___.</em>
+          </p>
+          <ul>
+            <li>Maak het groot of gek: een reuzenbrug, een pratende wolk.</li>
+            <li>Laat het bewegen of geluid maken.</li>
+            <li>Koppel het aan iets wat je kent: je kamer, je hond, je favoriete spel.</li>
+          </ul>
+          <button
+            className="link"
+            onClick={() => setBeschrijving(beschrijving || `Ik zie  ${plek ? `bij de ${plek}` : ''}, en het `)}
+          >
+            Gebruik het zinnetje
+          </button>{' '}
+          <button className="link" onClick={() => setSteuntje(false)}>
+            Ik heb geen hulp nodig
+          </button>
+        </div>
+      ) : (
+        <button className="link" onClick={() => setSteuntje(true)}>
+          💡 Hulp bij bedenken?
+        </button>
+      )}
       <label className="label" htmlFor="emoji" style={{ marginTop: '0.75rem' }}>
         Emoji erbij? <span className="gedempt">(mag, hoeft niet)</span>
       </label>
@@ -291,6 +324,7 @@ export function Leermoment({
               plaatje,
               routeId: route && plekIndex !== null ? route.route.id : null,
               plek: plekIndex,
+              metHulp: steuntje,
             }
             // Bij een geheugenroute eerst de route in gedachten doorlopen, daarna verder.
             if (plekIndex !== null) setDoorlopen(beeld)

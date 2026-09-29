@@ -608,3 +608,20 @@ select.invoer {
     animation: none;
   }
 }
+
+.steuntje {
+  background: rgba(245, 185, 66, 0.1);
+  border-left: 4px solid var(--accent);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.steuntje p,
+.steuntje ul {
+  margin: 0.25rem 0;
+}
+
+.steuntje ul {
+  padding-left: 1.2rem;
+}

@@ -187,6 +187,10 @@ Een installeerbare website (PWA) op de Samsung Galaxy S22 van de leerling. De le
 
 ### Strategiestap
 
+- **Vijf stappen (bevestigd, naar aanleiding van `docs/achtergrond/onderscheidend-vermogen.md`):** voorgedaan → met hulp gemaakt → zelf gemaakt → zelf gekozen → zelfstandig toegepast. De stap is de hoogste waaraan voldaan is. Of de kennis later zonder hulpmiddel blijft, meet de voortgangsstatus.
+- **Steuntje (bevestigd):** bij de eerste 3 geheugenbeelden per strategie staat een steuntje open (invulzinnetje en drie tips), dat de leerling kan wegklikken; daarna staat het dicht met een knop "Hulp bij bedenken?". Per geheugenbeeld wordt vastgelegd of het steuntje openstond. *Met hulp gemaakt*: minstens één beeld met steuntje. *Zelf gemaakt*: 3 beelden zonder steuntje. Beide getallen zijn instellingen.
+- De regels hieronder beschrijven de oorspronkelijke drie stappen; *zelf gekozen* en *zelfstandig toegepast* werken nog steeds zo.
+
 - Bij de eerste keer dat een strategie gebruikt wordt, staat die op *voorgedaan*: een stap-voor-stap uitleg met het vaste voorbeeld.
 - Kiest de leerling bij een latere nieuwe bron zelf een strategie uit de twee voorstellen, dan gaat die naar *zelf gekozen*.
 - *Zelfstandig toegepast*: de strategie is zelf gekozen bij een nieuwe bron, en daarna staat meer dan de helft van de daarmee geleerde leeritems op *later nog geweten*.

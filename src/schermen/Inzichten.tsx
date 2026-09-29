@@ -12,6 +12,7 @@ import {
   type Poging,
   type Strategie,
   type Strategiekeuze,
+  type Strategiestap,
   type Voortgangsstatus,
 } from '../leerlogica'
 import { echteDb } from '../opslag/database'
@@ -24,11 +25,13 @@ const STRATEGIEEN: { strategie: Strategie; naam: string }[] = [
   { strategie: 'beelden koppelen', naam: '🖼️ Beelden koppelen' },
   { strategie: 'geheugenroute', naam: '🗺️ Geheugenroute' },
 ]
-const STAPUITLEG = {
+const STAPUITLEG: Record<Strategiestap, string> = {
   voorgedaan: 'Voorgedaan: je hebt het een keer met uitleg gedaan.',
+  'met hulp gemaakt': 'Met hulp gemaakt: je maakte beelden met het steuntje van de app.',
+  'zelf gemaakt': 'Zelf gemaakt: je bedenkt je beelden nu zonder steuntje.',
   'zelf gekozen': 'Zelf gekozen: je koos het zelf bij een nieuwe lijst.',
   'zelfstandig toegepast': 'Zelfstandig toegepast: je koos het zelf, en het werkte: je weet de meeste woorden later nog.',
-} as const
+}
 
 export function Inzichten({ onTerug }: { onTerug: () => void }) {
   const [gegevens, setGegevens] = useState<{
@@ -65,7 +68,7 @@ export function Inzichten({ onTerug }: { onTerug: () => void }) {
     const item = items.find((i) => i.id === b.leeritemId)
     const status = statusVan.get(b.leeritemId)
     if (!item || !status) return []
-    return [{ bronId: item.bronId, strategie: b.routeId ? 'geheugenroute' : 'beelden koppelen', status }]
+    return [{ bronId: item.bronId, strategie: b.routeId ? 'geheugenroute' : 'beelden koppelen', status, metHulp: b.metHulp ?? false }]
   })
 
   // Komende herhalingen per dag; te late herhalingen tellen als vandaag.
@@ -118,7 +121,7 @@ export function Inzichten({ onTerug }: { onTerug: () => void }) {
         <h2>Hoe je leert</h2>
         <ul className="inzicht-strategieen">
           {STRATEGIEEN.map(({ strategie, naam }) => {
-            const stap = berekenStrategiestap(strategie, keuzes, geleerd)
+            const stap = berekenStrategiestap(strategie, keuzes, geleerd, instellingen.drempelZelfGemaakt)
             return (
               <li key={strategie}>
                 <strong>{naam}</strong>
