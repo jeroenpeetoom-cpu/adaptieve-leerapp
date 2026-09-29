@@ -4,10 +4,10 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** ready-for-agent (gebouwd; wacht op controle op de S22)
 
-- [ ] Voorlezen start alleen op verzoek, nooit vanzelf
-- [ ] Het juiste antwoord wordt pas voorgelezen na de poging
-- [ ] De knop verdwijnt als er voor die taal geen stem beschikbaar is
-- [ ] Voorlezen verandert geen oordeel, hulp of voortgang
-- [ ] Geluid is volledig uit te zetten en de app werkt zonder geluid
+- [x] Voorlezen start alleen op verzoek, nooit vanzelf
+- [x] Het juiste antwoord wordt pas voorgelezen na de poging
+- [x] De knop verdwijnt als er voor die taal geen stem beschikbaar is
+- [x] Voorlezen verandert geen oordeel, hulp of voortgang
+- [x] Geluid is volledig uit te zetten en de app werkt zonder geluid

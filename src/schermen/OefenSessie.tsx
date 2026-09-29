@@ -22,6 +22,7 @@ import {
 import type { Geheugenbeeld } from '../bronnen/model'
 import type { RouteStand } from '../bronnen/routes'
 import type { Database } from '../opslag/database'
+import { Voorleesknop } from '../weergave/voorlezen'
 import { Leermoment } from './Leermoment'
 
 const TAALNAAM = { en: 'Engels', nl: 'Nederlands' } as const
@@ -199,12 +200,15 @@ export function OefenSessie({
         <p className="nieuw-label">✨ Nieuw woord. Weet je het al? Anders tik je op "Weet ik niet".</p>
       )}
       <p className="vraag" lang={item.oefenrichting.van}>
-        {item.vraag}
+        {item.vraag} <Voorleesknop tekst={item.vraag} taal={item.oefenrichting.van} />
       </p>
 
       {feedback && (
         <div className={`feedback feedback-${laatste!.oordeel.replace(' ', '-')}`} role="status">
-          <p>{feedback.kort}</p>
+          <p>
+            {feedback.kort}
+            {toestand.afgesloten && <Voorleesknop tekst={goedAntwoord} taal={item.oefenrichting.naar} />}
+          </p>
           {feedback.uitleg && (
             <details>
               <summary>Waarom?</summary>

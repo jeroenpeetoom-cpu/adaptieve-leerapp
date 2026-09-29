@@ -512,3 +512,12 @@ select.invoer {
 .inzicht-strategieen p {
   margin: 0.15rem 0 0.5rem;
 }
+
+.voorlees {
+  font-size: 1.4rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  vertical-align: middle;
+}

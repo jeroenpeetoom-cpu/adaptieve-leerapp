@@ -3,6 +3,7 @@ import type { Leerling } from '../bronnen/leerling'
 import { leesBackup, maakBackup, OngeldigeBackup, zetBackupTerug } from '../opslag/backup'
 import { isBlijvend, vraagBlijvendeOpslag } from '../opslag/blijvend'
 import { echteDb } from '../opslag/database'
+import { isGeluidUit, zetGeluidUit } from '../weergave/voorlezen'
 import { ProfielFormulier } from './Profiel'
 
 const WISWOORD = 'WISSEN'
@@ -18,6 +19,7 @@ export function Instellingen({ onTerug, onGewist }: { onTerug: () => void; onGew
   const [melding, setMelding] = useState<{ tekst: string; fout?: boolean } | null>(null)
   const [wissen, setWissen] = useState(false)
   const [wisTekst, setWisTekst] = useState('')
+  const [geluidUit, setGeluidUit] = useState(isGeluidUit)
   const importRef = useRef<HTMLInputElement>(null)
 
   const laad = useCallback(async () => {
@@ -97,6 +99,22 @@ export function Instellingen({ onTerug, onGewist }: { onTerug: () => void; onGew
           />
         </section>
       )}
+
+      <section className="kaart">
+        <h2>Geluid</h2>
+        <label className="keuze">
+          <input
+            type="checkbox"
+            checked={!geluidUit}
+            onChange={(e) => {
+              zetGeluidUit(!e.target.checked)
+              setGeluidUit(!e.target.checked)
+            }}
+          />
+          Voorlezen met 🔊 aan
+        </label>
+        <p className="gedempt">De app leest nooit vanzelf voor, alleen als je op 🔊 tikt.</p>
+      </section>
 
       <section className="kaart">
         <h2>Back-up</h2>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Leeritem, Strategie } from '../leerlogica'
 import type { Geheugenbeeld } from '../bronnen/model'
 import { MAX_PLEKKEN, MIN_PLEKKEN, type RouteStand } from '../bronnen/routes'
+import { Voorleesknop } from '../weergave/voorlezen'
 
 const TAALNAAM = { en: 'Engels', nl: 'Nederlands' } as const
 const PLAATJE_MAX = 512
@@ -25,7 +26,9 @@ function WoordEnBetekenis({ item }: { item: Leeritem }) {
         {TAALNAAM[item.oefenrichting.van]} → {TAALNAAM[item.oefenrichting.naar]}
       </p>
       <p className="vraag">
-        <span lang={item.oefenrichting.van}>{item.vraag}</span> = <span lang={item.oefenrichting.naar}>{item.toegestaneAntwoorden[0]}</span>
+        <span lang={item.oefenrichting.van}>{item.vraag}</span> <Voorleesknop tekst={item.vraag} taal={item.oefenrichting.van} /> ={' '}
+        <span lang={item.oefenrichting.naar}>{item.toegestaneAntwoorden[0]}</span>{' '}
+        <Voorleesknop tekst={item.toegestaneAntwoorden[0]} taal={item.oefenrichting.naar} />
       </p>
     </div>
   )
