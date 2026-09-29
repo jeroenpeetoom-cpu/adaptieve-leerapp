@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fototest tekstherkenning</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+  :root { --bg:#fafaf7; --fg:#1d1d1b; --muted:#6b6b66; --card:#fff; --line:#e3e2dc; --warn:#fde68a; --bad:#fca5a5; --accent:#2f6f5e; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#181816; --fg:#ecebe6; --muted:#a3a29b; --card:#23231f; --line:#3a3a34; --warn:#6b5210; --bad:#7f1d1d; --accent:#6fbfa6; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui, sans-serif; }
+  main { max-width:720px; margin:0 auto; padding:16px; }
+  h1 { font-size:1.4rem; margin:.5rem 0; }
+  h2 { font-size:1.1rem; margin:1.5rem 0 .5rem; }
+  p.muted, .muted { color:var(--muted); font-size:.9rem; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin:12px 0; }
+  label.btn { display:block; text-align:center; background:var(--accent); color:#fff; padding:14px; border-radius:10px; font-weight:600; cursor:pointer; }
+  input[type=file] { display:none; }
+  select { font:inherit; padding:6px; border-radius:8px; }
+  img#preview { max-width:100%; border-radius:8px; margin-top:8px; display:none; }
+  progress { width:100%; height:12px; }
+  #words span { padding:1px 2px; border-radius:3px; }
+  #words .warn { background:var(--warn); }
+  #words .bad { background:var(--bad); }
+  pre { white-space:pre-wrap; word-break:break-word; font-size:.9rem; }
+  table { width:100%; border-collapse:collapse; font-size:.95rem; }
+  td, th { border-bottom:1px solid var(--line); padding:6px 4px; text-align:left; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Fototest: hoe goed wordt het huiswerk herkend?</h1>
+  <p class="muted">Tijdelijke test. De foto blijft op dit apparaat. Alleen de herkenningssoftware en de taalbestanden worden eenmalig gedownload (een paar MB).</p>
+
+  <div class="card">
+    <p>Tips: goed licht, geen schaduw, telefoon recht boven de pagina, alleen de woordenlijst in beeld.</p>
+    <p>Talen: <select id="lang">
+      <option value="eng+nld" selected>Engels + Nederlands</option>
+      <option value="nld">Alleen Nederlands</option>
+      <option value="eng">Alleen Engels</option>
+    </select></p>
+    <label class="btn">📷 Foto maken of kiezen<input id="file" type="file" accept="image/*" capture="environment"></label>
+    <img id="preview" alt="Gekozen foto">
+  </div>
+
+  <div class="card" id="status" hidden>
+    <div id="statusText">Bezig…</div>
+    <progress id="bar" max="1" value="0"></progress>
+  </div>
+
+  <div id="result" hidden>
+    <h2>Herkende woorden</h2>
+    <p class="muted"><span style="background:var(--warn)">geel</span> = twijfel, <span style="background:var(--bad)">rood</span> = grote twijfel. <span id="stats"></span></p>
+    <div class="card" id="words"></div>
+
+    <h2>Geprobeerde woordparen</h2>
+    <p class="muted">Regels die gesplitst konden worden op =, -, :, tab of meerdere spaties.</p>
+    <div class="card"><table id="pairs"><thead><tr><th>Woord</th><th>Betekenis</th></tr></thead><tbody></tbody></table></div>
+
+    <h2>Ruwe tekst</h2>
+    <div class="card"><pre id="raw"></pre></div>
+  </div>
+</main>
+<script>
+  const $ = id => document.getElementById(id);
+  const stepNames = {
+    'loading tesseract core': 'Software laden',
+    'initializing tesseract': 'Starten',
+    'loading language traineddata': 'Taalbestanden laden',
+    'initializing api': 'Voorbereiden',
+    'recognizing text': 'Tekst herkennen',
+  };
+
+  $('file').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    $('preview').src = URL.createObjectURL(file);
+    $('preview').style.display = 'block';
+    $('result').hidden = true;
+    $('status').hidden = false;
+    const started = performance.now();
+    let worker;
+    try {
+      worker = await Tesseract.createWorker($('lang').value, 1, {
+        logger: m => {
+          $('statusText').textContent = (stepNames[m.status] || m.status) + '…';
+          $('bar').value = m.progress || 0;
+        },
+      });
+      const { data } = await worker.recognize(file, { rotateAuto: true });
+      show(data, (performance.now() - started) / 1000);
+    } catch (err) {
+      $('statusText').textContent = 'Er ging iets mis: ' + err.message + '. Probeer het opnieuw of kies een andere foto.';
+    } finally {
+      if (worker) await worker.terminate();
+    }
+  });
+
+  function show(data, seconds) {
+    $('status').hidden = true;
+    const words = data.words || [];
+    const box = $('words');
+    box.textContent = '';
+    let doubtful = 0;
+    for (const line of data.lines || []) {
+      const row = document.createElement('div');
+      for (const w of line.words) {
+        const s = document.createElement('span');
+        s.textContent = w.text;
+        s.title = 'Zekerheid ' + Math.round(w.confidence) + '%';
+        if (w.confidence < 60) { s.className = 'bad'; doubtful++; }
+        else if (w.confidence < 80) { s.className = 'warn'; doubtful++; }
+        row.append(s, ' ');
+      }
+      box.append(row);
+    }
+    $('stats').textContent = `${words.length} woorden, ${doubtful} met twijfel, ${seconds.toFixed(1)} s.`;
+
+    const tbody = $('pairs').querySelector('tbody');
+    tbody.textContent = '';
+    for (const line of data.text.split('\n')) {
+      const parts = line.trim().split(/\s*(?:=|–|—|\s-\s|:|\t|\s{2,})\s*/).filter(Boolean);
+      if (parts.length !== 2) continue;
+      const tr = document.createElement('tr');
+      for (const p of parts) { const td = document.createElement('td'); td.textContent = p; tr.append(td); }
+      tbody.append(tr);
+    }
+    if (!tbody.children.length) tbody.innerHTML = '<tr><td colspan="2" class="muted">Geen regels als woordpaar herkend.</td></tr>';
+
+    $('raw').textContent = data.text;
+    $('result').hidden = false;
+  }
+</script>
+</body>
+</html>
