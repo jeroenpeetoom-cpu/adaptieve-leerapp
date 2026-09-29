@@ -476,3 +476,39 @@ select.invoer {
 .woordpaar-regel .link {
   padding: 0.25rem 0;
 }
+
+.reflectie {
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+}
+
+.reflectie-keuzes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.inzicht-bron {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.5rem 0;
+}
+
+.inzicht-bron h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1.1rem;
+}
+
+.inzicht-statussen,
+.inzicht-strategieen {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.inzicht-strategieen p {
+  margin: 0.15rem 0 0.5rem;
+}

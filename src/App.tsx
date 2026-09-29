@@ -4,6 +4,7 @@ import { vraagBlijvendeOpslag } from './opslag/blijvend'
 import { echteDb } from './opslag/database'
 import { BronScherm } from './schermen/BronScherm'
 import { Instellingen } from './schermen/Instellingen'
+import { Inzichten } from './schermen/Inzichten'
 import { NieuweBron } from './schermen/NieuweBron'
 import { Welkom } from './schermen/Profiel'
 import { Start } from './schermen/Start'
@@ -15,6 +16,7 @@ type Scherm =
   | { soort: 'nieuweBron' }
   | { soort: 'bron'; bronId: string }
   | { soort: 'instellingen' }
+  | { soort: 'inzichten' }
 
 export default function App() {
   const [scherm, setScherm] = useState<Scherm>({ soort: 'start' })
@@ -45,6 +47,7 @@ export default function App() {
           onNieuweBron={() => setScherm({ soort: 'nieuweBron' })}
           onOpenBron={(bronId) => setScherm({ soort: 'bron', bronId })}
           onInstellingen={() => setScherm({ soort: 'instellingen' })}
+          onInzichten={() => setScherm({ soort: 'inzichten' })}
           onTestfunctie={() => setScherm({ soort: 'test' })}
         />
       )}
@@ -55,6 +58,7 @@ export default function App() {
       {leerling && scherm.soort === 'instellingen' && (
         <Instellingen onTerug={() => void laad().then(naarStart)} onGewist={() => void laad().then(naarStart)} />
       )}
+      {leerling && scherm.soort === 'inzichten' && <Inzichten onTerug={naarStart} />}
       {scherm.soort === 'test' && <Testfunctie onTerug={naarStart} />}
       <p className="versie">Versie {__APP_VERSIE__}</p>
     </main>

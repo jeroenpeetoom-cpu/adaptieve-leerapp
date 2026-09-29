@@ -46,6 +46,7 @@ interface Props {
   onKiesStrategie: (strategie: Strategie | 'geen') => void
   onVoorgedaan: (strategie: Strategie) => void
   onMaakRoute: (naam: string, plekken: string[]) => void
+  laatsteReflectie: string | null
   onKlaar: (beeld: Omit<Geheugenbeeld, 'id' | 'aangemaakt'> | null) => void
 }
 
@@ -91,6 +92,7 @@ export function Leermoment({
   onKiesStrategie,
   onVoorgedaan,
   onMaakRoute,
+  laatsteReflectie,
   onKlaar,
 }: Props) {
   const [stap, setStap] = useState(0)
@@ -108,6 +110,11 @@ export function Leermoment({
         <h3>Nieuwe woorden</h3>
         <WoordEnBetekenis item={item} />
         <p>Hoe wil je de nieuwe woorden van deze lijst onthouden?</p>
+        {laatsteReflectie && (
+          <p className="feedback">
+            Vorige keer zei je dat dit je het meest hielp: <strong>{laatsteReflectie.toLowerCase()}</strong>.
+          </p>
+        )}
         <div className="strategieen">
           <button className="strategie" onClick={() => onKiesStrategie('beelden koppelen')}>
             <strong>🖼️ Beelden koppelen</strong>

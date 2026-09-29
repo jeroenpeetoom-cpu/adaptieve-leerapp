@@ -14,12 +14,13 @@ const BACKUP_HERINNERING_DAGEN = 7
 interface Props {
   leerling: Leerling
   onInstellingen: () => void
+  onInzichten: () => void
   onNieuweBron: () => void
   onOpenBron: (bronId: string) => void
   onTestfunctie: () => void
 }
 
-export function Start({ leerling, onInstellingen, onNieuweBron, onOpenBron, onTestfunctie }: Props) {
+export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onOpenBron, onTestfunctie }: Props) {
   const [bronnen, setBronnen] = useState<Bron[] | null>(null)
   const [paren, setParen] = useState<Woordpaar[]>([])
   const [bezig, setBezig] = useState(false)
@@ -95,9 +96,14 @@ export function Start({ leerling, onInstellingen, onNieuweBron, onOpenBron, onTe
               </button>
             </p>
           )}
-          <button className="link" onClick={onInstellingen}>
-            ⚙️ Profiel en back-up
-          </button>
+          <div className="knoppen">
+            <button className="link" onClick={onInzichten}>
+              📊 Inzichten
+            </button>
+            <button className="link" onClick={onInstellingen}>
+              ⚙️ Profiel en back-up
+            </button>
+          </div>
           <p className="melding" role="note">
             <span aria-hidden="true">🔒 </span>
             Alles wat je hier doet, blijft alleen op dit apparaat staan.

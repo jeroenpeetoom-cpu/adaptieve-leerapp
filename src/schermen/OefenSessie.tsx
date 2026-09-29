@@ -45,6 +45,8 @@ interface Props {
   routeVoor: (bronId: string) => RouteStand | null
   routenaamVoor: (bronId: string) => string
   onMaakRoute: (bronId: string, naam: string, plekken: string[]) => Promise<void>
+  /** Wat de leerling vorige keer zei dat hielp, om bij een nieuwe strategiekeuze terug te geven. */
+  laatsteReflectie: string | null
 }
 
 /** Korte feedback (één of twee zinnen) en optioneel een langere uitleg. */
@@ -90,6 +92,7 @@ export function OefenSessie({
   routeVoor,
   routenaamVoor,
   onMaakRoute,
+  laatsteReflectie,
 }: Props) {
   const [toestand, setToestand] = useState(begintoestand)
   const [antwoord, setAntwoord] = useState('')
@@ -249,6 +252,7 @@ export function OefenSessie({
           onKiesStrategie={(s) => void onKiesStrategie(item.bronId, s)}
           onVoorgedaan={(s) => void onVoorgedaan(s)}
           onMaakRoute={(naam, plekken) => void onMaakRoute(item.bronId, naam, plekken)}
+          laatsteReflectie={laatsteReflectie}
           onKlaar={(b) => void leermomentKlaar(b)}
         />
       ) : toestand.afgesloten ? (

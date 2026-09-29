@@ -5,6 +5,7 @@ import type { Bron, Bronpagina, Woordpaar } from '../bronnen/model'
 import { controleerBestand, herken } from '../herkenning/herkenner'
 import { isInhoudelijkeWijziging, type Strategie } from '../leerlogica'
 import { echteDb } from '../opslag/database'
+import { legStrategieVast } from '../opslag/strategie'
 import { RICHTINGEN } from './NieuweBron'
 
 const STRATEGIEKEUZES: { waarde: Strategie | 'geen'; label: string }[] = [
@@ -235,8 +236,7 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
   }
 
   async function kiesStrategie(nieuw: Strategie | 'geen') {
-    const alle = await echteDb.leesMeta<Record<string, Strategie | 'geen'>>('strategiePerBron', {})
-    await echteDb.schrijfMeta('strategiePerBron', { ...alle, [bronId]: nieuw })
+    await legStrategieVast(echteDb, bronId, nieuw, new Date().toISOString())
     setStrategie(nieuw)
   }
 

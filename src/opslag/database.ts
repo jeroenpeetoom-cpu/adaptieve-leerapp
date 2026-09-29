@@ -16,6 +16,8 @@ export interface OpgeslagenSessie {
   toestand: SessieToestand
   klaar: boolean
   bijgewerkt: string
+  /** Het korte antwoord van de leerling over wat hielp; telt nooit als bewijs. */
+  reflectie?: string
 }
 
 export interface Meta {

@@ -12,6 +12,8 @@ import {
 } from '../leerlogica'
 import type { Geheugenbeeld, Route } from '../bronnen/model'
 import { beeldTekst, routeMetVrijePlek, standaardRoutenaam } from '../bronnen/routes'
+import { legStrategieVast, type Reflectie } from '../opslag/strategie'
+import { ReflectieVraag } from './Reflectie'
 import type { Database } from '../opslag/database'
 import { OefenSessie } from './OefenSessie'
 import { Terugblik } from './Terugblik'
@@ -54,6 +56,7 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
   const [strategiePerBron, setStrategiePerBron] = useState<Record<string, Strategie | 'geen'>>({})
   const [voorgedaan, setVoorgedaan] = useState<Strategie[]>([])
   const [routes, setRoutes] = useState<Route[]>([])
+  const [laatsteReflectie, setLaatsteReflectie] = useState<Reflectie | null>(null)
 
   const setWeergave = useCallback(
     (w: Weergave) => {
@@ -68,6 +71,7 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     setExtraAntwoorden(await db.leesMeta<Record<string, string[]>>('extraAntwoorden', {}))
     setBeelden(await db.geheugenbeelden.toArray())
     setRoutes(await db.routes.toArray())
+    setLaatsteReflectie(await db.leesMeta<Reflectie | null>('laatsteReflectie', null))
     setStrategiePerBron(await db.leesMeta<Record<string, Strategie | 'geen'>>('strategiePerBron', {}))
     setVoorgedaan(await db.leesMeta<Strategie[]>('voorgedaan', []))
     const open = await db.openSessie()
@@ -109,9 +113,15 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
   }
 
   async function kiesStrategie(bronId: string, strategie: Strategie | 'geen') {
-    const nieuw = { ...strategiePerBron, [bronId]: strategie }
-    await db.schrijfMeta('strategiePerBron', nieuw)
-    setStrategiePerBron(nieuw)
+    await legStrategieVast(db, bronId, strategie, nu())
+    setStrategiePerBron({ ...strategiePerBron, [bronId]: strategie })
+  }
+
+  async function bewaarReflectie(sessieId: string, tekst: string) {
+    const reflectie = { tekst, tijdstip: nu() }
+    await db.sessies.update(sessieId, { reflectie: tekst })
+    await db.schrijfMeta('laatsteReflectie', reflectie)
+    setLaatsteReflectie(reflectie)
   }
 
   async function markeerVoorgedaan(strategie: Strategie) {
@@ -151,6 +161,7 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
             standaardRoutenaam(bronnamen[bronId] ?? 'woorden', routes.filter((r) => r.bronId === bronId))
           }
           onMaakRoute={maakRoute}
+          laatsteReflectie={laatsteReflectie?.tekst ?? null}
           strategiePerBron={strategiePerBron}
           voorgedaan={voorgedaan}
           onKiesStrategie={kiesStrategie}
@@ -167,6 +178,7 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
   if (weergave.soort === 'klaar') {
     return (
       <Terugblik sessie={weergave.toestand} pogingen={pogingen} vandaag={vandaag} instellingen={instellingen}>
+        <ReflectieVraag key={weergave.toestand.sessieId} onKies={(tekst) => void bewaarReflectie(weergave.toestand.sessieId, tekst)} />
         {melding && <p className="feedback">{melding}</p>}
         <div className="knoppen">
           <button
