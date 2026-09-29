@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
+import type { Bron, Bronpagina, Woordpaar } from '../bronnen/model'
 import type { Poging, SessieToestand } from '../leerlogica'
 
 /** Echte gegevens en testgegevens staan in aparte databases, zodat ze nooit mengen. */
@@ -25,6 +26,9 @@ export class Database extends Dexie {
   pogingen!: EntityTable<Poging, 'id'>
   sessies!: EntityTable<OpgeslagenSessie, 'id'>
   meta!: EntityTable<Meta, 'sleutel'>
+  bronnen!: EntityTable<Bron, 'id'>
+  bronpaginas!: EntityTable<Bronpagina, 'id'>
+  woordparen!: EntityTable<Woordpaar, 'id'>
 
   constructor(omgeving: Omgeving) {
     super(NAMEN[omgeving])
@@ -34,6 +38,11 @@ export class Database extends Dexie {
     this.version(2).stores({
       sessies: 'id, klaar, bijgewerkt',
       meta: 'sleutel',
+    })
+    this.version(3).stores({
+      bronnen: 'id, aangemaakt',
+      bronpaginas: 'id, bronId',
+      woordparen: 'id, bronId, bronpaginaId',
     })
   }
 
@@ -62,6 +71,9 @@ export class Database extends Dexie {
   }
 
   async wisAlles(): Promise<void> {
-    await Promise.all([this.pogingen.clear(), this.sessies.clear(), this.meta.clear()])
+    await Promise.all(this.tables.map((t) => t.clear()))
   }
 }
+
+/** De echte gegevens van de leerling. */
+export const echteDb = new Database('echt')

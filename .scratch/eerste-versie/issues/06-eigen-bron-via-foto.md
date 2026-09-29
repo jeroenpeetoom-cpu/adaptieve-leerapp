@@ -4,15 +4,17 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** ready-for-agent (gebouwd; wacht op controle op de S22 met een echte woordenlijst)
 
-- [ ] Tekstherkenning gebeurt op het apparaat met Tesseract (Engels + Nederlands); de taalbestanden zitten in de app zelf en er gaat niets naar een externe dienst
-- [ ] De bronverwerking herkent vorm 1: één paar per regel met =, -, –, —, :, tab of meerdere spaties ertussen
-- [ ] Woorden met een zekerheid onder 80 zijn gemarkeerd als twijfel, onder 60 als grote twijfel, ook zonder kleur herkenbaar
-- [ ] De leerling kan een woordpaar verbeteren, verwijderen en handmatig toevoegen
-- [ ] Bevestigen kan pas als elk twijfelwoord is bekeken
-- [ ] Zonder bevestiging start er geen sessie met die bron
-- [ ] Na het bevestigen wordt de foto verwijderd; tekst en woordparen blijven
-- [ ] Elk leeritem bewaart de verwijzing naar zijn bron en bronpagina
-- [ ] Bestandstype en bestandsgrootte worden gecontroleerd vóór de herkenning
-- [ ] Bronverwerkingstests dekken vorm 1, lege invoer en een onzekere herkenning zoals "brldge"
+- [x] Tekstherkenning gebeurt op het apparaat met Tesseract (Engels + Nederlands); de taalbestanden zitten in de app zelf en er gaat niets naar een externe dienst
+- [x] De bronverwerking herkent vorm 1: één paar per regel met =, -, –, —, :, tab of meerdere spaties ertussen
+- [x] Woorden met een zekerheid onder 80 zijn gemarkeerd als twijfel, onder 60 als grote twijfel, ook zonder kleur herkenbaar
+- [x] De leerling kan een woordpaar verbeteren, verwijderen en handmatig toevoegen
+- [x] Bevestigen kan pas als elk twijfelwoord is bekeken
+- [x] Zonder bevestiging start er geen sessie met die bron
+- [x] Na het bevestigen wordt de foto verwijderd; tekst en woordparen blijven
+- [x] Elk leeritem bewaart de verwijzing naar zijn bron en bronpagina
+- [x] Bestandstype en bestandsgrootte worden gecontroleerd vóór de herkenning
+- [x] Bronverwerkingstests dekken vorm 1, lege invoer en een onzekere herkenning zoals "brldge"
+
+Bekend: een kop met een streepje, zoals "Unit 3 - Words", wordt als woordpaar voorgesteld en moet in de controle verwijderd worden. Herkennen van koppen kan in ticket 07.

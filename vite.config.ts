@@ -24,6 +24,15 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
+        globIgnores: ['tesseract/**'],
+        // De tekstherkenning is groot (±10 MB); die wordt bij het eerste gebruik bewaard en werkt daarna offline.
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname.includes('/tesseract/'),
+            handler: 'CacheFirst',
+            options: { cacheName: 'tekstherkenning', expiration: { maxEntries: 10 } },
+          },
+        ],
       },
     }),
   ],

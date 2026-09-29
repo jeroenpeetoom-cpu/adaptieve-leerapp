@@ -241,3 +241,106 @@ h2 {
   gap: 0.5rem;
   margin-top: 0.75rem;
 }
+
+.uit {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+label.knop {
+  display: inline-block;
+  text-align: center;
+}
+
+.keuzes {
+  border: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+
+.keuze {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 2.75rem;
+}
+
+.keuze input {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+.paginas,
+.controle,
+.woordenlijst,
+.bronnen {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+
+.paginas > li,
+.controle > li,
+.woordenlijst > li {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.6rem 0;
+}
+
+.controle > li.met-twijfel {
+  border-left: 4px solid var(--accent);
+  padding-left: 0.6rem;
+}
+
+.controle-velden {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.controle-velden .invoer {
+  font-size: 1.05rem;
+  padding: 0.5rem;
+  margin-top: 0.2rem;
+}
+
+.klein {
+  font-size: 0.85rem;
+  color: var(--gedempt);
+}
+
+.twijfel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0 0.4rem;
+}
+
+.twijfel-klein {
+  background: #6b5210;
+  color: #ffe7a8;
+}
+
+.twijfel-groot {
+  background: #7f1d1d;
+  color: #ffd6d6;
+}
+
+.bronnen > li {
+  margin-bottom: 0.5rem;
+}
+
+.bron-knop {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  text-align: left;
+  font: inherit;
+  color: var(--tekst);
+  background: var(--achtergrond);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+}

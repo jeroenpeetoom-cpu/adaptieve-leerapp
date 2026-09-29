@@ -1,28 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import {
-  berekenPlanning,
-  berekenVoortgang,
-  dagenTussen,
-  kalenderdag,
-  startSessie,
-  STANDAARD_INSTELLINGEN,
-  stelSessieSamen,
-  type Poging,
-  type SessieToestand,
-} from '../leerlogica'
+import { berekenPlanning, berekenVoortgang, dagenTussen, STANDAARD_INSTELLINGEN } from '../leerlogica'
 import { Database } from '../opslag/database'
 import { testTijd } from '../testfunctie/klok'
 import { TESTBRON_ID, testLeeritems } from '../testfunctie/testbron'
-import { OefenSessie } from './OefenSessie'
-import { StatusLabel, Terugblik } from './Terugblik'
+import { Oefenroute } from './Oefenroute'
+import { StatusLabel } from './Terugblik'
 
 const testDb = new Database('test')
 const instellingen = STANDAARD_INSTELLINGEN
-
-type Weergave =
-  | { soort: 'overzicht' }
-  | { soort: 'sessie'; toestand: SessieToestand }
-  | { soort: 'klaar'; toestand: SessieToestand }
 
 function relatieveDag(vandaag: string, dag: string | null): string {
   if (dag === null) return 'nog nieuw'
@@ -42,52 +27,19 @@ function datumTekst(dag: string): string {
 export function Testfunctie({ onTerug }: { onTerug: () => void }) {
   const [klokDagen, setKlokDagen] = useState(0)
   const [toetsdag, setToetsdag] = useState<string | null>(null)
-  const [pogingen, setPogingen] = useState<Poging[]>([])
-  const [extraAntwoorden, setExtraAntwoorden] = useState<Record<string, string[]>>({})
-  const [openSessie, setOpenSessie] = useState<SessieToestand | null>(null)
-  const [weergave, setWeergave] = useState<Weergave>({ soort: 'overzicht' })
-  const [melding, setMelding] = useState<string | null>(null)
-
-  const nu = useCallback(() => testTijd(klokDagen), [klokDagen])
-  const vandaag = kalenderdag(nu(), instellingen.tijdzone)
+  const [versie, setVersie] = useState(0)
+  const [bezig, setBezig] = useState(false)
 
   const laad = useCallback(async () => {
     setKlokDagen(await testDb.leesMeta('klokDagen', 0))
     setToetsdag(await testDb.leesMeta<string | null>('toetsdag', null))
-    setPogingen(await testDb.pogingen.toArray())
-    setExtraAntwoorden(await testDb.leesMeta<Record<string, string[]>>('extraAntwoorden', {}))
-    const open = await testDb.openSessie()
-    // Een gepauzeerde sessie uit een oudere versie van de app is niet te hervatten; die sluiten we af.
-    if (open && !('vorm' in open.toestand)) await testDb.slaSessieOp(open.toestand, true, open.bijgewerkt)
-    setOpenSessie(open && 'vorm' in open.toestand ? open.toestand : null)
   }, [])
 
   useEffect(() => {
     void laad()
   }, [laad])
 
-  // Door de leerling toegevoegde toegestane antwoorden gelden voortaan bij het leeritem.
-  const leeritems = testLeeritems.map((i) => ({
-    ...i,
-    toegestaneAntwoorden: [...i.toegestaneAntwoorden, ...(extraAntwoorden[i.id] ?? [])],
-  }))
-
-  const samenstelling = stelSessieSamen(
-    leeritems,
-    pogingen,
-    [{ bronId: TESTBRON_ID, toetsdag, afgerond: false }],
-    vandaag,
-    instellingen,
-  )
-  const aantal = samenstelling.herhalingen.length + samenstelling.nieuw.length
-
-  function startNieuweSessie(): boolean {
-    if (aantal === 0) return false
-    const items = [...samenstelling.herhalingen, ...samenstelling.nieuw]
-    setMelding(null)
-    setWeergave({ soort: 'sessie', toestand: startSessie(crypto.randomUUID(), items, pogingen) })
-    return true
-  }
+  const nu = useCallback(() => testTijd(klokDagen), [klokDagen])
 
   async function zetKlok(dagen: number) {
     await testDb.schrijfMeta('klokDagen', dagen)
@@ -102,158 +54,87 @@ export function Testfunctie({ onTerug }: { onTerug: () => void }) {
 
   async function wis() {
     await testDb.wisAlles()
-    setMelding(null)
     await laad()
+    setVersie((v) => v + 1)
   }
 
-  async function antwoordToegevoegd(leeritemId: string, antwoord: string) {
-    const nieuw = { ...extraAntwoorden, [leeritemId]: [...(extraAntwoorden[leeritemId] ?? []), antwoord] }
-    await testDb.schrijfMeta('extraAntwoorden', nieuw)
-    setExtraAntwoorden(nieuw)
-  }
-
-  async function sessieKlaar(toestand: SessieToestand) {
-    await laad()
-    setWeergave({ soort: 'klaar', toestand })
-  }
-
-  const banner = (
-    <p className="testbanner" role="note">
-      <strong>TESTFUNCTIE</strong> · voorbeeldwoorden en een instelbare klok, los van de echte voortgang
-    </p>
-  )
-
-  if (weergave.soort === 'sessie') {
-    return (
-      <>
-        {banner}
-        <OefenSessie
-          key={weergave.toestand.sessieId}
-          db={testDb}
-          begintoestand={weergave.toestand}
-          bronItems={leeritems}
-          nu={nu}
-          onAntwoordToegevoegd={antwoordToegevoegd}
-          onKlaar={(t) => void sessieKlaar(t)}
-        />
-        <button className="link" onClick={() => void laad().then(() => setWeergave({ soort: 'overzicht' }))}>
-          ← Pauzeren
+  const klok = (vandaag: string) => (
+    <section className="kaart">
+      <h2>Klok</h2>
+      <p>
+        Testdatum: <strong>{datumTekst(vandaag)}</strong>
+        {klokDagen > 0 && ` (${klokDagen} ${klokDagen === 1 ? 'dag' : 'dagen'} vooruit)`}
+      </p>
+      <div className="knoppen">
+        <button className="knop knop-rustig" onClick={() => void zetKlok(klokDagen + 1)}>
+          +1 dag
         </button>
-      </>
-    )
-  }
-
-  if (weergave.soort === 'klaar') {
-    return (
-      <>
-        {banner}
-        <Terugblik sessie={weergave.toestand} pogingen={pogingen} vandaag={vandaag} instellingen={instellingen}>
-          {melding && <p className="feedback">{melding}</p>}
-          <div className="knoppen">
-            <button
-              className="knop"
-              onClick={() => {
-                if (!startNieuweSessie()) setMelding('Alles voor vandaag is klaar. Morgen komen er weer woorden terug.')
-              }}
-            >
-              Nog een rondje
-            </button>
-            <button className="knop knop-rustig" onClick={() => setWeergave({ soort: 'overzicht' })}>
-              Naar het overzicht
-            </button>
-          </div>
-        </Terugblik>
-      </>
-    )
-  }
+        <button className="knop knop-rustig" onClick={() => void zetKlok(klokDagen + 7)}>
+          +7 dagen
+        </button>
+        <button className="knop knop-rustig" onClick={() => void zetKlok(0)} disabled={klokDagen === 0}>
+          Terug naar vandaag
+        </button>
+      </div>
+      <label className="label" htmlFor="toets" style={{ marginTop: '1rem' }}>
+        Toetsdatum van de testbron (optioneel)
+      </label>
+      <input id="toets" className="invoer" type="date" value={toetsdag ?? ''} onChange={(e) => void zetToets(e.target.value)} />
+    </section>
+  )
 
   return (
     <>
-      {banner}
-
-      <section className="kaart">
-        <h2>Klok</h2>
-        <p>
-          Testdatum: <strong>{datumTekst(vandaag)}</strong>
-          {klokDagen > 0 && ` (${klokDagen} ${klokDagen === 1 ? 'dag' : 'dagen'} vooruit)`}
-        </p>
-        <div className="knoppen">
-          <button className="knop knop-rustig" onClick={() => void zetKlok(klokDagen + 1)}>
-            +1 dag
-          </button>
-          <button className="knop knop-rustig" onClick={() => void zetKlok(klokDagen + 7)}>
-            +7 dagen
-          </button>
-          <button className="knop knop-rustig" onClick={() => void zetKlok(0)} disabled={klokDagen === 0}>
-            Terug naar vandaag
-          </button>
-        </div>
-        <label className="label" htmlFor="toets" style={{ marginTop: '1rem' }}>
-          Toetsdatum van de testbron (optioneel)
-        </label>
-        <input id="toets" className="invoer" type="date" value={toetsdag ?? ''} onChange={(e) => void zetToets(e.target.value)} />
-      </section>
-
-      <section className="kaart">
-        <h2>Vandaag</h2>
-        {openSessie ? (
+      <p className="testbanner" role="note">
+        <strong>TESTFUNCTIE</strong> · voorbeeldwoorden en een instelbare klok, los van de echte voortgang
+      </p>
+      <Oefenroute
+        key={`${versie}-${klokDagen}`}
+        db={testDb}
+        leeritems={testLeeritems}
+        bronnen={[{ bronId: TESTBRON_ID, toetsdag, afgerond: false }]}
+        nu={nu}
+        instellingen={instellingen}
+        leeg={<p>Geen testwoorden.</p>}
+        onBezig={setBezig}
+        onder={({ pogingen, leeritems, vandaag }) => (
           <>
-            <p>Er is een sessie gepauzeerd.</p>
-            <button className="knop" onClick={() => setWeergave({ soort: 'sessie', toestand: openSessie })}>
-              Ga verder
-            </button>
+            {klok(vandaag)}
+            <section className="kaart">
+              <h2>Voortgang en herhaalplanning</h2>
+              <table className="tabel">
+                <thead>
+                  <tr>
+                    <th>Woord</th>
+                    <th>Status</th>
+                    <th>Volgende keer</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leeritems.map((item) => (
+                    <tr key={item.id}>
+                      <td lang="en">{item.vraag}</td>
+                      <td>
+                        <StatusLabel status={berekenVoortgang(item, pogingen, instellingen).status} />
+                      </td>
+                      <td>{relatieveDag(vandaag, berekenPlanning(item.id, pogingen, instellingen).volgendeDag)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="gedempt">{pogingen.length} pogingen opgeslagen.</p>
+              <button className="knop knop-rustig" onClick={() => void wis()}>
+                Wis testgegevens en zet de klok terug
+              </button>
+            </section>
           </>
-        ) : aantal > 0 ? (
-          <>
-            <p>
-              {samenstelling.herhalingen.length} {samenstelling.herhalingen.length === 1 ? 'herhaling' : 'herhalingen'} en{' '}
-              {samenstelling.nieuw.length} {samenstelling.nieuw.length === 1 ? 'nieuw woord' : 'nieuwe woorden'}.
-            </p>
-            <button className="knop" onClick={() => startNieuweSessie()}>
-              Start sessie ({aantal} {aantal === 1 ? 'woord' : 'woorden'})
-            </button>
-          </>
-        ) : (
-          <p>Niets te doen vandaag. Zet de klok vooruit om een volgende dag te testen.</p>
         )}
-      </section>
-
-      <section className="kaart">
-        <h2>Voortgang en herhaalplanning</h2>
-        <table className="tabel">
-          <thead>
-            <tr>
-              <th>Woord</th>
-              <th>Status</th>
-              <th>Fase</th>
-              <th>Volgende keer</th>
-            </tr>
-          </thead>
-          <tbody>
-            {leeritems.map((item) => {
-              const planning = berekenPlanning(item.id, pogingen, instellingen)
-              return (
-                <tr key={item.id}>
-                  <td lang="en">{item.vraag}</td>
-                  <td>
-                    <StatusLabel status={berekenVoortgang(item, pogingen, instellingen).status} />
-                  </td>
-                  <td>{planning.fase}</td>
-                  <td>{relatieveDag(vandaag, planning.volgendeDag)}</td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-        <p className="gedempt">{pogingen.length} pogingen opgeslagen.</p>
-        <button className="knop knop-rustig" onClick={() => void wis()}>
-          Wis testgegevens en zet de klok terug
+      />
+      {!bezig && (
+        <button className="link" onClick={onTerug}>
+          ← Terug
         </button>
-      </section>
-
-      <button className="link" onClick={onTerug}>
-        ← Terug
-      </button>
+      )}
     </>
   )
 }
