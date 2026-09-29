@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { LANDING } from '../weergave/ruimte'
 import {
   berekenPlanning,
   berekenVoortgang,
@@ -52,6 +53,9 @@ export function Terugblik({ sessie, pogingen, vandaag, instellingen, children }:
   return (
     <section className="kaart">
       <h2>Terugblik</h2>
+      <p className="landing">
+        {LANDING(sessie.pogingen.filter((p) => p.oordeel === 'goed' && p.hulp === 'vrij opgehaald' && !p.antwoordZelfToegevoegd).length)}
+      </p>
       <p>
         Zelf gelukt: <strong>{zelf.length}</strong> van de {items.length} {items.length === 1 ? 'woord' : 'woorden'}.
       </p>

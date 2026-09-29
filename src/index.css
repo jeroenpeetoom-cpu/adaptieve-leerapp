@@ -521,3 +521,90 @@ select.invoer {
   padding: 0 0.25rem;
   vertical-align: middle;
 }
+
+.sterrenkaart {
+  margin-bottom: 0.75rem;
+}
+
+.baan {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 2.5rem;
+  background: radial-gradient(circle at 20% 40%, rgba(255, 255, 255, 0.5) 0 1px, transparent 2px),
+    radial-gradient(circle at 60% 70%, rgba(255, 255, 255, 0.4) 0 1px, transparent 2px),
+    radial-gradient(circle at 85% 25%, rgba(255, 255, 255, 0.5) 0 1px, transparent 2px);
+}
+
+.planeet {
+  font-size: 1.5rem;
+  width: 1.75rem;
+  text-align: center;
+  flex: none;
+}
+
+.spoor {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.25) 0 6px, transparent 6px 12px);
+  overflow: hidden;
+}
+
+.spoor-gevuld {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.6s ease;
+}
+
+.schip {
+  position: absolute;
+  top: 0.2rem;
+  font-size: 1.5rem;
+  transform: rotate(45deg);
+  transition: left 0.6s ease;
+}
+
+.schip-sprong {
+  animation: sprong 0.7s ease;
+}
+
+@keyframes sprong {
+  0% {
+    transform: rotate(45deg) translateY(0);
+  }
+  40% {
+    transform: rotate(45deg) translate(0.3rem, -0.6rem) scale(1.25);
+  }
+  100% {
+    transform: rotate(45deg) translateY(0);
+  }
+}
+
+.codewoorden {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+  color: var(--gedempt);
+}
+
+.codewoord-melding {
+  color: var(--accent);
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+}
+
+.landing {
+  font-size: 1.1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spoor-gevuld,
+  .schip {
+    transition: none;
+  }
+  .schip-sprong {
+    animation: none;
+  }
+}

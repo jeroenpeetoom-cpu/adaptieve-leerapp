@@ -22,6 +22,7 @@ import {
 import type { Geheugenbeeld } from '../bronnen/model'
 import type { RouteStand } from '../bronnen/routes'
 import type { Database } from '../opslag/database'
+import { CodewoordMelding, MISSIE, Sterrenkaart } from '../weergave/ruimte'
 import { Voorleesknop } from '../weergave/voorlezen'
 import { Leermoment } from './Leermoment'
 
@@ -168,6 +169,11 @@ export function OefenSessie({
     void verstuur(antwoord)
   }
 
+  const codewoorden = toestand.pogingen.filter(
+    (p) => p.oordeel === 'goed' && p.hulp === 'vrij opgehaald' && !p.antwoordZelfToegevoegd,
+  ).length
+  const vondCodewoord =
+    toestand.afgesloten && laatste?.oordeel === 'goed' && laatste.hulp === 'vrij opgehaald' && !laatste.antwoordZelfToegevoegd
   const beeld = geheugenbeelden[item.id]
   const feedback = laatste ? feedbackVoor(laatste, toestand.afgesloten, goedAntwoord, item, beeld) : null
   const leermoment = leermomentNodig(toestand)
@@ -190,9 +196,17 @@ export function OefenSessie({
 
   return (
     <section className="kaart">
-      <p className="voortgang">
-        {nogTeGaan(toestand) === 1 ? 'Laatste woord' : `Nog ${nogTeGaan(toestand)} woorden`}
-      </p>
+      <Sterrenkaart
+        totaal={toestand.leeritems.length}
+        gedaan={toestand.huidige + (toestand.afgesloten ? 1 : 0)}
+        codewoorden={codewoorden}
+        sprong={vondCodewoord}
+      />
+      {toestand.huidige === 0 && toestand.pogingen.length === 0 ? (
+        <p className="voortgang">{MISSIE(nogTeGaan(toestand))}</p>
+      ) : (
+        <p className="voortgang">{nogTeGaan(toestand) === 1 ? 'Laatste woord' : `Nog ${nogTeGaan(toestand)} woorden`}</p>
+      )}
       <p className="richting">
         {TAALNAAM[item.oefenrichting.van]} → {taal}
       </p>
@@ -203,6 +217,7 @@ export function OefenSessie({
         {item.vraag} <Voorleesknop tekst={item.vraag} taal={item.oefenrichting.van} />
       </p>
 
+      {vondCodewoord && <CodewoordMelding />}
       {feedback && (
         <div className={`feedback feedback-${laatste!.oordeel.replace(' ', '-')}`} role="status">
           <p>
