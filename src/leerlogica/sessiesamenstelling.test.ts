@@ -85,6 +85,19 @@ describe('sessiesamenstelling', () => {
     expect(samen(items, [], [bron()], '2026-10-01').nieuw).toHaveLength(4)
   })
 
+  it('neemt hetzelfde woord uit twee bronnen maar één keer op', () => {
+    const a = { ...item('a', 'b1'), vraag: 'colour', toegestaneAntwoorden: ['kleur'] }
+    const b = { ...item('b', 'b2'), vraag: 'Colour', toegestaneAntwoorden: ['kleur'] }
+    const s = samen([a, b], [], [bron(), { bronId: 'b2', toetsdag: null, afgerond: false }], '2026-10-01')
+    expect(ids(s.nieuw)).toEqual(['a'])
+  })
+
+  it('houdt beide richtingen van hetzelfde woord als aparte leeritems', () => {
+    const heen = { ...item('heen'), vraag: 'colour', toegestaneAntwoorden: ['kleur'] }
+    const terug = { ...item('terug'), vraag: 'kleur', toegestaneAntwoorden: ['colour'], oefenrichting: { van: 'nl' as const, naar: 'en' as const } }
+    expect(ids(samen([heen, terug], [], [bron()], '2026-10-01').nieuw)).toEqual(['heen', 'terug'])
+  })
+
   it('plant niets in van een afgeronde bron', () => {
     const s = samen([item('h'), item('n')], [geoefend('h')], [bron({ afgerond: true })], '2026-10-05')
     expect(s.herhalingen).toEqual([])

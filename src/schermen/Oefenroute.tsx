@@ -57,6 +57,8 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
   const [voorgedaan, setVoorgedaan] = useState<Strategie[]>([])
   const [routes, setRoutes] = useState<Route[]>([])
   const [laatsteReflectie, setLaatsteReflectie] = useState<Reflectie | null>(null)
+  /** De bron die de leerling koos om te oefenen; null is alles samen. "Nog een rondje" blijft daarbij. */
+  const [gekozenBron, setGekozenBron] = useState<string | null>(null)
 
   const setWeergave = useCallback(
     (w: Weergave) => {
@@ -92,12 +94,26 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     toegestaneAntwoorden: [...i.toegestaneAntwoorden, ...(extraAntwoorden[i.id] ?? [])],
   }))
 
-  const samenstelling = stelSessieSamen(leeritems, pogingen, bronnen, vandaag, instellingen)
+  /** Wat er vandaag klaarstaat, voor alle bronnen samen (null) of voor één bron. */
+  const samenstellingVoor = (bronId: string | null) =>
+    stelSessieSamen(
+      bronId === null ? leeritems : leeritems.filter((i) => i.bronId === bronId),
+      pogingen,
+      bronnen,
+      vandaag,
+      instellingen,
+    )
+  const samenstelling = samenstellingVoor(null)
   const aantal = samenstelling.herhalingen.length + samenstelling.nieuw.length
+  const perBron = [...new Set(leeritems.map((i) => i.bronId))]
+    .map((bronId) => ({ bronId, s: samenstellingVoor(bronId) }))
+    .filter(({ s }) => s.herhalingen.length + s.nieuw.length > 0)
 
-  function startNieuweSessie(): boolean {
-    if (aantal === 0) return false
-    const items = [...samenstelling.herhalingen, ...samenstelling.nieuw]
+  function startNieuweSessie(bronId: string | null = gekozenBron): boolean {
+    const gekozen = samenstellingVoor(bronId)
+    const items = [...gekozen.herhalingen, ...gekozen.nieuw]
+    if (items.length === 0) return false
+    setGekozenBron(bronId)
     setMelding(null)
     const strategiePerItem = Object.fromEntries(
       beelden.map((b) => [b.leeritemId, b.routeId ? ('geheugenroute' as const) : ('beelden koppelen' as const)]),
@@ -191,7 +207,12 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
           <button
             className="knop"
             onClick={() => {
-              if (!startNieuweSessie()) setMelding('Alles voor vandaag is klaar. Morgen komen er weer woorden terug.')
+              if (startNieuweSessie()) return
+              setMelding(
+                gekozenBron !== null && aantal > 0
+                  ? 'Deze lijst is klaar voor vandaag. Tik op "Klaar voor vandaag" om een andere lijst te kiezen.'
+                  : 'Alles voor vandaag is klaar. Morgen komen er weer woorden terug.',
+              )
             }}
           >
             Nog een rondje
@@ -218,13 +239,34 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
               Ga verder
             </button>
           </>
+        ) : perBron.length > 1 ? (
+          <>
+            <p>Welke lijst wil je oefenen?</p>
+            <ul className="bronkeuze">
+              {perBron.map(({ bronId, s }) => (
+                <li key={bronId}>
+                  <button className="bron-knop" onClick={() => startNieuweSessie(bronId)}>
+                    <strong>{bronnamen[bronId] ?? 'Bron'}</strong>
+                    <span className="gedempt">
+                      {s.herhalingen.length} {s.herhalingen.length === 1 ? 'herhaling' : 'herhalingen'} en {s.nieuw.length}{' '}
+                      {s.nieuw.length === 1 ? 'nieuw woord' : 'nieuwe woorden'}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <button className="knop knop-rustig" onClick={() => startNieuweSessie(null)}>
+              Alles samen ({aantal} {aantal === 1 ? 'woord' : 'woorden'})
+            </button>
+          </>
         ) : aantal > 0 ? (
           <>
             <p>
               {samenstelling.herhalingen.length} {samenstelling.herhalingen.length === 1 ? 'herhaling' : 'herhalingen'} en{' '}
-              {samenstelling.nieuw.length} {samenstelling.nieuw.length === 1 ? 'nieuw woord' : 'nieuwe woorden'}.
+              {samenstelling.nieuw.length} {samenstelling.nieuw.length === 1 ? 'nieuw woord' : 'nieuwe woorden'}
+              {perBron.length === 1 && bronnamen[perBron[0].bronId] ? ` uit ${bronnamen[perBron[0].bronId]}` : ''}.
             </p>
-            <button className="knop" onClick={() => startNieuweSessie()}>
+            <button className="knop" onClick={() => startNieuweSessie(null)}>
               Start ({aantal} {aantal === 1 ? 'woord' : 'woorden'})
             </button>
           </>

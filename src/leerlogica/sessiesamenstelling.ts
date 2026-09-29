@@ -1,6 +1,7 @@
 import { berekenPlanning, isAanDeBeurt } from './herhaalplanning'
 import type { Instellingen } from './instellingen'
 import { dagenTussen } from './tijd'
+import { normaliseer } from './antwoordcontrole'
 import type { Leeritem, Poging } from './types'
 
 export interface BronInfo {
@@ -68,5 +69,13 @@ export function stelSessieSamen(
     .sort((a, b) => Number(toetsBinnenkort(b)) - Number(toetsBinnenkort(a)))
     .slice(0, limiet)
 
-  return { herhalingen, nieuw }
+  // Hetzelfde woord (bijvoorbeeld in twee bronnen) komt maar één keer in een sessie.
+  const gezien = new Set<string>()
+  const uniek = (item: Leeritem) => {
+    const sleutel = [item.oefenrichting.van, item.oefenrichting.naar, normaliseer(item.vraag), normaliseer(item.toegestaneAntwoorden[0])].join('|')
+    if (gezien.has(sleutel)) return false
+    gezien.add(sleutel)
+    return true
+  }
+  return { herhalingen: herhalingen.filter(uniek), nieuw: nieuw.filter(uniek) }
 }
