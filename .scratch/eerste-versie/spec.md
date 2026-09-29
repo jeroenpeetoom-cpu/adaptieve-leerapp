@@ -180,6 +180,7 @@ Een installeerbare website (PWA) op de Samsung Galaxy S22 van de leerling. De le
 
 - Eerst herhalingen die aan de beurt zijn, de langst wachtende eerst, tot maximaal 8.
 - Nieuwe leeritems, maximaal 4, komen alleen als er minder dan 8 herhalingen waren. Uitzondering: een bron met een toetsdatum binnen 7 dagen levert altijd nieuwe leeritems, tot het maximum.
+- **Aantal nieuwe leeritems en toetsdatum (bevestigd):** zonder toetsdatum maximaal 4 nieuwe leeritems per sessie. Met een toetsdatum in de toekomst worden de nieuwe leeritems die nog over zijn gelijk verdeeld over de dagen tot de toets: minstens 4 en hoogstens 10 per sessie.
 - Een leeritem dat in de sessie fout ging, komt aan het eind van de sessie één keer terug.
 - Na het eindpunt kan de leerling "nog een rondje" kiezen; dat stelt een nieuwe sessie samen met dezelfde regels.
 - Een sessie blijft na onderbreking hervatbaar.

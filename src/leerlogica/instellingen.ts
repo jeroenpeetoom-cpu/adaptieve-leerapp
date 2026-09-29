@@ -3,7 +3,10 @@ export interface Instellingen {
   /** Intervallen in dagen per fase; daarna telkens twee keer zo lang. */
   intervallen: number[]
   maxHerhalingen: number
+  /** Nieuwe leeritems per sessie zonder toets. */
   maxNieuw: number
+  /** Bovengrens van nieuwe leeritems per sessie als ze over de dagen tot een toets verdeeld worden. */
+  maxNieuwMetToets: number
   /** Een toets binnen dit aantal dagen haalt nieuwe leeritems van die bron naar voren. */
   toetsVoorrangDagen: number
   /** Tijdzone voor kalenderdagen. */
@@ -14,6 +17,7 @@ export const STANDAARD_INSTELLINGEN: Instellingen = {
   intervallen: [1, 3, 7, 14, 30, 60, 120],
   maxHerhalingen: 8,
   maxNieuw: 4,
+  maxNieuwMetToets: 10,
   toetsVoorrangDagen: 7,
   tijdzone: 'Europe/Amsterdam',
 }

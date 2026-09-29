@@ -18,6 +18,8 @@ export interface Samenstelling {
 /**
  * Stelt een sessie samen: eerst herhalingen die aan de beurt zijn (langst wachtend eerst),
  * daarna nieuwe leeritems als er ruimte is, of altijd bij een toets die binnenkort is.
+ * Heeft een bron een toetsdatum, dan worden de nieuwe leeritems die nog over zijn gelijk verdeeld
+ * over de dagen tot de toets (minstens maxNieuw, hoogstens maxNieuwMetToets per sessie).
  */
 export function stelSessieSamen(
   leeritems: Leeritem[],
@@ -47,13 +49,24 @@ export function stelSessieSamen(
     return dagen >= 0 && dagen <= instellingen.toetsVoorrangDagen
   }
 
+  const nogNieuw = planningen.filter(({ planning }) => planning.volgendeDag === null).map(({ item }) => item)
+
+  // Per bron met een toets in de toekomst: de resterende nieuwe leeritems gelijk verdelen over de dagen tot de toets.
+  let limiet = instellingen.maxNieuw
+  for (const bron of bronnen) {
+    if (!bron.toetsdag || bron.afgerond) continue
+    const dagen = dagenTussen(vandaag, bron.toetsdag)
+    if (dagen < 0) continue
+    const over = nogNieuw.filter((i) => i.bronId === bron.bronId).length
+    const perDag = Math.ceil(over / Math.max(dagen, 1))
+    limiet = Math.max(limiet, Math.min(perDag, instellingen.maxNieuwMetToets))
+  }
+
   const ruimte = herhalingen.length < instellingen.maxHerhalingen
-  const nieuw = planningen
-    .filter(({ planning }) => planning.volgendeDag === null)
-    .map(({ item }) => item)
+  const nieuw = nogNieuw
     .filter((item) => ruimte || toetsBinnenkort(item))
     .sort((a, b) => Number(toetsBinnenkort(b)) - Number(toetsBinnenkort(a)))
-    .slice(0, instellingen.maxNieuw)
+    .slice(0, limiet)
 
   return { herhalingen, nieuw }
 }

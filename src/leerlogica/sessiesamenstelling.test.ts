@@ -70,6 +70,21 @@ describe('sessiesamenstelling', () => {
     expect(samen([...herhaal, toets], pogingen, later, '2026-10-02').nieuw).toEqual([])
   })
 
+  it('verdeelt de nieuwe woorden over de dagen tot de toets', () => {
+    const items = Array.from({ length: 33 }, (_, i) => item(`n${i}`))
+    const metToets = (toetsdag: string) => samen(items, [], [bron({ toetsdag })], '2026-10-01').nieuw.length
+    expect(metToets('2026-10-08')).toBe(5) // 33 woorden over 7 dagen
+    expect(metToets('2026-10-31')).toBe(4) // veel tijd: nooit minder dan 4
+    expect(metToets('2026-10-03')).toBe(10) // weinig tijd: hoogstens 10
+    expect(metToets('2026-10-01')).toBe(10) // toets vandaag
+    expect(metToets('2026-09-20')).toBe(4) // toets voorbij: gewoon tempo
+  })
+
+  it('houdt 4 nieuwe woorden aan zonder toetsdatum', () => {
+    const items = Array.from({ length: 33 }, (_, i) => item(`n${i}`))
+    expect(samen(items, [], [bron()], '2026-10-01').nieuw).toHaveLength(4)
+  })
+
   it('plant niets in van een afgeronde bron', () => {
     const s = samen([item('h'), item('n')], [geoefend('h')], [bron({ afgerond: true })], '2026-10-05')
     expect(s.herhalingen).toEqual([])
