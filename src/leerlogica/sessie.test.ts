@@ -191,6 +191,19 @@ describe('sessie', () => {
     })
   })
 
+  it('laat teruggezette leeritems in wisselende volgorde terugkomen', () => {
+    const vijf = ['a', 'b', 'c', 'd', 'e'].map((id) => item(id, id, `${id}${id}`))
+    let s = startSessie('zaad-1', vijf)
+    for (let i = 0; i < 5; i++) s = volgende(antwoord(s, null).toestand)
+    const terug = s.leeritems.slice(5).map((i) => i.id)
+    expect([...terug].sort()).toEqual(['a', 'b', 'c', 'd', 'e'])
+    expect(huidigLeeritem(s)?.id).toBe(terug[0])
+    // Vast per sessie: dezelfde sessie geeft dezelfde volgorde.
+    let t = startSessie('zaad-1', vijf)
+    for (let i = 0; i < 5; i++) t = volgende(antwoord(t, null).toestand)
+    expect(t.leeritems.slice(5).map((i) => i.id)).toEqual(terug)
+  })
+
   describe('mijn antwoord was ook goed', () => {
     it('voegt het antwoord toe en markeert de poging, zonder vrij opgehaald te tellen', () => {
       const river = item('3', 'river', 'rivier')

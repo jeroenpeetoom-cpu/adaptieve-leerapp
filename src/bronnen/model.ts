@@ -63,3 +63,13 @@ export interface Geheugenbeeld {
   plek: number | null
   aangemaakt: string
 }
+
+/** Een vaste reeks van enkele bekende plekken, met per plek één geheugenbeeld (CONTEXT.md). */
+export interface Route {
+  id: string
+  bronId: string
+  naam: string
+  /** 3 tot 5 plekken die de leerling goed kent, in vaste volgorde. */
+  plekken: string[]
+  aangemaakt: string
+}

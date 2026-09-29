@@ -33,6 +33,8 @@ export interface SessieToestand {
   laatsteOordeelVooraf: Record<string, Oordeel>
   /** De strategie waarmee een leeritem geleerd is, om bij elke poging vast te leggen. */
   strategiePerItem: Record<string, Strategie>
+  /** Aantal leeritems waarmee de sessie begon; daarna volgen de teruggezette leeritems. */
+  aantalGepland?: number
 }
 
 export interface Antwoord {
@@ -87,6 +89,7 @@ export function startSessie(
     pogingen: [],
     laatsteOordeelVooraf,
     strategiePerItem,
+    aantalGepland: leeritems.length,
   }
   return opPositie(leeg, 0)
 }
@@ -212,17 +215,37 @@ export function voegAntwoordToe(toestand: SessieToestand): { toestand: SessieToe
   }
 }
 
+/** Schudt een lijst in een vaste volgorde per zaad, zodat hervatten dezelfde volgorde geeft. */
+function schud<T>(lijst: T[], zaadTekst: string): T[] {
+  let h = 2166136261
+  for (let i = 0; i < zaadTekst.length; i++) h = Math.imul(h ^ zaadTekst.charCodeAt(i), 16777619)
+  const kans = () => {
+    h = Math.imul(h ^ (h >>> 15), 2246822507)
+    h = Math.imul(h ^ (h >>> 13), 3266489909)
+    return ((h ^= h >>> 16) >>> 0) / 4294967296
+  }
+  const kopie = [...lijst]
+  for (let i = kopie.length - 1; i > 0; i--) {
+    const j = Math.floor(kans() * (i + 1))
+    ;[kopie[i], kopie[j]] = [kopie[j], kopie[i]]
+  }
+  return kopie
+}
+
 export function volgende(toestand: SessieToestand): SessieToestand {
   if (!toestand.afgesloten) return toestand
   const item = huidigLeeritem(toestand)!
   const laatste = toestand.pogingen.at(-1)!
   const terugzetten = laatste.oordeel !== 'goed' && !toestand.teruggezet.includes(item.id)
+  let leeritems = terugzetten ? [...toestand.leeritems, item] : toestand.leeritems
+  // Teruggezette leeritems komen in wisselende volgorde, niet in de volgorde waarin ze geleerd zijn
+  // (bij een geheugenroute moet de leerling ze ook los van de route kunnen ophalen).
+  const positie = toestand.huidige + 1
+  if (toestand.aantalGepland !== undefined && positie === toestand.aantalGepland) {
+    leeritems = [...leeritems.slice(0, positie), ...schud(leeritems.slice(positie), toestand.sessieId)]
+  }
   return opPositie(
-    {
-      ...toestand,
-      leeritems: terugzetten ? [...toestand.leeritems, item] : toestand.leeritems,
-      teruggezet: terugzetten ? [...toestand.teruggezet, item.id] : toestand.teruggezet,
-    },
-    toestand.huidige + 1,
+    { ...toestand, leeritems, teruggezet: terugzetten ? [...toestand.teruggezet, item.id] : toestand.teruggezet },
+    positie,
   )
 }

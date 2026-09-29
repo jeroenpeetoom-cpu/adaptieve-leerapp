@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Leeritem, Strategie } from '../leerlogica'
 import type { Geheugenbeeld } from '../bronnen/model'
+import { MAX_PLEKKEN, MIN_PLEKKEN, type RouteStand } from '../bronnen/routes'
 
 const TAALNAAM = { en: 'Engels', nl: 'Nederlands' } as const
 const PLAATJE_MAX = 512
@@ -34,20 +35,72 @@ interface Props {
   item: Leeritem
   /** De gekozen strategie voor deze bron; undefined als er nog niet gekozen is. */
   strategie: Strategie | 'geen' | undefined
-  /** Is beelden koppelen al eens voorgedaan? */
-  voorgedaan: boolean
+  /** Strategieën die al eens zijn voorgedaan. */
+  voorgedaan: Strategie[]
+  /** De route van deze bron met een vrije plek, of null als er een nieuwe route nodig is. */
+  route: RouteStand | null
+  /** Voorstel voor de naam van een nieuwe route. */
+  routenaam: string
+  /** "woord = betekenis" van een leeritem, om de route te laten doorlopen. */
+  itemTekst: (leeritemId: string) => string
   onKiesStrategie: (strategie: Strategie | 'geen') => void
-  onVoorgedaan: () => void
+  onVoorgedaan: (strategie: Strategie) => void
+  onMaakRoute: (naam: string, plekken: string[]) => void
   onKlaar: (beeld: Omit<Geheugenbeeld, 'id' | 'aangemaakt'> | null) => void
 }
 
+const VOORDOEN: Record<Strategie, { titel: string; tekst: string }[]> = {
+  'beelden koppelen': [
+    {
+      titel: 'Zo werkt beelden koppelen',
+      tekst: 'Je bedenkt bij een nieuw woord een plaatje in je hoofd dat je aan de betekenis laat denken. Hoe gekker, hoe beter je het onthoudt.',
+    },
+    {
+      titel: 'Een voorbeeld',
+      tekst: 'Bridge betekent brug. Stel je voor dat er een brug ligt tussen twee kussens op de bank, en dat je eroverheen loopt.',
+    },
+    {
+      titel: 'Nu jij',
+      tekst: 'Bedenk je eigen plaatje en beschrijf het in een paar woorden. Straks, als je het woord niet meer weet, helpt je eigen plaatje je op weg.',
+    },
+  ],
+  geheugenroute: [
+    {
+      titel: 'Zo werkt een geheugenroute',
+      tekst: 'Je kiest een paar plekken in je huis die je goed kent, in de volgorde waarin je erlangs loopt. Bijvoorbeeld: voordeur, kapstok, bank en tafel.',
+    },
+    {
+      titel: 'Een voorbeeld',
+      tekst: 'Op elke plek leg je in gedachten één woord, met een gek beeld. Bij de voordeur ligt een brug tussen twee kussens (bridge = brug). Aan de kapstok hangt een wolk als jas (cloud = wolk).',
+    },
+    {
+      titel: 'Nu jij',
+      tekst: 'Later loop je in gedachten je route langs, en kom je de woorden weer tegen. Kies eerst je plekken.',
+    },
+  ],
+}
+
 /** Een nieuw woord dat de leerling nog niet kende: laten zien en een eigen geheugenbeeld maken. */
-export function Leermoment({ item, strategie, voorgedaan, onKiesStrategie, onVoorgedaan, onKlaar }: Props) {
+export function Leermoment({
+  item,
+  strategie,
+  voorgedaan,
+  route,
+  routenaam,
+  itemTekst,
+  onKiesStrategie,
+  onVoorgedaan,
+  onMaakRoute,
+  onKlaar,
+}: Props) {
   const [stap, setStap] = useState(0)
   const [beschrijving, setBeschrijving] = useState('')
   const [emoji, setEmoji] = useState('')
   const [plaatje, setPlaatje] = useState<string | null>(null)
   const [plaatjeFout, setPlaatjeFout] = useState(false)
+  const [naam, setNaam] = useState(routenaam)
+  const [plekken, setPlekken] = useState<string[]>(Array(MAX_PLEKKEN).fill(''))
+  const [doorlopen, setDoorlopen] = useState<Omit<Geheugenbeeld, 'id' | 'aangemaakt'> | null>(null)
 
   if (strategie === undefined) {
     return (
@@ -60,9 +113,9 @@ export function Leermoment({ item, strategie, voorgedaan, onKiesStrategie, onVoo
             <strong>🖼️ Beelden koppelen</strong>
             <span>Je bedenkt bij elk woord een grappig plaatje in je hoofd. Dat werkt goed voor woorden en hun betekenis.</span>
           </button>
-          <button className="strategie" disabled>
+          <button className="strategie" onClick={() => onKiesStrategie('geheugenroute')}>
             <strong>🗺️ Geheugenroute</strong>
-            <span>Je legt woorden op plekken in je huis en loopt er in gedachten langs. Komt binnenkort.</span>
+            <span>Je legt woorden op plekken in je huis en loopt er in gedachten langs. Handig als je een rijtje woorden tegelijk leert.</span>
           </button>
         </div>
         <button className="link" onClick={() => onKiesStrategie('geen')}>
@@ -85,21 +138,8 @@ export function Leermoment({ item, strategie, voorgedaan, onKiesStrategie, onVoo
     )
   }
 
-  if (!voorgedaan && stap < 3) {
-    const stappen = [
-      {
-        titel: 'Zo werkt beelden koppelen',
-        tekst: 'Je bedenkt bij een nieuw woord een plaatje in je hoofd dat je aan de betekenis laat denken. Hoe gekker, hoe beter je het onthoudt.',
-      },
-      {
-        titel: 'Een voorbeeld',
-        tekst: 'Bridge betekent brug. Stel je voor dat er een brug ligt tussen twee kussens op de bank, en dat je eroverheen loopt.',
-      },
-      {
-        titel: 'Nu jij',
-        tekst: 'Bedenk je eigen plaatje en beschrijf het in een paar woorden. Straks, als je het woord niet meer weet, helpt je eigen plaatje je op weg.',
-      },
-    ]
+  const stappen = VOORDOEN[strategie]
+  if (!voorgedaan.includes(strategie) && stap < stappen.length) {
     return (
       <div className="leermoment">
         <p className="gedempt">
@@ -111,7 +151,7 @@ export function Leermoment({ item, strategie, voorgedaan, onKiesStrategie, onVoo
           className="knop"
           autoFocus
           onClick={() => {
-            if (stap === stappen.length - 1) onVoorgedaan()
+            if (stap === stappen.length - 1) onVoorgedaan(strategie)
             setStap(stap + 1)
           }}
         >
@@ -121,12 +161,83 @@ export function Leermoment({ item, strategie, voorgedaan, onKiesStrategie, onVoo
     )
   }
 
+  if (strategie === 'geheugenroute' && route === null) {
+    const ingevuld = plekken.map((p) => p.trim()).filter(Boolean)
+    return (
+      <div className="leermoment">
+        <h3>Maak een route</h3>
+        <p>
+          Noem {MIN_PLEKKEN} tot {MAX_PLEKKEN} plekken in je huis die je goed kent, in de volgorde waarin je erlangs loopt.
+        </p>
+        {plekken.map((p, i) => (
+          <label key={i} className="plek-invoer">
+            <span className="gedempt">Plek {i + 1}</span>
+            <input
+              className="invoer"
+              value={p}
+              onChange={(e) => setPlekken(plekken.map((x, j) => (j === i ? e.target.value : x)))}
+              placeholder={['voordeur', 'kapstok', 'bank', 'tafel', 'bed'][i]}
+              maxLength={30}
+              autoFocus={i === 0}
+            />
+          </label>
+        ))}
+        <label className="label" htmlFor="routenaam" style={{ marginTop: '0.75rem' }}>
+          Naam van de route
+        </label>
+        <input id="routenaam" className="invoer" value={naam} onChange={(e) => setNaam(e.target.value)} maxLength={40} />
+        <div className="knoppen">
+          <button
+            className="knop"
+            disabled={ingevuld.length < MIN_PLEKKEN || naam.trim() === ''}
+            onClick={() => onMaakRoute(naam.trim(), ingevuld)}
+          >
+            Route bewaren
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const plekIndex = strategie === 'geheugenroute' ? route!.vrijePlek! : null
+  const plek = plekIndex !== null ? route!.route.plekken[plekIndex] : null
+
+  if (doorlopen && route) {
+    return (
+      <div className="leermoment">
+        <h3>Loop je route in gedachten langs</h3>
+        <p className="gedempt">{route.route.naam}</p>
+        <ol className="route">
+          {route.route.plekken.map((p, i) => {
+            const opPlek = i === plekIndex ? doorlopen : route.bezet.find((b) => b.plek === i)
+            return (
+              <li key={i} className={opPlek ? '' : 'gedempt'}>
+                <strong>{p}</strong>
+                {opPlek ? (
+                  <>
+                    : {opPlek.emoji} {opPlek.beschrijving} <span className="gedempt">({itemTekst(opPlek.leeritemId)})</span>
+                  </>
+                ) : (
+                  ' (nog leeg)'
+                )}
+              </li>
+            )
+          })}
+        </ol>
+        <p>Zie je elke plek voor je, met het woord dat er ligt?</p>
+        <button className="knop" autoFocus onClick={() => onKlaar(doorlopen)}>
+          Verder
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="leermoment">
-      <h3>Maak je eigen beeld</h3>
+      <h3>{plek ? `Plek ${plekIndex! + 1}: ${plek}` : 'Maak je eigen beeld'}</h3>
       <WoordEnBetekenis item={item} />
       <label className="label" htmlFor="beschrijving">
-        Wat zie je voor je? <span className="gedempt">(een paar woorden)</span>
+        {plek ? `Wat zie je bij de plek "${plek}"?` : 'Wat zie je voor je?'} <span className="gedempt">(een paar woorden)</span>
       </label>
       <input
         id="beschrijving"
@@ -162,9 +273,19 @@ export function Leermoment({ item, strategie, voorgedaan, onKiesStrategie, onVoo
         <button
           className="knop"
           disabled={beschrijving.trim() === ''}
-          onClick={() =>
-            onKlaar({ leeritemId: item.id, beschrijving: beschrijving.trim(), emoji: emoji.trim(), plaatje, routeId: null, plek: null })
-          }
+          onClick={() => {
+            const beeld = {
+              leeritemId: item.id,
+              beschrijving: beschrijving.trim(),
+              emoji: emoji.trim(),
+              plaatje,
+              routeId: route && plekIndex !== null ? route.route.id : null,
+              plek: plekIndex,
+            }
+            // Bij een geheugenroute eerst de route in gedachten doorlopen, daarna verder.
+            if (plekIndex !== null) setDoorlopen(beeld)
+            else onKlaar(beeld)
+          }}
         >
           Bewaar mijn beeld
         </button>

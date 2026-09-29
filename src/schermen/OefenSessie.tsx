@@ -20,6 +20,7 @@ import {
   type Strategie,
 } from '../leerlogica'
 import type { Geheugenbeeld } from '../bronnen/model'
+import type { RouteStand } from '../bronnen/routes'
 import type { Database } from '../opslag/database'
 import { Leermoment } from './Leermoment'
 
@@ -41,6 +42,9 @@ interface Props {
   onKiesStrategie: (bronId: string, strategie: Strategie | 'geen') => Promise<void>
   onVoorgedaan: (strategie: Strategie) => Promise<void>
   onGeheugenbeeld: (beeld: Omit<Geheugenbeeld, 'id' | 'aangemaakt'>) => Promise<void>
+  routeVoor: (bronId: string) => RouteStand | null
+  routenaamVoor: (bronId: string) => string
+  onMaakRoute: (bronId: string, naam: string, plekken: string[]) => Promise<void>
 }
 
 /** Korte feedback (één of twee zinnen) en optioneel een langere uitleg. */
@@ -83,6 +87,9 @@ export function OefenSessie({
   onKiesStrategie,
   onVoorgedaan,
   onGeheugenbeeld,
+  routeVoor,
+  routenaamVoor,
+  onMaakRoute,
 }: Props) {
   const [toestand, setToestand] = useState(begintoestand)
   const [antwoord, setAntwoord] = useState('')
@@ -165,7 +172,7 @@ export function OefenSessie({
     let volgendeToestand = toestand
     if (nieuwBeeld) {
       await onGeheugenbeeld(nieuwBeeld)
-      volgendeToestand = koppelStrategie(toestand, item.id, 'beelden koppelen')
+      volgendeToestand = koppelStrategie(toestand, item.id, nieuwBeeld.routeId ? 'geheugenroute' : 'beelden koppelen')
     }
     setToestand(volgendeToestand)
     const nieuw = volgende(volgendeToestand)
@@ -232,9 +239,16 @@ export function OefenSessie({
           key={item.id}
           item={item}
           strategie={strategiePerBron[item.bronId]}
-          voorgedaan={voorgedaan.includes('beelden koppelen')}
+          voorgedaan={voorgedaan}
+          route={routeVoor(item.bronId)}
+          routenaam={routenaamVoor(item.bronId)}
+          itemTekst={(id) => {
+            const i = bronItems.find((x) => x.id === id)
+            return i ? `${i.vraag} = ${i.toegestaneAntwoorden[0]}` : ''
+          }}
           onKiesStrategie={(s) => void onKiesStrategie(item.bronId, s)}
-          onVoorgedaan={() => void onVoorgedaan('beelden koppelen')}
+          onVoorgedaan={(s) => void onVoorgedaan(s)}
+          onMaakRoute={(naam, plekken) => void onMaakRoute(item.bronId, naam, plekken)}
           onKlaar={(b) => void leermomentKlaar(b)}
         />
       ) : toestand.afgesloten ? (

@@ -46,6 +46,7 @@ export function Start({ leerling, onInstellingen, onNieuweBron, onOpenBron, onTe
       {!bezig && <p className="groet">Hoi {leerling.bijnaam}!</p>}
       <Oefenroute
         db={echteDb}
+        bronnamen={Object.fromEntries(bronnen.map((b) => [b.id, b.naam]))}
         leeritems={leeritems}
         bronnen={bronnen.map(bronInfo)}
         nu={nu}

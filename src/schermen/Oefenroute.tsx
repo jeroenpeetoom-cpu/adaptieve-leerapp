@@ -10,7 +10,8 @@ import {
   type SessieToestand,
   type Strategie,
 } from '../leerlogica'
-import type { Geheugenbeeld } from '../bronnen/model'
+import type { Geheugenbeeld, Route } from '../bronnen/model'
+import { beeldTekst, routeMetVrijePlek, standaardRoutenaam } from '../bronnen/routes'
 import type { Database } from '../opslag/database'
 import { OefenSessie } from './OefenSessie'
 import { Terugblik } from './Terugblik'
@@ -28,6 +29,8 @@ export interface OverzichtInfo {
 
 interface Props {
   db: Database
+  /** Naam per bron, voor de standaardnaam van een route. */
+  bronnamen?: Record<string, string>
   leeritems: Leeritem[]
   bronnen: BronInfo[]
   nu: () => string
@@ -41,7 +44,7 @@ interface Props {
 }
 
 /** Vandaag oefenen: samenstellen, sessie, hervatten, terugblik en nog een rondje. */
-export function Oefenroute({ db, leeritems: basis, bronnen, nu, instellingen, leeg, boven, onder, onBezig }: Props) {
+export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, instellingen, leeg, boven, onder, onBezig }: Props) {
   const [pogingen, setPogingen] = useState<Poging[]>([])
   const [extraAntwoorden, setExtraAntwoorden] = useState<Record<string, string[]>>({})
   const [openSessie, setOpenSessie] = useState<SessieToestand | null>(null)
@@ -50,6 +53,7 @@ export function Oefenroute({ db, leeritems: basis, bronnen, nu, instellingen, le
   const [beelden, setBeelden] = useState<Geheugenbeeld[]>([])
   const [strategiePerBron, setStrategiePerBron] = useState<Record<string, Strategie | 'geen'>>({})
   const [voorgedaan, setVoorgedaan] = useState<Strategie[]>([])
+  const [routes, setRoutes] = useState<Route[]>([])
 
   const setWeergave = useCallback(
     (w: Weergave) => {
@@ -63,6 +67,7 @@ export function Oefenroute({ db, leeritems: basis, bronnen, nu, instellingen, le
     setPogingen(await db.pogingen.toArray())
     setExtraAntwoorden(await db.leesMeta<Record<string, string[]>>('extraAntwoorden', {}))
     setBeelden(await db.geheugenbeelden.toArray())
+    setRoutes(await db.routes.toArray())
     setStrategiePerBron(await db.leesMeta<Record<string, Strategie | 'geen'>>('strategiePerBron', {}))
     setVoorgedaan(await db.leesMeta<Strategie[]>('voorgedaan', []))
     const open = await db.openSessie()
@@ -90,7 +95,9 @@ export function Oefenroute({ db, leeritems: basis, bronnen, nu, instellingen, le
     if (aantal === 0) return false
     const items = [...samenstelling.herhalingen, ...samenstelling.nieuw]
     setMelding(null)
-    const strategiePerItem = Object.fromEntries(beelden.map((b) => [b.leeritemId, 'beelden koppelen' as const]))
+    const strategiePerItem = Object.fromEntries(
+      beelden.map((b) => [b.leeritemId, b.routeId ? ('geheugenroute' as const) : ('beelden koppelen' as const)]),
+    )
     setWeergave({ soort: 'sessie', toestand: startSessie(crypto.randomUUID(), items, pogingen, strategiePerItem) })
     return true
   }
@@ -121,6 +128,12 @@ export function Oefenroute({ db, leeritems: basis, bronnen, nu, instellingen, le
     setBeelden((b) => [...b.filter((x) => x.leeritemId !== beeld.leeritemId), volledig])
   }
 
+  async function maakRoute(bronId: string, naam: string, plekken: string[]) {
+    const route: Route = { id: crypto.randomUUID(), bronId, naam, plekken, aangemaakt: nu() }
+    await db.routes.add(route)
+    setRoutes((r) => [...r, route])
+  }
+
   if (weergave.soort === 'sessie') {
     return (
       <>
@@ -132,7 +145,12 @@ export function Oefenroute({ db, leeritems: basis, bronnen, nu, instellingen, le
           nu={nu}
           onAntwoordToegevoegd={antwoordToegevoegd}
           onKlaar={(toestand) => void laad().then(() => setWeergave({ soort: 'klaar', toestand }))}
-          geheugenbeelden={Object.fromEntries(beelden.map((b) => [b.leeritemId, `${b.emoji ? b.emoji + ' ' : ''}${b.beschrijving}`]))}
+          geheugenbeelden={Object.fromEntries(beelden.map((b) => [b.leeritemId, beeldTekst(b, routes)]))}
+          routeVoor={(bronId) => routeMetVrijePlek(bronId, routes, beelden)}
+          routenaamVoor={(bronId) =>
+            standaardRoutenaam(bronnamen[bronId] ?? 'woorden', routes.filter((r) => r.bronId === bronId))
+          }
+          onMaakRoute={maakRoute}
           strategiePerBron={strategiePerBron}
           voorgedaan={voorgedaan}
           onKiesStrategie={kiesStrategie}

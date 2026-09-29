@@ -448,3 +448,20 @@ select.invoer {
   margin: 0.35rem 0 0;
   font-size: 0.9rem;
 }
+
+.plek-invoer {
+  display: grid;
+  grid-template-columns: 4rem 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.route {
+  padding-left: 1.25rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.route li {
+  margin-bottom: 0.4rem;
+}

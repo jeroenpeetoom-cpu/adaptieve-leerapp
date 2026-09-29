@@ -91,6 +91,7 @@ export function Testfunctie({ onTerug }: { onTerug: () => void }) {
       <Oefenroute
         key={`${versie}-${klokDagen}`}
         db={testDb}
+        bronnamen={{ [TESTBRON_ID]: 'test' }}
         leeritems={testLeeritems}
         bronnen={[{ bronId: TESTBRON_ID, toetsdag, afgerond: false }]}
         nu={nu}
