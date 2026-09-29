@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent (gebouwd; wacht op controle op de S22 met een echte woordenlijst)
+**Status:** done
 
 - [x] Tekstherkenning gebeurt op het apparaat met Tesseract (Engels + Nederlands); de taalbestanden zitten in de app zelf en er gaat niets naar een externe dienst
 - [x] De bronverwerking herkent vorm 1: één paar per regel met =, -, –, —, :, tab of meerdere spaties ertussen
