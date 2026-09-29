@@ -118,7 +118,7 @@ export function Testfunctie({ onTerug }: { onTerug: () => void }) {
                       <td>
                         <StatusLabel status={berekenVoortgang(item, pogingen, instellingen).status} />
                       </td>
-                      <td>{relatieveDag(vandaag, berekenPlanning(item.id, pogingen, instellingen).volgendeDag)}</td>
+                      <td>{relatieveDag(vandaag, berekenPlanning(item.id, pogingen, instellingen, item.bronversie).volgendeDag)}</td>
                     </tr>
                   ))}
                 </tbody>

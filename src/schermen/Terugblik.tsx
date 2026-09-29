@@ -58,7 +58,7 @@ export function Terugblik({ sessie, pogingen, vandaag, instellingen, children }:
       <ul className="terugblik">
         {items.map((item: Leeritem) => {
           const { status, hoogsteOoit } = berekenVoortgang(item, pogingen, instellingen)
-          const planning = berekenPlanning(item.id, pogingen, instellingen)
+          const planning = berekenPlanning(item.id, pogingen, instellingen, item.bronversie)
           const gezakt = RANG.indexOf(hoogsteOoit) > RANG.indexOf(status)
           return (
             <li key={item.id}>

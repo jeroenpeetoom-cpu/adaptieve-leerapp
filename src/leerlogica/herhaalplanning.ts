@@ -5,12 +5,14 @@ import { REGELVERSIE } from './versie'
 
 /**
  * Leidt de herhaalplanning van één leeritem af uit zijn pogingen. Alleen de eerste poging per
- * kalenderdag telt; latere pogingen op dezelfde dag zijn oefening.
+ * kalenderdag telt; latere pogingen op dezelfde dag zijn oefening. Met een bronversie tellen alleen
+ * pogingen op die versie: na een inhoudelijke wijziging begint het leeritem opnieuw.
  */
 export function berekenPlanning(
   leeritemId: string,
   pogingen: Poging[],
   instellingen: Instellingen,
+  bronversie?: number,
 ): Herhaalplanning {
   const planning: Herhaalplanning = {
     leeritemId,
@@ -21,7 +23,7 @@ export function berekenPlanning(
   }
   const gezien = new Set<string>()
   const opVolgorde = pogingen
-    .filter((p) => p.leeritemId === leeritemId)
+    .filter((p) => p.leeritemId === leeritemId && (bronversie === undefined || p.bronversie === bronversie))
     .sort((a, b) => a.tijdstip.localeCompare(b.tijdstip))
 
   for (const poging of opVolgorde) {

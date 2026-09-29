@@ -3,7 +3,7 @@ import type { Bron } from '../bronnen/model'
 import type { Oefenrichting } from '../leerlogica'
 import { echteDb } from '../opslag/database'
 
-const RICHTINGEN: { label: string; waarde: Oefenrichting[] }[] = [
+export const RICHTINGEN: { label: string; waarde: Oefenrichting[] }[] = [
   { label: 'Engels → Nederlands', waarde: [{ van: 'en', naar: 'nl' }] },
   { label: 'Nederlands → Engels', waarde: [{ van: 'nl', naar: 'en' }] },
   { label: 'Allebei', waarde: [{ van: 'en', naar: 'nl' }, { van: 'nl', naar: 'en' }] },

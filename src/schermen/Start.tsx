@@ -71,6 +71,7 @@ export function Start({ leerling, onInstellingen, onNieuweBron, onOpenBron, onTe
                         <span className="gedempt">
                           {klaar} {klaar === 1 ? 'woord' : 'woorden'}
                           {open > 0 && ` · ${open} nog controleren`}
+                          {b.afgerond && ' · afgerond'}
                         </span>
                       </button>
                     </li>

@@ -3,7 +3,74 @@ import { verwerkRegels, type Twijfel } from '../bronverwerking'
 import { kanBevestigen, nogTeBekijken } from '../bronnen/leeritems'
 import type { Bron, Bronpagina, Woordpaar } from '../bronnen/model'
 import { controleerBestand, herken } from '../herkenning/herkenner'
+import { isInhoudelijkeWijziging, type Strategie } from '../leerlogica'
 import { echteDb } from '../opslag/database'
+import { RICHTINGEN } from './NieuweBron'
+
+const STRATEGIEKEUZES: { waarde: Strategie | 'geen'; label: string }[] = [
+  { waarde: 'beelden koppelen', label: '🖼️ Beelden koppelen' },
+  { waarde: 'geheugenroute', label: '🗺️ Geheugenroute' },
+  { waarde: 'geen', label: 'Zonder, gewoon herhalen' },
+]
+
+function BevestigdWoordpaar({ wp, onBewaar, onVerwijder }: { wp: Woordpaar; onBewaar: (woord: string, betekenis: string) => void; onVerwijder: () => void }) {
+  const [bewerken, setBewerken] = useState(false)
+  const [woord, setWoord] = useState(wp.woord)
+  const [betekenis, setBetekenis] = useState(wp.betekenis)
+  if (!bewerken) {
+    return (
+      <li className="woordpaar-regel">
+        <span>
+          <span lang="en">{wp.woord}</span> = <span lang="nl">{wp.betekenis}</span>
+        </span>
+        <button className="link" onClick={() => setBewerken(true)}>
+          Aanpassen
+        </button>
+      </li>
+    )
+  }
+  const inhoudelijk = isInhoudelijkeWijziging(wp, { woord, betekenis })
+  return (
+    <li>
+      <div className="controle-velden">
+        <label>
+          <span className="klein">Engels</span>
+          <input className="invoer" value={woord} lang="en" autoCapitalize="off" spellCheck={false} onChange={(e) => setWoord(e.target.value)} />
+        </label>
+        <label>
+          <span className="klein">Nederlands</span>
+          <input className="invoer" value={betekenis} lang="nl" autoCapitalize="off" spellCheck={false} onChange={(e) => setBetekenis(e.target.value)} />
+        </label>
+      </div>
+      {inhoudelijk && (
+        <p className="gedempt">Dit is een echte wijziging: het woord begint opnieuw, want je eerdere antwoorden gingen over iets anders.</p>
+      )}
+      <div className="knoppen">
+        <button
+          className="knop"
+          disabled={woord.trim() === '' || betekenis.trim() === ''}
+          onClick={() => {
+            onBewaar(woord.trim(), betekenis.trim())
+            setBewerken(false)
+          }}
+        >
+          Opslaan
+        </button>
+        <button className="knop knop-rustig" onClick={() => (setWoord(wp.woord), setBetekenis(wp.betekenis), setBewerken(false))}>
+          Annuleren
+        </button>
+        <button
+          className="link"
+          onClick={() => {
+            if (window.confirm(`"${wp.woord} = ${wp.betekenis}" verwijderen? Het komt dan niet meer terug bij het oefenen.`)) onVerwijder()
+          }}
+        >
+          Verwijderen
+        </button>
+      </div>
+    </li>
+  )
+}
 
 const MAX_PAGINAS_PER_KEER = 10
 
@@ -30,12 +97,14 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
   const [paren, setParen] = useState<Woordpaar[]>([])
   const [bezig, setBezig] = useState<{ fractie: number; stap: string; pagina: number; van: number } | null>(null)
   const [melding, setMelding] = useState<string | null>(null)
+  const [strategie, setStrategie] = useState<Strategie | 'geen' | undefined>(undefined)
   const fotoRef = useRef<HTMLInputElement>(null)
 
   const laad = useCallback(async () => {
     setBron((await echteDb.bronnen.get(bronId)) ?? null)
     setPaginas((await echteDb.bronpaginas.where('bronId').equals(bronId).toArray()).sort((a, b) => a.volgorde - b.volgorde))
     setParen((await echteDb.woordparen.where('bronId').equals(bronId).toArray()).sort((a, b) => a.volgorde - b.volgorde))
+    setStrategie((await echteDb.leesMeta<Record<string, Strategie | 'geen'>>('strategiePerBron', {}))[bronId])
   }, [bronId])
 
   useEffect(() => {
@@ -160,7 +229,45 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
     await laad()
   }
 
+  async function wijzigBron(velden: Partial<Bron>) {
+    await echteDb.bronnen.update(bronId, velden)
+    setBron((b) => (b ? { ...b, ...velden } : b))
+  }
+
+  async function kiesStrategie(nieuw: Strategie | 'geen') {
+    const alle = await echteDb.leesMeta<Record<string, Strategie | 'geen'>>('strategiePerBron', {})
+    await echteDb.schrijfMeta('strategiePerBron', { ...alle, [bronId]: nieuw })
+    setStrategie(nieuw)
+  }
+
+  async function bewaarBevestigd(wp: Woordpaar, woord: string, betekenis: string) {
+    const inhoudelijk = isInhoudelijkeWijziging(wp, { woord, betekenis })
+    const bronversie = inhoudelijk ? wp.bronversie + 1 : wp.bronversie
+    await echteDb.woordparen.update(wp.id, { woord, betekenis, bronversie })
+    if (inhoudelijk) {
+      // Een zelf toegevoegd antwoord of geheugenbeeld hoorde bij de oude inhoud.
+      const idPrefix = `${wp.id}-`
+      const extra = await echteDb.leesMeta<Record<string, string[]>>('extraAntwoorden', {})
+      await echteDb.schrijfMeta('extraAntwoorden', Object.fromEntries(Object.entries(extra).filter(([id]) => !id.startsWith(idPrefix))))
+      await echteDb.geheugenbeelden.filter((b) => b.leeritemId.startsWith(idPrefix)).delete()
+    }
+    setParen((p) => p.map((x) => (x.id === wp.id ? { ...x, woord, betekenis, bronversie } : x)))
+  }
+
+  async function verwijderBevestigd(wp: Woordpaar) {
+    await echteDb.woordparen.delete(wp.id)
+    await echteDb.geheugenbeelden.filter((b) => b.leeritemId.startsWith(`${wp.id}-`)).delete()
+    setParen((p) => p.filter((x) => x.id !== wp.id))
+  }
+
+  async function wisselAfronden() {
+    if (!bron) return
+    if (!bron.afgerond && !window.confirm('Engelse woorden heb je later vaak nog nodig. Wil je deze bron toch afronden? De woorden komen dan niet meer terug; je voortgang blijft bewaard.')) return
+    await wijzigBron({ afgerond: !bron.afgerond })
+  }
+
   if (!bron) return null
+  const richtingIndex = RICHTINGEN.findIndex((r) => JSON.stringify(r.waarde) === JSON.stringify(bron.oefenrichtingen))
 
   const open = paren.filter((wp) => !wp.bevestigd)
   const bevestigd = paren.filter((wp) => wp.bevestigd)
@@ -334,13 +441,70 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
           <h2>Bevestigde woorden</h2>
           <ul className="woordenlijst">
             {bevestigd.map((wp) => (
-              <li key={wp.id}>
-                <span lang="en">{wp.woord}</span> = <span lang="nl">{wp.betekenis}</span>
-              </li>
+              <BevestigdWoordpaar
+                key={wp.id}
+                wp={wp}
+                onBewaar={(w, b) => void bewaarBevestigd(wp, w, b)}
+                onVerwijder={() => void verwijderBevestigd(wp)}
+              />
             ))}
           </ul>
         </section>
       )}
+
+      <section className="kaart">
+        <h2>Instellingen van deze bron</h2>
+        <label className="label" htmlFor="bronnaam">
+          Naam
+        </label>
+        <input
+          id="bronnaam"
+          className="invoer"
+          defaultValue={bron.naam}
+          onBlur={(e) => e.target.value.trim() && void wijzigBron({ naam: e.target.value.trim() })}
+        />
+
+        <fieldset className="keuzes">
+          <legend className="label">Wat moet je op de toets kunnen?</legend>
+          {RICHTINGEN.map((r, i) => (
+            <label key={r.label} className="keuze">
+              <input type="radio" name="richting" checked={richtingIndex === i} onChange={() => void wijzigBron({ oefenrichtingen: r.waarde })} />
+              {r.label}
+            </label>
+          ))}
+          <p className="gedempt">Elke richting telt als een eigen woord, met een eigen voortgang.</p>
+        </fieldset>
+
+        <fieldset className="keuzes">
+          <legend className="label">Hoe leer je de nieuwe woorden?</legend>
+          {STRATEGIEKEUZES.map((k) => (
+            <label key={k.waarde} className="keuze">
+              <input type="radio" name="strategie" checked={strategie === k.waarde} onChange={() => void kiesStrategie(k.waarde)} />
+              {k.label}
+            </label>
+          ))}
+          {strategie === undefined && <p className="gedempt">Nog niet gekozen: dat vraagt de app bij het eerste nieuwe woord.</p>}
+          <p className="gedempt">Werkt een aanpak niet goed voor je? Probeer dan eens een andere. Je beelden en routes blijven bewaard.</p>
+        </fieldset>
+
+        <label className="label" htmlFor="brontoets">
+          Toetsdatum
+        </label>
+        <input
+          id="brontoets"
+          className="invoer"
+          type="date"
+          value={bron.toetsdag ?? ''}
+          onChange={(e) => void wijzigBron({ toetsdag: e.target.value || null })}
+        />
+
+        <div className="knoppen">
+          <button className="knop knop-rustig" onClick={() => void wisselAfronden()}>
+            {bron.afgerond ? 'Weer laten herhalen' : 'Bron afronden'}
+          </button>
+        </div>
+        {bron.afgerond && <p className="gedempt">Deze bron is afgerond: de woorden komen niet meer terug. Je voortgang is bewaard.</p>}
+      </section>
 
       <button className="link" onClick={onTerug}>
         ← Terug

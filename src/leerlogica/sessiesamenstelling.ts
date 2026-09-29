@@ -31,7 +31,7 @@ export function stelSessieSamen(
 
   const planningen = actief.map((item) => ({
     item,
-    planning: berekenPlanning(item.id, pogingen, instellingen),
+    planning: berekenPlanning(item.id, pogingen, instellingen, item.bronversie),
   }))
 
   const herhalingen = planningen
