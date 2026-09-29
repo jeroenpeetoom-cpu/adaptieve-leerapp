@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import type { Leerling } from '../bronnen/leerling'
 import { bronInfo, leeritemsVan } from '../bronnen/leeritems'
 import type { Bron, Woordpaar } from '../bronnen/model'
 import { STANDAARD_INSTELLINGEN } from '../leerlogica'
@@ -7,20 +8,27 @@ import { Oefenroute } from './Oefenroute'
 
 const nu = () => new Date().toISOString()
 
+/** Herinner aan een back-up als de laatste langer dan dit aantal dagen geleden is. */
+const BACKUP_HERINNERING_DAGEN = 7
+
 interface Props {
+  leerling: Leerling
+  onInstellingen: () => void
   onNieuweBron: () => void
   onOpenBron: (bronId: string) => void
   onTestfunctie: () => void
 }
 
-export function Start({ onNieuweBron, onOpenBron, onTestfunctie }: Props) {
+export function Start({ leerling, onInstellingen, onNieuweBron, onOpenBron, onTestfunctie }: Props) {
   const [bronnen, setBronnen] = useState<Bron[] | null>(null)
   const [paren, setParen] = useState<Woordpaar[]>([])
   const [bezig, setBezig] = useState(false)
+  const [laatsteBackup, setLaatsteBackup] = useState<string | null>(null)
 
   const laad = useCallback(async () => {
     setBronnen((await echteDb.bronnen.toArray()).sort((a, b) => b.aangemaakt.localeCompare(a.aangemaakt)))
     setParen(await echteDb.woordparen.toArray())
+    setLaatsteBackup(await echteDb.leesMeta<string | null>('laatsteBackup', null))
   }, [])
 
   useEffect(() => {
@@ -29,9 +37,13 @@ export function Start({ onNieuweBron, onOpenBron, onTestfunctie }: Props) {
 
   if (bronnen === null) return null
   const leeritems = bronnen.flatMap((b) => leeritemsVan(b, paren))
+  const backupNodig =
+    leeritems.length > 0 &&
+    (laatsteBackup === null || Date.now() - new Date(laatsteBackup).getTime() > BACKUP_HERINNERING_DAGEN * 86_400_000)
 
   return (
     <>
+      {!bezig && <p className="groet">Hoi {leerling.bijnaam}!</p>}
       <Oefenroute
         db={echteDb}
         leeritems={leeritems}
@@ -73,6 +85,17 @@ export function Start({ onNieuweBron, onOpenBron, onTestfunctie }: Props) {
       />
       {!bezig && (
         <>
+          {backupNodig && (
+            <p className="feedback" role="note">
+              {laatsteBackup ? 'Je laatste back-up is meer dan een week oud.' : 'Je hebt nog geen back-up gemaakt.'}{' '}
+              <button className="link" onClick={onInstellingen}>
+                Maak een back-up
+              </button>
+            </p>
+          )}
+          <button className="link" onClick={onInstellingen}>
+            ⚙️ Profiel en back-up
+          </button>
           <p className="melding" role="note">
             <span aria-hidden="true">🔒 </span>
             Alles wat je hier doet, blijft alleen op dit apparaat staan.

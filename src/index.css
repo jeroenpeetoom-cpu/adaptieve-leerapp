@@ -351,3 +351,27 @@ label.knop {
   color: var(--gedempt);
   text-align: center;
 }
+
+.groet {
+  font-size: 1.2rem;
+  margin: 0 0 0.5rem;
+}
+
+.uitleg {
+  padding-left: 0;
+  list-style: none;
+  margin: 0 0 1.25rem;
+}
+
+.uitleg li {
+  margin-bottom: 0.5rem;
+}
+
+select.invoer {
+  appearance: auto;
+}
+
+.knop-gevaar {
+  background: #ff8a8a;
+  color: #2a0000;
+}
