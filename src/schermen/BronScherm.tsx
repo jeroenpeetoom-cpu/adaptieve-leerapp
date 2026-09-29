@@ -260,7 +260,7 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
             {open.map((wp) => {
               const twijfel = wp.twijfelWoord !== 'geen' || wp.twijfelBetekenis !== 'geen'
               return (
-                <li key={wp.id} className={twijfel && !wp.bekeken ? 'met-twijfel' : ''}>
+                <li key={wp.id} id={`woordpaar-${wp.id}`} className={twijfel && !wp.bekeken ? 'met-twijfel' : ''}>
                   <div className="controle-velden">
                     <label>
                       <span className="klein">Engels</span> <TwijfelLabel twijfel={wp.bekeken ? 'geen' : wp.twijfelWoord} />
@@ -307,8 +307,24 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
               Bevestigen ({open.length} {open.length === 1 ? 'woord' : 'woorden'})
             </button>
           </div>
+          {teBekijken.length > 0 && (
+            <div className="feedback" role="status">
+              <p>
+                Bekijk eerst {teBekijken.length === 1 ? 'het woordpaar' : `de ${teBekijken.length} woordparen`} met ⚠: verbeter
+                wat fout is en tik op <strong>✓ Klopt</strong>, of verwijder {teBekijken.length === 1 ? 'het' : 'ze'}.
+              </p>
+              <button
+                className="link"
+                onClick={() =>
+                  document.getElementById(`woordpaar-${teBekijken[0].id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                }
+              >
+                Ga naar {teBekijken.length === 1 ? 'dit woordpaar' : 'het eerste'}
+              </button>
+            </div>
+          )}
           {open.some((wp) => wp.woord.trim() === '' || wp.betekenis.trim() === '') && (
-            <p className="gedempt">Vul bij elk woordpaar beide kanten in, of verwijder het.</p>
+            <p className="feedback">Vul bij elk woordpaar beide kanten in, of verwijder het.</p>
           )}
         </section>
       )}
