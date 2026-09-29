@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { verwerkRegels, type Twijfel } from '../bronverwerking'
+import { regelsUitTekst, verwerkRegels, type Twijfel, type Voorstel } from '../bronverwerking'
+import { splits, splitsbareWoorden, voegSamen } from '../bronnen/bewerken'
 import { kanBevestigen, nogTeBekijken } from '../bronnen/leeritems'
 import type { Bron, Bronpagina, Woordpaar } from '../bronnen/model'
 import { controleerBestand, herken } from '../herkenning/herkenner'
@@ -83,6 +84,23 @@ const STATUSTEKST: Record<Bronpagina['status'], string> = {
   bevestigd: '✓ Bevestigd',
 }
 
+/** Draait een foto een kwartslag met de klok mee. */
+async function draai(foto: Blob): Promise<Blob> {
+  const beeld = await createImageBitmap(foto, { imageOrientation: 'from-image' })
+  const canvas = document.createElement('canvas')
+  canvas.width = beeld.height
+  canvas.height = beeld.width
+  const ctx = canvas.getContext('2d')!
+  ctx.translate(canvas.width, 0)
+  ctx.rotate(Math.PI / 2)
+  ctx.drawImage(beeld, 0, 0)
+  beeld.close()
+  return new Promise((klaar, fout) => canvas.toBlob((b) => (b ? klaar(b) : fout(new Error('draaien mislukt'))), 'image/jpeg', 0.92))
+}
+
+const GEEN_WOORDENLIJST =
+  'Op deze foto vond ik geen woordenlijst. Andere soorten huiswerk, zoals rekensommen, worden nog niet ondersteund. Is het wel een woordenlijst? Maak dan een nieuwe foto, plak de tekst, of voeg de woorden hieronder zelf toe.'
+
 function TwijfelLabel({ twijfel }: { twijfel: Twijfel }) {
   if (twijfel === 'geen') return null
   return (
@@ -99,6 +117,9 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
   const [bezig, setBezig] = useState<{ fractie: number; stap: string; pagina: number; van: number } | null>(null)
   const [melding, setMelding] = useState<string | null>(null)
   const [strategie, setStrategie] = useState<Strategie | 'geen' | undefined>(undefined)
+  const [plakken, setPlakken] = useState<string | null>(null)
+  const [plakLos, setPlakLos] = useState<string[]>([])
+  const [splitsen, setSplitsen] = useState<string | null>(null)
   const fotoRef = useRef<HTMLInputElement>(null)
 
   const laad = useCallback(async () => {
@@ -136,10 +157,7 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
       await echteDb.bronpaginas.update(pagina.id, {
         status: nieuwe.length === 0 ? 'onzeker' : metTwijfel ? 'onzeker' : 'verwerkt',
         losseRegels,
-        melding:
-          nieuwe.length === 0
-            ? 'Op deze foto vond ik geen woordparen. Maak een nieuwe foto of voeg de woorden hieronder zelf toe.'
-            : null,
+        melding: nieuwe.length === 0 ? GEEN_WOORDENLIJST : null,
       })
     } catch {
       await echteDb.bronpaginas.update(pagina.id, {
@@ -186,6 +204,78 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
     await echteDb.woordparen.where('bronpaginaId').equals(pagina.id).filter((wp) => !wp.bevestigd).delete()
     await verwerkPagina(pagina, 1, 1)
     setBezig(null)
+    await laad()
+  }
+
+  async function voegVoorstellenToe(voorstellen: Voorstel[], bronpaginaId: string | null) {
+    const bestaand = await echteDb.woordparen.where('bronId').equals(bronId).count()
+    const nieuwe: Woordpaar[] = voorstellen.map((v, i) => ({
+      id: crypto.randomUUID(),
+      bronId,
+      bronpaginaId,
+      woord: v.woord,
+      betekenis: v.betekenis,
+      bronversie: 1,
+      bevestigd: false,
+      twijfelWoord: v.twijfelWoord,
+      twijfelBetekenis: v.twijfelBetekenis,
+      bekeken: false,
+      volgorde: bestaand + i + 1,
+    }))
+    await echteDb.woordparen.bulkAdd(nieuwe)
+    return nieuwe
+  }
+
+  async function verwerkGeplakt() {
+    if (!plakken?.trim()) return
+    const { voorstellen, losseRegels } = verwerkRegels(regelsUitTekst(plakken))
+    await voegVoorstellenToe(voorstellen, null)
+    setPlakLos(losseRegels)
+    setPlakken(null)
+    setMelding(
+      voorstellen.length === 0
+        ? 'In de geplakte tekst vond ik geen woordparen. Zet op elke regel een woord, een = of een tab, en de betekenis.'
+        : null,
+    )
+    await laad()
+  }
+
+  async function losseRegelAlsPaar(tekst: string, bronpaginaId: string | null) {
+    await voegVoorstellenToe([{ woord: tekst, betekenis: '', twijfelWoord: 'geen', twijfelBetekenis: 'geen' }], bronpaginaId)
+    await laad()
+  }
+
+  async function verplaats(pagina: Bronpagina, richting: -1 | 1) {
+    const ander = paginas.find((p) => p.volgorde === pagina.volgorde + richting)
+    if (!ander) return
+    await echteDb.bronpaginas.update(pagina.id, { volgorde: ander.volgorde })
+    await echteDb.bronpaginas.update(ander.id, { volgorde: pagina.volgorde })
+    await laad()
+  }
+
+  async function draaiPagina(pagina: Bronpagina) {
+    if (!pagina.foto) return
+    const foto = await draai(pagina.foto)
+    await echteDb.bronpaginas.update(pagina.id, { foto })
+    await opnieuw({ ...pagina, foto })
+  }
+
+  async function verwijderPagina(pagina: Bronpagina) {
+    if (!window.confirm(`Pagina ${pagina.volgorde} verwijderen? Woordparen die nog niet bevestigd zijn, verdwijnen ook.`)) return
+    await echteDb.transaction('rw', echteDb.bronpaginas, echteDb.woordparen, async () => {
+      await echteDb.woordparen.where('bronpaginaId').equals(pagina.id).filter((wp) => !wp.bevestigd).delete()
+      await echteDb.woordparen.where('bronpaginaId').equals(pagina.id).modify({ bronpaginaId: null })
+      await echteDb.bronpaginas.delete(pagina.id)
+      const rest = (await echteDb.bronpaginas.where('bronId').equals(bronId).toArray()).sort((a, b) => a.volgorde - b.volgorde)
+      for (const [i, p] of rest.entries()) await echteDb.bronpaginas.update(p.id, { volgorde: i + 1 })
+    })
+    await laad()
+  }
+
+  async function samenvoegen(wp: Woordpaar, volgende: Woordpaar) {
+    const paar = voegSamen(wp, volgende)
+    await echteDb.woordparen.update(wp.id, { ...paar, bekeken: true })
+    await echteDb.woordparen.delete(volgende.id)
     await laad()
   }
 
@@ -298,6 +388,41 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
           />
         </label>
         <p className="gedempt">Maximaal {MAX_PAGINAS_PER_KEER} pagina's per keer. De foto blijft op deze telefoon.</p>
+        {plakken === null ? (
+          <button className="link" onClick={() => setPlakken('')}>
+            📋 Of plak de tekst van een woordenlijst
+          </button>
+        ) : (
+          <div className="plakken">
+            <label className="label" htmlFor="plak">
+              Plak hier de woordenlijst. Zet op elke regel een woord en de betekenis, met een = of een tab ertussen.
+            </label>
+            <textarea id="plak" className="invoer" rows={6} value={plakken} onChange={(e) => setPlakken(e.target.value)} placeholder={'bridge = brug\ncloud = wolk'} />
+            <div className="knoppen">
+              <button className="knop" disabled={plakken.trim() === ''} onClick={() => void verwerkGeplakt()}>
+                Verwerken
+              </button>
+              <button className="knop knop-rustig" onClick={() => setPlakken(null)}>
+                Annuleren
+              </button>
+            </div>
+          </div>
+        )}
+        {plakLos.length > 0 && (
+          <details>
+            <summary className="gedempt">{plakLos.length} geplakte regels zonder woordpaar</summary>
+            <ul>
+              {plakLos.map((r, i) => (
+                <li key={i} className="gedempt">
+                  {r}{' '}
+                  <button className="link" onClick={() => void losseRegelAlsPaar(r, null).then(() => setPlakLos((l) => l.filter((_, j) => j !== i)))}>
+                    + als woordpaar
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
 
         {bezig && (
           <div className="feedback" role="status">
@@ -321,7 +446,43 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
           <ul className="paginas">
             {paginas.map((p) => (
               <li key={p.id}>
-                <span>Pagina {p.volgorde}</span> <span className="gedempt">{STATUSTEKST[p.status]}</span>
+                <div className="pagina-kop">
+                  <span>
+                    Pagina {p.volgorde} <span className="gedempt">{STATUSTEKST[p.status]}</span>
+                  </span>
+                  <span className="pagina-acties">
+                    <button className="icoonknop" aria-label="Pagina omhoog" disabled={p.volgorde === 1} onClick={() => void verplaats(p, -1)}>
+                      ↑
+                    </button>
+                    <button
+                      className="icoonknop"
+                      aria-label="Pagina omlaag"
+                      disabled={p.volgorde === paginas.length}
+                      onClick={() => void verplaats(p, 1)}
+                    >
+                      ↓
+                    </button>
+                    {p.foto && p.status !== 'bevestigd' && (
+                      <button className="icoonknop" aria-label="Foto een kwartslag draaien en opnieuw herkennen" disabled={bezig !== null} onClick={() => void draaiPagina(p)}>
+                        ⟳
+                      </button>
+                    )}
+                    <button className="icoonknop" aria-label="Pagina verwijderen" disabled={bezig !== null} onClick={() => void verwijderPagina(p)}>
+                      🗑
+                    </button>
+                  </span>
+                </div>
+                <label className="paginanummer">
+                  <span className="gedempt">Bladzijde in het boek</span>
+                  <input
+                    className="invoer"
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    defaultValue={p.origineelNummer ?? ''}
+                    onBlur={(e) => void echteDb.bronpaginas.update(p.id, { origineelNummer: e.target.value ? Number(e.target.value) : null })}
+                  />
+                </label>
                 {p.melding && <p className="gedempt">{p.melding}</p>}
                 {p.status !== 'bevestigd' && p.foto && (
                   <button className="link" disabled={bezig !== null} onClick={() => void opnieuw(p)}>
@@ -334,7 +495,17 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
                     <ul>
                       {p.losseRegels.map((r, i) => (
                         <li key={i} className="gedempt">
-                          {r}
+                          {r}{' '}
+                          <button
+                            className="link"
+                            onClick={() =>
+                              void echteDb.bronpaginas
+                                .update(p.id, { losseRegels: p.losseRegels.filter((_, j) => j !== i) })
+                                .then(() => losseRegelAlsPaar(r, p.id))
+                            }
+                          >
+                            + als woordpaar
+                          </button>
                         </li>
                       ))}
                     </ul>
@@ -364,7 +535,8 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
             )}
           </p>
           <ul className="controle">
-            {open.map((wp) => {
+            {open.map((wp, index) => {
+              const volgende = open[index + 1]
               const twijfel = wp.twijfelWoord !== 'geen' || wp.twijfelBetekenis !== 'geen'
               return (
                 <li key={wp.id} id={`woordpaar-${wp.id}`} className={twijfel && !wp.bekeken ? 'met-twijfel' : ''}>
@@ -398,10 +570,43 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
                         ✓ Klopt
                       </button>
                     )}
+                    <button className="link" onClick={() => setSplitsen(splitsen === wp.id ? null : wp.id)}>
+                      Splitsen
+                    </button>
+                    {volgende && (
+                      <button className="link" onClick={() => void samenvoegen(wp, volgende)}>
+                        Samenvoegen met volgende
+                      </button>
+                    )}
                     <button className="link" onClick={() => void verwijder(wp)}>
                       Verwijderen
                     </button>
                   </div>
+                  {splitsen === wp.id && (
+                    <div className="splitsen">
+                      <p className="gedempt">Tik op het woord waar de Nederlandse betekenis begint:</p>
+                      <div className="splits-woorden">
+                        {splitsbareWoorden(wp).map((w, i) =>
+                          i === 0 ? (
+                            <span key={i} className="splits-woord vast">
+                              {w}
+                            </span>
+                          ) : (
+                            <button
+                              key={i}
+                              className="splits-woord"
+                              onClick={() => {
+                                void wijzig(wp, { ...splits(wp, i), bekeken: true })
+                                setSplitsen(null)
+                              }}
+                            >
+                              {w}
+                            </button>
+                          ),
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </li>
               )
             })}

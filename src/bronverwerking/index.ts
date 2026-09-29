@@ -188,3 +188,27 @@ export function verwerkRegels(regels: HerkendeRegel[]): Verwerking {
 
   return { voorstellen, losseRegels }
 }
+
+/**
+ * Geplakte tekst als herkende regels: elke regel met volle zekerheid. Tabs (bijvoorbeeld uit een
+ * spreadsheet of tabel) worden kolommen, zodat ook vorm 2 werkt.
+ */
+export function regelsUitTekst(tekst: string): HerkendeRegel[] {
+  const hoogte = 20
+  return tekst
+    .split(/\r?\n/)
+    .map((regel, i) => {
+      let x = 0
+      const woorden: HerkendWoord[] = []
+      for (const kolom of regel.split('\t')) {
+        for (const t of kolom.trim().split(/\s+/).filter(Boolean)) {
+          woorden.push({ tekst: t, zekerheid: 100, x0: x, x1: x + t.length * 10, y0: i * 30, y1: i * 30 + hoogte })
+          x += t.length * 10 + 8
+        }
+        // Een tab is een grote opening: een nieuwe kolom.
+        x += hoogte * 10
+      }
+      return { woorden }
+    })
+    .filter((r) => r.woorden.length > 0)
+}

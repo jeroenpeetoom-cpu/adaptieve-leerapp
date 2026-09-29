@@ -625,3 +625,76 @@ select.invoer {
 .steuntje ul {
   padding-left: 1.2rem;
 }
+
+.pagina-kop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.pagina-acties {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.icoonknop {
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  font-size: 1.1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: var(--achtergrond);
+  color: var(--tekst);
+  cursor: pointer;
+}
+
+.icoonknop:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.paginanummer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.paginanummer .invoer {
+  width: 5rem;
+  padding: 0.3rem 0.5rem;
+  font-size: 1rem;
+}
+
+.plakken textarea {
+  font-size: 1rem;
+  resize: vertical;
+}
+
+.splitsen {
+  margin-top: 0.5rem;
+}
+
+.splits-woorden {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.splits-woord {
+  font: inherit;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  background: var(--achtergrond);
+  color: var(--tekst);
+  cursor: pointer;
+}
+
+.splits-woord.vast {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--gedempt);
+  cursor: default;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { verwerkRegels, type HerkendeRegel, type HerkendWoord } from './index'
+import { regelsUitTekst, verwerkRegels, type HerkendeRegel, type HerkendWoord } from './index'
 
 const H = 20 // letterhoogte
 
@@ -179,5 +179,26 @@ describe('ruis en lege invoer', () => {
     const { voorstellen, losseRegels } = verwerkRegels([regel(tekst(0, 0, 'Reken uit')), regel(tekst(0, 40, 'Maak de som af'))])
     expect(voorstellen).toEqual([])
     expect(losseRegels).toEqual(['Reken uit', 'Maak de som af'])
+  })
+})
+
+describe('geplakte tekst', () => {
+  it('verwerkt regels met een scheidingsteken', () => {
+    expect(paren(regelsUitTekst('bridge = brug\ncloud - wolk\n\n'))).toEqual([
+      ['bridge', 'brug'],
+      ['cloud', 'wolk'],
+    ])
+  })
+
+  it('verwerkt kolommen gescheiden door tabs, zoals uit een tabel', () => {
+    expect(paren(regelsUitTekst('colour\tkleur\ncountry\tland\nkind of music\tsoort muziek'))).toEqual([
+      ['colour', 'kleur'],
+      ['country', 'land'],
+      ['kind of music', 'soort muziek'],
+    ])
+  })
+
+  it('houdt woorden zonder tab of teken bij elkaar als losse regel', () => {
+    expect(verwerkRegels(regelsUitTekst('colour kleur')).losseRegels).toEqual(['colour kleur'])
   })
 })
