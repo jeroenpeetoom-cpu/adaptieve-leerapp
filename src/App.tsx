@@ -25,6 +25,7 @@ export default function App() {
       )}
       {scherm.soort === 'bron' && <BronScherm bronId={scherm.bronId} onTerug={naarStart} />}
       {scherm.soort === 'test' && <Testfunctie onTerug={naarStart} />}
+      <p className="versie">Versie {__APP_VERSIE__}</p>
     </main>
   )
 }
