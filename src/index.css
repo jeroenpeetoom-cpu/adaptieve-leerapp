@@ -1068,3 +1068,26 @@ select.invoer {
 .sessie .vraag {
   margin: 0.4rem 0 0.6rem;
 }
+
+.emoji-keuzes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.emoji-keuze {
+  font-size: 1.6rem;
+  min-width: 2.8rem;
+  min-height: 2.8rem;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: var(--achtergrond);
+  cursor: pointer;
+}
+
+.emoji-keuze.gekozen {
+  border-color: var(--accent);
+  background: rgba(245, 185, 66, 0.15);
+}

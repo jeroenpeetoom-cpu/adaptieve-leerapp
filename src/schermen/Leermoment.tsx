@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Leeritem, PlekGegevens, Strategie } from '../leerlogica'
 import type { Geheugenbeeld, Kaart } from '../bronnen/model'
 import { MAX_PLEKKEN, MIN_PLEKKEN, type RouteStand } from '../bronnen/routes'
 import { Voorleesknop } from '../weergave/voorlezen'
 import { KaartUitsnede } from './KaartUitsnede'
-import { voorstelVoorPlek, voorstelVoorWoord, type Beeldvoorstel, type EmojiRegister } from '../beelden/voorstel'
+import { emojiVoor, voorstelVoorPlek, voorstelVoorWoord, type Beeldvoorstel, type EmojiRegister } from '../beelden/voorstel'
 
 const TAALNAAM = { en: 'Engels', nl: 'Nederlands' } as const
 const PLAATJE_MAX = 512
@@ -133,6 +133,25 @@ export function Leermoment({
   const [voorstel, setVoorstel] = useState<Beeldvoorstel | null>(null)
   const [voorstelNummer, setVoorstelNummer] = useState(0)
   const [voorstelGebruikt, setVoorstelGebruikt] = useState(false)
+  const [emojiKeuzes, setEmojiKeuzes] = useState<string[]>([])
+
+  // Voorgestelde emoji bij de betekenis (of de plaatsnaam), meteen zichtbaar om aan te tikken.
+  useEffect(() => {
+    let actief = true
+    void import('../beelden/emoji-register.json').then(({ default: r }) => {
+      if (!actief) return
+      const register = r as unknown as EmojiRegister
+      const betekenis = item.oefenrichting.van === 'nl' ? item.vraag : item.toegestaneAntwoorden[0]
+      const woord = item.oefenrichting.van === 'nl' ? item.toegestaneAntwoorden[0] : item.vraag
+      const keuzes = topo
+        ? emojiVoor(item.toegestaneAntwoorden[0], register.nl, 4)
+        : [...new Set([...emojiVoor(betekenis, register.nl, 4), ...emojiVoor(woord, register.en, 4)])].slice(0, 5)
+      setEmojiKeuzes(keuzes)
+    })
+    return () => {
+      actief = false
+    }
+  }, [item, topo])
 
   /** Een emoji-voorstel met een gek zinnetje, als de leerling zelf geen beeld kan bedenken (vraag 49). */
   async function helpMetBeeld() {
@@ -390,6 +409,16 @@ export function Leermoment({
         Emoji erbij? <span className="gedempt">(mag, hoeft niet)</span>
       </label>
       <input id="emoji" className="invoer emoji-invoer" value={emoji} onChange={(e) => setEmoji(e.target.value)} maxLength={12} />
+      {emojiKeuzes.length > 0 && (
+        <div className="emoji-keuzes" role="group" aria-label="Voorgestelde emoji">
+          <span className="gedempt">Tik er een aan:</span>
+          {emojiKeuzes.map((e) => (
+            <button key={e} type="button" className={`emoji-keuze ${emoji.includes(e) ? 'gekozen' : ''}`} onClick={() => setEmoji(emoji.includes(e) ? emoji.replace(e, '') : `${emoji}${e}`)}>
+              {e}
+            </button>
+          ))}
+        </div>
+      )}
       <label className="knop knop-rustig plaatje-knop">
         🖼️ {plaatje ? 'Ander plaatje kiezen' : 'Plaatje uit je galerij (mag, hoeft niet)'}
         <input
