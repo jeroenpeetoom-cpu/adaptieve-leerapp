@@ -27,3 +27,6 @@ Daarna volgen een specificatie en tickets.
 ## Besluiten
 
 - **Oefenkaart (vraag 40, bevestigd): de foto van de ingevulde kaart.** De app zoekt de afkortingen en hun plek, koppelt ze met de lijst van het werkblad aan namen, laat de leerling (bij voorkeur met een ouder) de plekken controleren en ontbrekende aantikken, en dekt daarna de afkortingen af zodat een blinde kaart met stipjes overblijft. Een lege kaart kan ook: dan worden alle plekken aangetikt. Afgewezen voor nu: een eigen kaart uit open kaartgegevens (Natural Earth), als reserve als deze aanpak in de praktijk tegenvalt.
+- **Wat oefenen per plek (vraag 41, bevestigd):** twee richtingen, elk een eigen leeritem met eigen voortgang: "Waar ligt …?" (de leerling tikt op de kaart) en "Wat ligt hier?" (de app laat een plek oplichten, de leerling zegt of typt de naam, met meerkeuze als opstap). Per hoofdstuk te kiezen, net als de oefenrichting bij woordenlijsten; standaard allebei.
+- **Planning voor een toets (vraag 42, bevestigd, geldt ook voor woordenlijsten):** zie de specificatie van de eerste versie, onder sessiesamenstelling.
+
