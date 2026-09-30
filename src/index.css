@@ -911,3 +911,40 @@ select.invoer {
   height: 2rem;
   font-size: 0.95rem;
 }
+
+.bron-regel {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.bron-regel .bron-knop {
+  flex: 1;
+}
+
+.icoonknop.verwijder {
+  min-width: 3rem;
+}
+
+.bron-knop.gepauzeerd {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  border-color: var(--accent);
+}
+
+.bron-knop-hoofd {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  background: none;
+  border: none;
+  color: var(--tekst);
+  font: inherit;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+  flex: 1;
+}

@@ -4,6 +4,7 @@ import { bronInfo, leeritemsVanBron } from '../bronnen/leeritems'
 import type { Bron, Plek, Woordpaar } from '../bronnen/model'
 import { STANDAARD_INSTELLINGEN } from '../leerlogica'
 import { echteDb } from '../opslag/database'
+import { verwijderBron } from '../opslag/verwijderen'
 import { Oefenroute } from './Oefenroute'
 
 const nu = () => new Date().toISOString()
@@ -71,7 +72,7 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
                   const klaar = eigen.filter((wp) => wp.bevestigd).length
                   const open = eigen.length - klaar
                   return (
-                    <li key={b.id}>
+                    <li key={b.id} className="bron-regel">
                       <button className="bron-knop" onClick={() => onOpenBron(b.id, b.soort === 'topo')}>
                         <strong>
                           {b.soort === 'topo' ? '🗺️ ' : '📝 '}
@@ -90,6 +91,16 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
                           )}
                           {b.afgerond && ' · afgerond'}
                         </span>
+                      </button>
+                      <button
+                        className="icoonknop verwijder"
+                        aria-label={`${b.naam} verwijderen`}
+                        onClick={() => {
+                          if (!window.confirm(`"${b.naam}" helemaal verwijderen, met je voortgang? Dit kan niet ongedaan worden gemaakt.`)) return
+                          void verwijderBron(echteDb, b.id).then(laad)
+                        }}
+                      >
+                        🗑
                       </button>
                     </li>
                   )

@@ -185,7 +185,7 @@ Een installeerbare website (PWA) op de Samsung Galaxy S22 van de leerling. De le
 - *(Vervangen)* **Aantal nieuwe leeritems en toetsdatum (bevestigd):** zonder toetsdatum maximaal 4 nieuwe leeritems per sessie. Met een toetsdatum in de toekomst worden de nieuwe leeritems die nog over zijn gelijk verdeeld over de dagen tot de toets: minstens 4 en hoogstens 10 per sessie.
 - Een leeritem dat in de sessie fout ging, komt aan het eind van de sessie één keer terug.
 - Na het eindpunt kan de leerling "nog een rondje" kiezen; dat stelt een nieuwe sessie samen met dezelfde regels.
-- Een sessie blijft na onderbreking hervatbaar.
+- Een sessie blijft na onderbreking hervatbaar. Er kunnen meerdere sessies tegelijk gepauzeerd zijn (bijvoorbeeld Engels en topo); Vandaag toont per lijst "Ga verder" of een nieuwe start, en een gepauzeerde sessie kan worden afgesloten zonder hem af te maken (wat al geoefend is, telt mee).
 - **Bron kiezen (op verzoek na de eerste echte sessies):** met meer dan één bron kiest de leerling op het startscherm welke bron hij oefent, of alles samen; "nog een rondje" blijft bij die keuze. Herhalingen van andere bronnen blijven zonder straf klaarstaan.
 - **Geen dubbele woorden:** hetzelfde woord in dezelfde richting (bijvoorbeeld uit twee bronnen) komt maar één keer in een sessie.
 

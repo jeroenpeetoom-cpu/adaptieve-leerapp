@@ -78,8 +78,13 @@ export class Database extends Dexie {
 
   /** De laatst bijgewerkte sessie die nog niet klaar is, om die te hervatten. */
   async openSessie(): Promise<OpgeslagenSessie | undefined> {
+    return (await this.openSessies())[0]
+  }
+
+  /** Alle gepauzeerde sessies, de laatst bijgewerkte eerst. Er kunnen er meerdere tegelijk zijn. */
+  async openSessies(): Promise<OpgeslagenSessie[]> {
     const open = await this.sessies.filter((s) => !s.klaar).toArray()
-    return open.sort((a, b) => b.bijgewerkt.localeCompare(a.bijgewerkt))[0]
+    return open.sort((a, b) => b.bijgewerkt.localeCompare(a.bijgewerkt))
   }
 
   async leesMeta<T>(sleutel: string, standaard: T): Promise<T> {

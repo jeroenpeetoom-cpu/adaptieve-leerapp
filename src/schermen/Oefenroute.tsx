@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import {
+  isKlaar,
   kalenderdag,
+  nogTeGaan,
   startSessie,
   stelSessieSamen,
   type BronInfo,
@@ -49,7 +51,7 @@ interface Props {
 export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, instellingen, leeg, boven, onder, onBezig }: Props) {
   const [pogingen, setPogingen] = useState<Poging[]>([])
   const [extraAntwoorden, setExtraAntwoorden] = useState<Record<string, string[]>>({})
-  const [openSessie, setOpenSessie] = useState<SessieToestand | null>(null)
+  const [openSessies, setOpenSessies] = useState<SessieToestand[]>([])
   const [weergave, setWeergaveIntern] = useState<Weergave>({ soort: 'overzicht' })
   const [melding, setMelding] = useState<string | null>(null)
   const [beelden, setBeelden] = useState<Geheugenbeeld[]>([])
@@ -78,10 +80,10 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     setLaatsteReflectie(await db.leesMeta<Reflectie | null>('laatsteReflectie', null))
     setStrategiePerBron(await db.leesMeta<Record<string, Strategie | 'geen'>>('strategiePerBron', {}))
     setVoorgedaan(await db.leesMeta<Strategie[]>('voorgedaan', []))
-    const open = await db.openSessie()
+    const open = await db.openSessies()
     // Een gepauzeerde sessie uit een oudere versie van de app is niet te hervatten; die sluiten we af.
-    if (open && !('vorm' in open.toestand)) await db.slaSessieOp(open.toestand, true, open.bijgewerkt)
-    setOpenSessie(open && 'vorm' in open.toestand ? open.toestand : null)
+    for (const o of open.filter((o) => !('vorm' in o.toestand))) await db.slaSessieOp(o.toestand, true, o.bijgewerkt)
+    setOpenSessies(open.filter((o) => 'vorm' in o.toestand && !isKlaar(o.toestand)).map((o) => o.toestand))
   }, [db])
 
   useEffect(() => {
@@ -111,6 +113,31 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
   const perBron = [...new Set(leeritems.map((i) => i.bronId))]
     .map((bronId) => ({ bronId, s: samenstellingVoor(bronId) }))
     .filter(({ s }) => totaal(s) > 0)
+
+  /** De bronnen in een sessie; een gepauzeerde sessie hoort bij één lijst of bij "alles samen". */
+  const bronnenVan = (t: SessieToestand) => [...new Set(t.leeritems.map((i) => i.bronId))]
+  const gepauzeerdVoor = (bronId: string) => openSessies.find((t) => bronnenVan(t).length === 1 && bronnenVan(t)[0] === bronId)
+  const gepauzeerdSamen = openSessies.filter((t) => bronnenVan(t).length > 1)
+
+  async function sluitAf(t: SessieToestand) {
+    // Wat al geoefend is, is al opgeslagen en telt gewoon mee.
+    await db.slaSessieOp(t, true, nu())
+    setOpenSessies((o) => o.filter((x) => x.sessieId !== t.sessieId))
+  }
+
+  const hervatKnop = (t: SessieToestand, titel: string) => (
+    <li key={t.sessieId}>
+      <div className="bron-knop gepauzeerd">
+        <button className="bron-knop-hoofd" onClick={() => setWeergave({ soort: 'sessie', toestand: t })}>
+          <strong>{titel}</strong>
+          <span className="gedempt">⏸ Ga verder · nog {nogTeGaan(t)}</span>
+        </button>
+        <button className="link" onClick={() => void sluitAf(t)}>
+          Afsluiten
+        </button>
+      </div>
+    </li>
+  )
 
   /** Korte omschrijving van wat er klaarstaat, met de geschatte duur. */
   const omschrijving = (s: typeof samenstelling) => {
@@ -255,31 +282,34 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
         <h2>Vandaag</h2>
         {basis.length === 0 ? (
           leeg
-        ) : openSessie ? (
-          <>
-            <p>Je hebt een sessie gepauzeerd.</p>
-            <button className="knop" onClick={() => setWeergave({ soort: 'sessie', toestand: openSessie })}>
-              Ga verder
-            </button>
-          </>
-        ) : perBron.length > 1 ? (
+        ) : perBron.length + openSessies.length > 1 ? (
           <>
             <p>Welke lijst wil je oefenen?</p>
             <ul className="bronkeuze">
-              {perBron.map(({ bronId, s }) => (
-                <li key={bronId}>
-                  <button className="bron-knop" onClick={() => startNieuweSessie(bronId)}>
-                    <strong>{bronnamen[bronId] ?? 'Bron'}</strong>
-                    <span className="gedempt">{omschrijving(s)}</span>
-                    {s.langer && <span className="gedempt">📅 toets op komst: wat langer vandaag</span>}
-                  </button>
-                </li>
-              ))}
+              {gepauzeerdSamen.map((t) => hervatKnop(t, 'Alles samen'))}
+              {[...new Set([...perBron.map((p) => p.bronId), ...openSessies.flatMap((t) => (bronnenVan(t).length === 1 ? bronnenVan(t) : []))])].map((bronId) => {
+                const gepauzeerd = gepauzeerdVoor(bronId)
+                if (gepauzeerd) return hervatKnop(gepauzeerd, bronnamen[bronId] ?? 'Bron')
+                const s = perBron.find((p) => p.bronId === bronId)!.s
+                return (
+                  <li key={bronId}>
+                    <button className="bron-knop" onClick={() => startNieuweSessie(bronId)}>
+                      <strong>{bronnamen[bronId] ?? 'Bron'}</strong>
+                      <span className="gedempt">{omschrijving(s)}</span>
+                      {s.langer && <span className="gedempt">📅 toets op komst: wat langer vandaag</span>}
+                    </button>
+                  </li>
+                )
+              })}
             </ul>
-            <button className="knop knop-rustig" onClick={() => startNieuweSessie(null)}>
-              Alles samen ({aantal} {aantal === 1 ? 'woord' : 'woorden'})
-            </button>
+            {aantal > 0 && gepauzeerdSamen.length === 0 && (
+              <button className="knop knop-rustig" onClick={() => startNieuweSessie(null)}>
+                Alles samen ({aantal} {aantal === 1 ? 'woord' : 'woorden'})
+              </button>
+            )}
           </>
+        ) : openSessies.length === 1 ? (
+          <ul className="bronkeuze">{hervatKnop(openSessies[0], bronnamen[bronnenVan(openSessies[0])[0]] ?? 'Je sessie')}</ul>
         ) : aantal > 0 ? (
           <>
             <p>
