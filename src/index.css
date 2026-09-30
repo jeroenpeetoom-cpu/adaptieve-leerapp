@@ -836,3 +836,14 @@ select.invoer {
 .fotoknoppen {
   margin: 0.25rem 0 0.75rem;
 }
+
+.afdekvak {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px dashed #000;
+  pointer-events: none;
+}
+
+.kaartbeeld.afdekstand {
+  touch-action: none;
+}

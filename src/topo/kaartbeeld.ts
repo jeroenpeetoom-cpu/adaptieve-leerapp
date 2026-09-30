@@ -24,7 +24,9 @@ export async function dekAf(dataUrl: string, stukken: Rechthoek[]): Promise<stri
   const ctx = canvas.getContext('2d', { willReadFrequently: true })!
   ctx.drawImage(img, 0, 0)
   for (const r of stukken) {
-    const marge = 3
+    // Ruime rand: de herkenning meet de letters vaak net te krap (de B van "Be" bleef staan).
+    const hoogte = (r.y1 - r.y0) * canvas.height
+    const marge = Math.max(3, Math.round(hoogte * 0.3))
     const x0 = Math.max(0, Math.floor(r.x0 * canvas.width) - marge)
     const y0 = Math.max(0, Math.floor(r.y0 * canvas.height) - marge)
     const x1 = Math.min(canvas.width, Math.ceil(r.x1 * canvas.width) + marge)

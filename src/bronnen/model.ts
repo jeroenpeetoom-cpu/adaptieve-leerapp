@@ -96,10 +96,14 @@ export interface Kaart {
   bronId: string
   /** De kaart als verkleinde JPEG; na bevestigen de blinde versie, zonder afkortingen. */
   beeld: string
+  /** De oorspronkelijke kaart, om de blinde kaart opnieuw te kunnen maken (afdekken en ongedaan maken). */
+  origineel?: string
+  /** Alle tekst die de herkenning op de kaart vond; die wordt allemaal afgedekt. */
+  tekstvakken?: Rechthoek[]
   breedte: number
   hoogte: number
   blind: boolean
-  /** Afgedekte stukken, om de blinde kaart opnieuw te kunnen maken. */
+  /** Stukken die de leerling zelf afdekte, bijvoorbeeld handschrift. */
   afgedekt: Rechthoek[]
 }
 

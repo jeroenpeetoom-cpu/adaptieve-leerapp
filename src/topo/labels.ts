@@ -31,3 +31,15 @@ export function vakRond(x: number, y: number, voorbeelden: Rechthoek[]): Rechtho
 }
 
 export const midden = (r: Rechthoek) => ({ x: (r.x0 + r.x1) / 2, y: (r.y0 + r.y1) / 2 })
+
+/**
+ * Alle tekst op de kaart die afgedekt moet worden: elk herkend stukje met minstens één letter dat klein
+ * genoeg is om een naam of afkorting te zijn (geen hele zinnen of de titel). Handschrift wordt zo vaak
+ * ook gevonden; wat blijft staan, dekt de leerling zelf af.
+ */
+export function tekstOmAfTeDekken(labels: KaartLabel[]): Rechthoek[] {
+  return labels
+    .filter((l) => /\p{L}{2,}/u.test(l.tekst) && l.zekerheid >= 40)
+    .filter((l) => l.y1 - l.y0 < 0.035 && l.x1 - l.x0 < 0.25)
+    .map(({ x0, y0, x1, y1 }) => ({ x0, y0, x1, y1 }))
+}

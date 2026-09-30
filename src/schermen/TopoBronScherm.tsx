@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import type { Bron, Kaart, Plek, Plekrichting } from '../bronnen/model'
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react'
+import type { Bron, Kaart, Plek, Plekrichting, Rechthoek } from '../bronnen/model'
 import { controleerBestand, herkenMeermaals } from '../herkenning/herkenner'
 import { echteDb } from '../opslag/database'
 import { koppelAfkortingen } from '../topo/afkortingen'
 import { dekAf, naarJpeg } from '../topo/kaartbeeld'
-import { labelsUit, midden, vakRond } from '../topo/labels'
+import { labelsUit, midden, tekstOmAfTeDekken, vakRond } from '../topo/labels'
 import { leesWerkblad } from '../topo/werkblad'
 import { FotoKnoppen } from './FotoKnoppen'
 
@@ -23,29 +23,63 @@ export const PLEKRICHTINGEN: { label: string; waarde: Plekrichting[] }[] = [
 
 type Tikmodus = { soort: 'plaats'; plekId: string } | { soort: 'afdekken' } | null
 
-/** De kaart met genummerde stippen; tikken plaatst een plek of dekt tekst af. */
+/** De kaart met genummerde stippen. Tikken plaatst een plek; in de afdekstand trek je een vakje over tekst. */
 function KaartMetPlekken({
   kaart,
   plekken,
   gekozen,
-  afgedekt,
+  vakken,
   onTik,
+  onVak,
   onKies,
   groot,
 }: {
   kaart: Kaart
   plekken: Plek[]
   gekozen: string | null
-  afgedekt: { x: number; y: number }[]
+  /** Zelf afgedekte vakken, om te laten zien. */
+  vakken: Rechthoek[]
   onTik: ((x: number, y: number) => void) | null
+  /** In de afdekstand: het getrokken vakje (of een vakje rond een tik). */
+  onVak: ((vak: Rechthoek | { x: number; y: number }) => void) | null
   onKies: (plekId: string) => void
   groot: boolean
 }) {
+  const [slepen, setSlepen] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
+  const positie = (e: PointerEvent<HTMLDivElement>) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height }
+  }
   return (
     <div className={`kaartvenster ${groot ? 'groot' : ''}`}>
       <div
-        className={`kaartbeeld ${onTik ? 'tikbaar' : ''}`}
+        className={`kaartbeeld ${onTik || onVak ? 'tikbaar' : ''} ${onVak ? 'afdekstand' : ''}`}
+        onPointerDown={(e) => {
+          if (!onVak) return
+          e.currentTarget.setPointerCapture(e.pointerId)
+          const p = positie(e)
+          setSlepen({ x0: p.x, y0: p.y, x1: p.x, y1: p.y })
+        }}
+        onPointerMove={(e) => {
+          if (!onVak || !slepen) return
+          const p = positie(e)
+          setSlepen({ ...slepen, x1: p.x, y1: p.y })
+        }}
+        onPointerUp={(e) => {
+          if (onVak && slepen) {
+            const vak = {
+              x0: Math.min(slepen.x0, slepen.x1),
+              y0: Math.min(slepen.y0, slepen.y1),
+              x1: Math.max(slepen.x0, slepen.x1),
+              y1: Math.max(slepen.y0, slepen.y1),
+            }
+            setSlepen(null)
+            // Een tik zonder slepen wordt een vakje zo groot als een afkorting.
+            onVak(vak.x1 - vak.x0 < 0.01 && vak.y1 - vak.y0 < 0.01 ? { x: slepen.x0, y: slepen.y0 } : vak)
+          }
+        }}
         onClick={(e) => {
+          // Een klik, geen pointerup: na scrollen over de kaart komt er geen klik, dus geen per ongeluk geplaatste plek.
           if (!onTik) return
           const r = e.currentTarget.getBoundingClientRect()
           onTik((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height)
@@ -70,8 +104,13 @@ function KaartMetPlekken({
               </button>
             ),
         )}
-        {afgedekt.map((a, i) => (
-          <span key={i} className="afdekstip" style={{ left: `${a.x * 100}%`, top: `${a.y * 100}%` }} aria-hidden="true" />
+        {[...vakken, ...(slepen ? [{ x0: Math.min(slepen.x0, slepen.x1), y0: Math.min(slepen.y0, slepen.y1), x1: Math.max(slepen.x0, slepen.x1), y1: Math.max(slepen.y0, slepen.y1) }] : [])].map((v, i) => (
+          <span
+            key={i}
+            className="afdekvak"
+            style={{ left: `${v.x0 * 100}%`, top: `${v.y0 * 100}%`, width: `${(v.x1 - v.x0) * 100}%`, height: `${(v.y1 - v.y0) * 100}%` }}
+            aria-hidden="true"
+          />
         ))}
       </div>
     </div>
@@ -90,6 +129,15 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
   const [tikmodus, setTikmodus] = useState<Tikmodus>(null)
   const [groot, setGroot] = useState(false)
   const lijstRef = useRef<HTMLUListElement>(null)
+  const kaartRef = useRef<HTMLDivElement>(null)
+
+  /** Bij aantikken meteen naar de kaart, en daarna terug naar de plek in de lijst. */
+  function naarKaart() {
+    setTimeout(() => kaartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  }
+  function naarRegel(id: string) {
+    setTimeout(() => lijstRef.current?.querySelector(`[data-plek="${id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+  }
 
   const laad = useCallback(async () => {
     setBron((await echteDb.bronnen.get(bronId)) ?? null)
@@ -117,12 +165,16 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
       const k = await herkenMeermaals(kaartFoto, 'losse tekst', ['gewoon', 'grijs', 'rood'], (f, stap) =>
         setBezig({ fractie: 0.4 + f * 0.6, stap: `Kaart: ${stap.toLowerCase()}` }),
       )
-      const voorstel = koppelAfkortingen(labelsUit(k.varianten, k.breedte, k.hoogte), werkblad.plekken, werkblad.woorden)
+      const labels = labelsUit(k.varianten, k.breedte, k.hoogte)
+      const voorstel = koppelAfkortingen(labels, werkblad.plekken, werkblad.woorden)
+      const beeld = naarJpeg(k.canvas)
 
       const nieuweKaart: Kaart = {
         id: crypto.randomUUID(),
         bronId,
-        beeld: naarJpeg(k.canvas),
+        beeld,
+        origineel: beeld,
+        tekstvakken: tekstOmAfTeDekken(labels),
         breedte: k.breedte,
         hoogte: k.hoogte,
         blind: false,
@@ -204,33 +256,54 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
     await echteDb.plekken.add(plek)
     setPlekken((p) => [...p, plek])
     setTikmodus({ soort: 'plaats', plekId: plek.id })
+    naarKaart()
   }
 
   async function tik(x: number, y: number) {
-    if (!tikmodus || !kaart) return
+    if (tikmodus?.soort !== 'plaats') return
+    const plek = plekken.find((p) => p.id === tikmodus.plekId)
+    // Aantikken wijst de plek zelf aan (het stipje of de rivier); daar wordt niets afgedekt.
+    if (plek) await wijzig(plek, { x, y, alternatieven: [] })
+    setTikmodus(null)
+    naarRegel(tikmodus.plekId)
+  }
+
+  /** De blinde kaart opnieuw maken van het origineel, met alle af te dekken stukken. */
+  async function maakBlind(k: Kaart, afgedekt: Rechthoek[]) {
+    const stukken = [
+      ...plekken.flatMap((p) => (p.labelVak ? [p.labelVak] : [])),
+      ...(k.tekstvakken ?? []),
+      ...afgedekt,
+    ]
+    return dekAf(k.origineel ?? k.beeld, stukken)
+  }
+
+  async function vakAfdekken(vak: Rechthoek | { x: number; y: number }) {
+    if (!kaart) return
     const voorbeelden = plekken.flatMap((p) => (p.labelVak ? [p.labelVak] : []))
-    if (tikmodus.soort === 'plaats') {
-      const plek = plekken.find((p) => p.id === tikmodus.plekId)
-      // Wie aantikt, tikt de afkorting aan: die wordt straks ook afgedekt.
-      if (plek) await wijzig(plek, { x, y, labelVak: vakRond(x, y, voorbeelden), alternatieven: [] })
-      setTikmodus(null)
-    } else {
-      const afgedekt = [...kaart.afgedekt, vakRond(x, y, voorbeelden)]
-      setKaart({ ...kaart, afgedekt })
-      await echteDb.kaarten.update(kaart.id, { afgedekt })
-    }
+    const rechthoek = 'x0' in vak ? vak : vakRond(vak.x, vak.y, voorbeelden)
+    const afgedekt = [...kaart.afgedekt, rechthoek]
+    await bewaarAfgedekt(afgedekt)
+  }
+
+  async function bewaarAfgedekt(afgedekt: Rechthoek[]) {
+    if (!kaart) return
+    const bijgewerkt: Kaart = { ...kaart, afgedekt }
+    if (kaart.blind) bijgewerkt.beeld = await maakBlind(bijgewerkt, afgedekt)
+    setKaart(bijgewerkt)
+    await echteDb.kaarten.update(kaart.id, { afgedekt, beeld: bijgewerkt.beeld })
   }
 
   async function bevestig() {
     if (!kaart) return
-    const stukken = [...plekken.flatMap((p) => (p.labelVak ? [p.labelVak] : [])), ...kaart.afgedekt]
     setBezig({ fractie: 0.5, stap: 'Blinde kaart maken' })
-    const blind = await dekAf(kaart.beeld, stukken)
+    const blind = await maakBlind(kaart, kaart.afgedekt)
     await echteDb.transaction('rw', echteDb.kaarten, echteDb.plekken, async () => {
       await echteDb.kaarten.update(kaart.id, { beeld: blind, blind: true })
       await echteDb.plekken.where('bronId').equals(bronId).modify({ bevestigd: true })
     })
     setBezig(null)
+    setTikmodus(null)
     await laad()
   }
 
@@ -298,7 +371,8 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
           )}
           {tikmodus?.soort === 'plaats' && (
             <p className="feedback" role="status">
-              👆 Tik op de kaart waar <strong>{plekken.find((p) => p.id === tikmodus.plekId)?.naam || 'de nieuwe plek'}</strong> staat.{' '}
+              👆 Tik op de kaart waar <strong>{plekken.find((p) => p.id === tikmodus.plekId)?.naam || 'de nieuwe plek'}</strong> ligt: op
+              het stipje, de rivier of in het gebied.{' '}
               <button className="link" onClick={() => setTikmodus(null)}>
                 Annuleren
               </button>
@@ -306,27 +380,44 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
           )}
           {tikmodus?.soort === 'afdekken' && (
             <p className="feedback" role="status">
-              👆 Tik op tekst die nog zichtbaar is, zoals een naam die je erbij schreef. Die wordt afgedekt.{' '}
-              <button className="link" onClick={() => setTikmodus(null)}>
-                Klaar
-              </button>
+              ✎ Trek met je vinger een vakje over tekst die nog zichtbaar is, zoals een naam die je erbij schreef. Een korte tik
+              dekt een klein stukje af.
             </p>
           )}
-          <KaartMetPlekken
-            kaart={kaart}
-            plekken={bevestigd ? [] : plekken}
-            gekozen={gekozen}
-            afgedekt={bevestigd ? [] : kaart.afgedekt.map(midden)}
-            onTik={tikmodus ? (x, y) => void tik(x, y) : null}
-            onKies={(id) => {
-              setGekozen(id)
-              lijstRef.current?.querySelector(`[data-plek="${id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-            }}
-            groot={groot}
-          />
-          <button className="link" onClick={() => setGroot(!groot)}>
-            {groot ? '🔍 Kleiner' : '🔍 Groter (om beter te kunnen tikken)'}
-          </button>
+          <div ref={kaartRef}>
+            <KaartMetPlekken
+              kaart={kaart}
+              plekken={bevestigd ? [] : plekken}
+              gekozen={gekozen}
+              vakken={bevestigd ? [] : kaart.afgedekt}
+              onTik={tikmodus?.soort === 'plaats' ? (x, y) => void tik(x, y) : null}
+              onVak={tikmodus?.soort === 'afdekken' ? (v) => void vakAfdekken(v) : null}
+              onKies={(id) => {
+                setGekozen(id)
+                naarRegel(id)
+              }}
+              groot={groot}
+            />
+          </div>
+          <div className="knoppen">
+            <button className="link" onClick={() => setGroot(!groot)}>
+              {groot ? '🔍 Kleiner' : '🔍 Groter (om beter te kunnen tikken)'}
+            </button>
+            {tikmodus?.soort !== 'afdekken' ? (
+              <button className="link" onClick={() => setTikmodus({ soort: 'afdekken' })}>
+                ✎ Nog tekst zichtbaar? Afdekken
+              </button>
+            ) : (
+              <button className="link" onClick={() => setTikmodus(null)}>
+                ✓ Klaar met afdekken
+              </button>
+            )}
+            {kaart.afgedekt.length > 0 && (
+              <button className="link" onClick={() => void bewaarAfgedekt(kaart.afgedekt.slice(0, -1))}>
+                ↶ Ongedaan maken
+              </button>
+            )}
+          </div>
 
           {!bevestigd && (
             <>
@@ -349,7 +440,13 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
                         <input type="checkbox" checked={p.toetsstof} onChange={(e) => void wijzig(p, { toetsstof: e.target.checked })} />
                         Toetsstof
                       </label>
-                      <button className="link" onClick={() => setTikmodus({ soort: 'plaats', plekId: p.id })}>
+                      <button
+                        className="link"
+                        onClick={() => {
+                          setTikmodus({ soort: 'plaats', plekId: p.id })
+                          naarKaart()
+                        }}
+                      >
                         {p.x === null ? '👆 Aantikken' : 'Verplaatsen'}
                       </button>
                       <button
@@ -378,9 +475,6 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
               <div className="knoppen">
                 <button className="link" onClick={() => void voegToe()}>
                   + Plek toevoegen
-                </button>
-                <button className="link" onClick={() => setTikmodus({ soort: 'afdekken' })}>
-                  ✎ Nog tekst zichtbaar? Afdekken
                 </button>
               </div>
 
@@ -420,8 +514,8 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
           {bevestigd && (
             <>
               <p className="gedempt">
-                De afkortingen zijn afgedekt. Oefenen op deze kaart komt in de volgende versie van de app. Zie je nog een
-                afkorting? Laad de kaart dan opnieuw in.
+                De afkortingen zijn afgedekt. Zie je nog tekst, zoals een naam die je erbij schreef? Tik op "Afdekken" en trek
+                er een vakje over. Oefenen op deze kaart komt in de volgende versie van de app.
               </p>
               <button className="link" onClick={() => void opnieuw()}>
                 Kaart opnieuw inladen

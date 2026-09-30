@@ -23,3 +23,5 @@ Uitwerking:
 - Op de echte kaart en het echte werkblad: 24 van de 26 plekken automatisch gevonden; Gent en de Rijn moeten worden aangetikt. Lu, Ma en Br zijn dubbelzinnig en worden voorgelegd.
 - Een aangetikte plek krijgt een afdekvak zo groot als een gewone afkorting. Tekst die de herkenning niet zag (zoals een bijgeschreven naam), kan met "Afdekken" worden weggetikt.
 - De controle toont de plekken met nummers op de kaart; na bevestigen is alleen de blinde kaart te zien.
+- Na de eerste test op de S22: aantikken wijst alleen de plek aan (niets afdekken op die plek, zodat het stipje blijft); de app dekt alle kleine tekst af die de herkenning vond (niet alleen gekoppelde afkortingen), met een rand van 30% van de letterhoogte; de oorspronkelijke kaart wordt bewaard zodat de leerling ook na bevestigen met de vinger vakjes kan trekken over resterende tekst (zoals handschrift of "Ri") en kan ongedaan maken; bij aantikken springt het scherm naar de kaart en daarna terug naar de plek in de lijst.
+
