@@ -6,6 +6,7 @@ import type { Bron, Bronpagina, Woordpaar } from '../bronnen/model'
 import { controleerBestand, herken } from '../herkenning/herkenner'
 import { isInhoudelijkeWijziging, type Strategie } from '../leerlogica'
 import { echteDb } from '../opslag/database'
+import { verwijderBron } from '../opslag/verwijderen'
 import { legStrategieVast } from '../opslag/strategie'
 import { FotoKnoppen } from './FotoKnoppen'
 import { RICHTINGEN } from './NieuweBron'
@@ -700,6 +701,19 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
         {bron.afgerond && <p className="gedempt">Deze bron is afgerond: de woorden komen niet meer terug. Je voortgang is bewaard.</p>}
       </section>
 
+      <section className="kaart">
+        <h2>Bron verwijderen</h2>
+        <p className="gedempt">Verwijdert deze bron met alle woorden of plekken, de kaart, je beelden en je voortgang. Dit kan niet ongedaan worden gemaakt.</p>
+        <button
+          className="knop knop-rustig"
+          onClick={() => {
+            if (!window.confirm(`"${bron.naam}" helemaal verwijderen, met je voortgang? Dit kan niet ongedaan worden gemaakt.`)) return
+            void verwijderBron(echteDb, bronId).then(onTerug)
+          }}
+        >
+          🗑 Bron verwijderen
+        </button>
+      </section>
       <button className="link" onClick={onTerug}>
         ← Terug
       </button>

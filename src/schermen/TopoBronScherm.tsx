@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'rea
 import type { Bron, Kaart, Plek, Plekrichting, Rechthoek } from '../bronnen/model'
 import { controleerBestand, herkenMeermaals } from '../herkenning/herkenner'
 import { echteDb } from '../opslag/database'
+import { verwijderBron } from '../opslag/verwijderen'
 import { koppelAfkortingen } from '../topo/afkortingen'
 import { dekAf, naarJpeg } from '../topo/kaartbeeld'
 import { labelsUit, midden, tekstOmAfTeDekken, vakRond } from '../topo/labels'
@@ -525,6 +526,19 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
         </section>
       )}
 
+      <section className="kaart">
+        <h2>Bron verwijderen</h2>
+        <p className="gedempt">Verwijdert deze bron met alle woorden of plekken, de kaart, je beelden en je voortgang. Dit kan niet ongedaan worden gemaakt.</p>
+        <button
+          className="knop knop-rustig"
+          onClick={() => {
+            if (!window.confirm(`"${bron.naam}" helemaal verwijderen, met je voortgang? Dit kan niet ongedaan worden gemaakt.`)) return
+            void verwijderBron(echteDb, bronId).then(onTerug)
+          }}
+        >
+          🗑 Bron verwijderen
+        </button>
+      </section>
       <button className="link" onClick={onTerug}>
         ← Terug
       </button>
