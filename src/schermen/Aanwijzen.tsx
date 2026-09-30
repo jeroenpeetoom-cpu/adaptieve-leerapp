@@ -86,6 +86,39 @@ export function Aanwijzen({ item, kaart, vorm, hulp, afgesloten, laatste, leermo
         {vorm === 'meerkeuze' && !afgesloten ? ' · tik op de goede letter' : ' · tik op de kaart'}
       </p>
 
+      {feedback && (
+        <div className={`feedback feedback-${(laatste?.oordeel ?? 'hint').replace(' ', '-')}`} role="status">
+          <p>{feedback}</p>
+        </div>
+      )}
+
+      {afgesloten || leermoment ? (
+        <button className="knop" onClick={onVolgende} autoFocus>
+          Volgende
+        </button>
+      ) : (
+        <div className="knoppen">
+          <button className="knop knop-rustig" disabled={bezig} onClick={() => onAntwoord(null, 'niet geweten')}>
+            Weet ik niet
+          </button>
+          <button className="knop knop-rustig" aria-expanded={hulpOpen} disabled={bezig || hulp === 'na voorbeeld'} onClick={() => setHulpOpen(!hulpOpen)}>
+            Hulp
+          </button>
+        </div>
+      )}
+      {hulpOpen && !afgesloten && !leermoment && (
+        <div className="hulpmenu" role="group" aria-label="Kies hulp">
+          <button type="button" className="knop knop-rustig" disabled={hulp !== 'vrij opgehaald'} onClick={() => (onHulp('met hint'), setHulpOpen(false))}>
+            Geef een hint
+          </button>
+          <button type="button" className="knop knop-rustig" onClick={() => (onHulp('herkend'), setHulpOpen(false))}>
+            Laat me kiezen uit vier plekken
+          </button>
+          <button type="button" className="knop knop-rustig" onClick={() => (onHulp('na voorbeeld'), setHulpOpen(false))}>
+            Laat zien waar het ligt
+          </button>
+        </div>
+      )}
       <div className={`kaartvenster ${groot ? 'groot' : ''}`}>
         <div
           className={`kaartbeeld ${!afgesloten && !leermoment && vorm !== 'meerkeuze' ? 'tikbaar' : ''}`}
@@ -125,39 +158,6 @@ export function Aanwijzen({ item, kaart, vorm, hulp, afgesloten, laatste, leermo
         {groot ? '🔍 Kleiner' : '🔍 Groter'}
       </button>
 
-      {feedback && (
-        <div className={`feedback feedback-${(laatste?.oordeel ?? 'hint').replace(' ', '-')}`} role="status">
-          <p>{feedback}</p>
-        </div>
-      )}
-
-      {afgesloten || leermoment ? (
-        <button className="knop" onClick={onVolgende} autoFocus>
-          Volgende
-        </button>
-      ) : (
-        <div className="knoppen">
-          <button className="knop knop-rustig" disabled={bezig} onClick={() => onAntwoord(null, 'niet geweten')}>
-            Weet ik niet
-          </button>
-          <button className="knop knop-rustig" aria-expanded={hulpOpen} disabled={bezig || hulp === 'na voorbeeld'} onClick={() => setHulpOpen(!hulpOpen)}>
-            Hulp
-          </button>
-        </div>
-      )}
-      {hulpOpen && !afgesloten && !leermoment && (
-        <div className="hulpmenu" role="group" aria-label="Kies hulp">
-          <button type="button" className="knop knop-rustig" disabled={hulp !== 'vrij opgehaald'} onClick={() => (onHulp('met hint'), setHulpOpen(false))}>
-            Geef een hint
-          </button>
-          <button type="button" className="knop knop-rustig" onClick={() => (onHulp('herkend'), setHulpOpen(false))}>
-            Laat me kiezen uit vier plekken
-          </button>
-          <button type="button" className="knop knop-rustig" onClick={() => (onHulp('na voorbeeld'), setHulpOpen(false))}>
-            Laat zien waar het ligt
-          </button>
-        </div>
-      )}
     </>
   )
 }

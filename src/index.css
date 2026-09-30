@@ -948,3 +948,7 @@ select.invoer {
   cursor: pointer;
   flex: 1;
 }
+
+.sessie {
+  scroll-margin-top: 0.5rem;
+}

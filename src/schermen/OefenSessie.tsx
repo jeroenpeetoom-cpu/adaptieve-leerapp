@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import {
   beantwoord,
   bepaalAntwoordwijze,
@@ -124,6 +124,12 @@ export function OefenSessie({
   const [hulpOpen, setHulpOpen] = useState(false)
   const invoerRef = useRef<HTMLInputElement>(null)
   const insprekenTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const sessieRef = useRef<HTMLElement>(null)
+
+  // Bij elk nieuw leeritem naar de bovenkant van de vraag, zodat de leerling niet hoeft te scrollen.
+  useEffect(() => {
+    sessieRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [toestand.huidige])
   const ingesprokenRef = useRef(false)
   const [typMelding, setTypMelding] = useState(false)
 
@@ -250,7 +256,7 @@ export function OefenSessie({
   if (item.soort === 'plek' && item.plek) {
     const kaart = kaarten[item.plek.kaartId]
     return (
-      <section className="kaart">
+      <section className="kaart sessie" ref={sessieRef}>
         <Sterrenkaart
           totaal={toestand.leeritems.length}
           gedaan={toestand.huidige + (toestand.afgesloten ? 1 : 0)}
@@ -294,7 +300,7 @@ export function OefenSessie({
   }
 
   return (
-    <section className="kaart">
+    <section className="kaart sessie" ref={sessieRef}>
       <Sterrenkaart
         totaal={toestand.leeritems.length}
         gedaan={toestand.huidige + (toestand.afgesloten ? 1 : 0)}
