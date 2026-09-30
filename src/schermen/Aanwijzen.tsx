@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { Kaart } from '../bronnen/model'
 import {
   beoordeelTik,
@@ -13,6 +13,7 @@ import { Voorleesknop } from '../weergave/voorlezen'
 
 const SOORTNAAM = { stad: 'stad', water: 'water', gebied: 'gebied', land: 'land' } as const
 const LETTERS = ['A', 'B', 'C', 'D']
+const ZOOMSTAPPEN = [1, 1.5, 2.2, 3]
 
 function leesTik(antwoord: string | null): { x: number; y: number } | null {
   if (!antwoord) return null
@@ -42,7 +43,29 @@ interface Props {
 
 /** Aanwijzen: "Waar ligt …?" De leerling tikt op de blinde kaart. */
 export function Aanwijzen({ item, kaart, vorm, hulp, afgesloten, laatste, leermoment, bezig, andereOpties, zaad, hint, onAntwoord, onHulp, onVolgende }: Props) {
-  const [groot, setGroot] = useState(false)
+  const [zoom, setZoom] = useState(1)
+  const vensterRef = useRef<HTMLDivElement>(null)
+  /** Het midden van wat de leerling zag, zodat in- en uitzoomen daar blijft. */
+  const midden = useRef({ x: 0.5, y: 0.5 })
+
+  function zoomNaar(nieuw: number) {
+    const v = vensterRef.current
+    if (v) {
+      midden.current = {
+        x: (v.scrollLeft + v.clientWidth / 2) / v.scrollWidth,
+        y: (v.scrollTop + v.clientHeight / 2) / v.scrollHeight,
+      }
+    }
+    setZoom(nieuw)
+  }
+
+  useLayoutEffect(() => {
+    const v = vensterRef.current
+    if (!v) return
+    v.scrollLeft = midden.current.x * v.scrollWidth - v.clientWidth / 2
+    v.scrollTop = midden.current.y * v.scrollHeight - v.clientHeight / 2
+  }, [zoom])
+  const index = ZOOMSTAPPEN.indexOf(zoom)
   const [hulpOpen, setHulpOpen] = useState(false)
   const plek = item.plek!
   const verhouding = kaart.hoogte / kaart.breedte
@@ -121,9 +144,19 @@ export function Aanwijzen({ item, kaart, vorm, hulp, afgesloten, laatste, leermo
           </button>
         </div>
       )}
-      <div className={`kaartvenster ${groot ? 'groot' : ''}`}>
+      <div className="zoomknoppen" role="group" aria-label="Zoomen">
+        <button type="button" className="icoonknop" aria-label="Uitzoomen" disabled={index <= 0} onClick={() => zoomNaar(ZOOMSTAPPEN[index - 1])}>
+          −
+        </button>
+        <button type="button" className="icoonknop" aria-label="Inzoomen" disabled={index >= ZOOMSTAPPEN.length - 1} onClick={() => zoomNaar(ZOOMSTAPPEN[index + 1])}>
+          +
+        </button>
+        {zoom > 1 && <span className="gedempt">Schuif met je vinger over de kaart</span>}
+      </div>
+      <div className="kaartvenster" ref={vensterRef}>
         <div
           className={`kaartbeeld ${!afgesloten && !leermoment && vorm !== 'meerkeuze' ? 'tikbaar' : ''}`}
+          style={{ width: `${zoom * 100}%` }}
           onClick={(e) => {
             const r = e.currentTarget.getBoundingClientRect()
             kaartTik((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height)
@@ -156,9 +189,6 @@ export function Aanwijzen({ item, kaart, vorm, hulp, afgesloten, laatste, leermo
           ))}
         </div>
       </div>
-      <button className="link" onClick={() => setGroot(!groot)}>
-        {groot ? '🔍 Kleiner' : '🔍 Groter'}
-      </button>
 
     </>
   )
