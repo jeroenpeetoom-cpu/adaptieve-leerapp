@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { STANDAARD_INSTELLINGEN, stelSessieSamen, type BronInfo, type Leeritem, type Poging, type Tempo } from './index'
+import { STANDAARD_INSTELLINGEN, stelExtraSamen, stelSessieSamen, type BronInfo, type Leeritem, type Poging, type Tempo } from './index'
 
 const item = (id: string, bronId = 'b1'): Leeritem => ({
   id,
@@ -139,5 +139,21 @@ describe('planning voor een toets', () => {
     const toets = [bron({ toetsdag: '2026-10-10' })]
     expect(samen(woorden, pogingen, toets, '2026-10-10').repetitie).toEqual([])
     expect(samen(woorden, pogingen, toets, '2026-10-07').repetitie).toEqual([])
+  })
+})
+
+describe('extra oefenen', () => {
+  it('neemt eerst wat nog niet goed zit, dan wat het langst geleden is, en nooit iets ongeoefends', () => {
+    const fout = (id: string, dag: number): Poging => ({ ...geoefend(id, dag), id: `f-${id}`, oordeel: 'fout' })
+    const pogingen = [geoefend('goed-oud', 1), geoefend('goed-recent', 5), fout('lastig', 4)]
+    const items = [item('goed-oud'), item('goed-recent'), item('lastig'), item('nieuw')]
+    expect(ids(stelExtraSamen(items, pogingen, [bron()], STANDAARD_INSTELLINGEN, tempo))).toEqual(['lastig', 'goed-oud', 'goed-recent'])
+  })
+
+  it('blijft binnen de tijd en slaat afgeronde bronnen over', () => {
+    const veel = reeks(60, 'h')
+    const pogingen = veel.map((i) => geoefend(i.id))
+    expect(stelExtraSamen(veel, pogingen, [bron()], STANDAARD_INSTELLINGEN, tempo)).toHaveLength(36)
+    expect(stelExtraSamen(veel, pogingen, [bron({ afgerond: true })], STANDAARD_INSTELLINGEN, tempo)).toEqual([])
   })
 })

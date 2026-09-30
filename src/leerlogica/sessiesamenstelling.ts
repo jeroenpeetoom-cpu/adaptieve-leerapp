@@ -4,6 +4,7 @@ import type { Instellingen } from './instellingen'
 import { berekenTempo, type Tempo } from './tempo'
 import { dagenTussen, kalenderdag, telDagenOp } from './tijd'
 import type { Leeritem, Poging } from './types'
+import { berekenVoortgang } from './voortgang'
 
 export interface BronInfo {
   bronId: string
@@ -147,4 +148,28 @@ export function stelSessieSamen(
 
   const minuten = Math.ceil(gebruikt / 60)
   return { repetitie, herhalingen, nieuw, minuten, langer: gebruikt > budget + 30, tekort }
+}
+
+/**
+ * Extra oefenen als er vandaag niets meer klaarstaat: de leeritems die de leerling het minst goed kent
+ * (nog aan het leren eerst), en daarbinnen die hij het langst niet zag, zolang ze in de tijd passen.
+ * Omdat alleen de eerste poging per dag de herhaalplanning bepaalt, verstoort dit de planning niet.
+ */
+export function stelExtraSamen(
+  leeritems: Leeritem[],
+  pogingen: Poging[],
+  bronnen: BronInfo[],
+  instellingen: Instellingen,
+  tempo: Tempo = berekenTempo(pogingen, instellingen),
+): Leeritem[] {
+  const afgerond = new Set(bronnen.filter((b) => b.afgerond).map((b) => b.bronId))
+  const rang = { 'nog aan het leren': 0, 'zelf teruggehaald': 1, 'later nog geweten': 2 } as const
+  const laatst = (item: Leeritem) =>
+    pogingen.filter((p) => p.leeritemId === item.id).reduce((l, p) => (p.tijdstip > l ? p.tijdstip : l), '')
+  const geoefend = leeritems
+    .filter((i) => !afgerond.has(i.bronId) && pogingen.some((p) => p.leeritemId === i.id && p.bronversie === i.bronversie))
+    .map((i) => ({ i, r: rang[berekenVoortgang(i, pogingen, instellingen).status], l: laatst(i) }))
+    .sort((a, b) => a.r - b.r || a.l.localeCompare(b.l))
+  const aantal = Math.max(1, Math.floor((Math.min(instellingen.sessieMinuten, instellingen.maxSessieMinuten) * 60) / tempo.herhalingSec))
+  return geoefend.slice(0, aantal).map((x) => x.i)
 }

@@ -4,6 +4,7 @@ import {
   kalenderdag,
   nogTeGaan,
   startSessie,
+  stelExtraSamen,
   stelSessieSamen,
   type BronInfo,
   type Instellingen,
@@ -116,8 +117,8 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
   const totaal = (s: typeof samenstelling) => s.repetitie.length + s.herhalingen.length + s.nieuw.length
   const aantal = totaal(samenstelling)
   const perBron = [...new Set(leeritems.map((i) => i.bronId))]
+    .filter((bronId) => !bronnen.find((b) => b.bronId === bronId)?.afgerond)
     .map((bronId) => ({ bronId, s: samenstellingVoor(bronId) }))
-    .filter(({ s }) => totaal(s) > 0)
 
   /** De bronnen in een sessie; een gepauzeerde sessie hoort bij één lijst of bij "alles samen". */
   const bronnenVan = (t: SessieToestand) => [...new Set(t.leeritems.map((i) => i.bronId))]
@@ -169,9 +170,15 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
       </p>
     ) : null
 
+  /** Extra oefenen voor een lijst (of alles) als er vandaag niets meer klaarstaat. */
+  const extraVoor = (bronId: string | null) =>
+    stelExtraSamen(bronId === null ? leeritems : leeritems.filter((i) => i.bronId === bronId), pogingen, bronnen, instellingen)
+
   function startNieuweSessie(bronId: string | null = gekozenBron): boolean {
     const gekozen = samenstellingVoor(bronId)
-    const items = [...gekozen.repetitie, ...gekozen.herhalingen, ...gekozen.nieuw]
+    let items = [...gekozen.repetitie, ...gekozen.herhalingen, ...gekozen.nieuw]
+    // Niets meer aan de beurt: dan een extra ronde met wat het minst goed zit.
+    if (items.length === 0) items = extraVoor(bronId)
     if (items.length === 0) return false
     setGekozenBron(bronId)
     void leesPunten(db, instellingen).then((p) => (puntenBijStart.current = p))
@@ -285,9 +292,7 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
             onClick={() => {
               if (startNieuweSessie()) return
               setMelding(
-                gekozenBron !== null && aantal > 0
-                  ? 'Deze lijst is klaar voor vandaag. Tik op "Klaar voor vandaag" om een andere lijst te kiezen.'
-                  : 'Alles voor vandaag is klaar. Morgen komen er weer woorden terug.',
+                'Er is niets meer om te oefenen in deze lijst. Morgen komen er weer woorden terug.',
               )
             }}
           >
@@ -317,11 +322,13 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
                 const gepauzeerd = gepauzeerdVoor(bronId)
                 if (gepauzeerd) return hervatKnop(gepauzeerd, bronnamen[bronId] ?? 'Bron')
                 const s = perBron.find((p) => p.bronId === bronId)!.s
+                const klaarVoorVandaag = totaal(s) === 0
+                if (klaarVoorVandaag && extraVoor(bronId).length === 0) return null
                 return (
                   <li key={bronId}>
-                    <button className="bron-knop" onClick={() => startNieuweSessie(bronId)}>
+                    <button className={`bron-knop ${klaarVoorVandaag ? 'klaar' : ''}`} onClick={() => startNieuweSessie(bronId)}>
                       <strong>{bronnamen[bronId] ?? 'Bron'}</strong>
-                      <span className="gedempt">{omschrijving(s)}</span>
+                      <span className="gedempt">{klaarVoorVandaag ? '✓ Klaar voor vandaag · Extra oefenen' : omschrijving(s)}</span>
                       {s.langer && <span className="gedempt">📅 toets op komst: wat langer vandaag</span>}
                     </button>
                   </li>
@@ -348,7 +355,14 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
             </button>
           </>
         ) : (
-          <p>Alles voor vandaag is klaar. Morgen komen er weer woorden terug.</p>
+          <>
+            <p>Alles voor vandaag is klaar. Morgen komen er weer woorden terug.</p>
+            {extraVoor(null).length > 0 && (
+              <button className="knop knop-rustig" onClick={() => startNieuweSessie(null)}>
+                Extra oefenen
+              </button>
+            )}
+          </>
         )}
       </section>
       {onder?.({ pogingen, leeritems, vandaag })}

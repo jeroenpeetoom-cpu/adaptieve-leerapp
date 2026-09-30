@@ -187,6 +187,7 @@ Een installeerbare website (PWA) op de Samsung Galaxy S22 van de leerling. De le
 - Na het eindpunt kan de leerling "nog een rondje" kiezen; dat stelt een nieuwe sessie samen met dezelfde regels.
 - Een sessie blijft na onderbreking hervatbaar. Er kunnen meerdere sessies tegelijk gepauzeerd zijn (bijvoorbeeld Engels en topo); Vandaag toont per lijst "Ga verder" of een nieuwe start, en een gepauzeerde sessie kan worden afgesloten zonder hem af te maken (wat al geoefend is, telt mee).
 - **Bron kiezen (op verzoek na de eerste echte sessies):** met meer dan één bron kiest de leerling op het startscherm welke bron hij oefent, of alles samen; "nog een rondje" blijft bij die keuze. Herhalingen van andere bronnen blijven zonder straf klaarstaan.
+- **Extra oefenen (op verzoek):** een lijst waarvoor vandaag niets meer klaarstaat blijft zichtbaar met "Klaar voor vandaag · Extra oefenen". Een extra ronde bevat de geoefende leeritems die het minst goed zitten (nog aan het leren eerst), daarbinnen die het langst niet gezien zijn, binnen de sessieduur. Omdat alleen de eerste poging per dag de herhaalplanning bepaalt, verstoort extra oefenen de planning niet. "Nog een rondje" gebruikt dit als er niets meer aan de beurt is.
 - **Geen dubbele woorden:** hetzelfde woord in dezelfde richting (bijvoorbeeld uit twee bronnen) komt maar één keer in een sessie.
 
 ### Punten en ruimterang (vraag 51, bevestigd)

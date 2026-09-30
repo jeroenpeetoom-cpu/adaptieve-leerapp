@@ -1051,3 +1051,20 @@ select.invoer {
     transition: none;
   }
 }
+
+.bron-knop.klaar {
+  border-color: rgba(111, 208, 140, 0.5);
+}
+
+/* Compacter bovenin tijdens een sessie, zodat vraag en invulveld boven het toetsenbord passen. */
+.sessie .sterrenkaart {
+  margin-bottom: 0.25rem;
+}
+
+.sessie .voortgang {
+  font-size: 0.85rem;
+}
+
+.sessie .vraag {
+  margin: 0.4rem 0 0.6rem;
+}

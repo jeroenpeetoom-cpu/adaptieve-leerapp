@@ -130,9 +130,12 @@ export function OefenSessie({
   const insprekenTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sessieRef = useRef<HTMLElement>(null)
 
-  // Bij elk nieuw leeritem naar de bovenkant van de vraag, zodat de leerling niet hoeft te scrollen.
+  // Bij elk nieuw leeritem naar de bovenkant van de vraag, en pas daarna het invulveld selecteren zonder
+  // te scrollen; anders schuift de browser de vraag weg zodra het toetsenbord opengaat.
   useEffect(() => {
-    sessieRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    sessieRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' })
+    const t = setTimeout(() => invoerRef.current?.focus({ preventScroll: true }), 150)
+    return () => clearTimeout(t)
   }, [toestand.huidige])
   const ingesprokenRef = useRef(false)
   const [typMelding, setTypMelding] = useState(false)
@@ -176,7 +179,7 @@ export function OefenSessie({
       setAntwoord('')
       setHulpOpen(false)
     }
-    invoerRef.current?.focus()
+    invoerRef.current?.focus({ preventScroll: true })
   }
 
   async function ookGoed() {
@@ -192,7 +195,7 @@ export function OefenSessie({
   function hulp(soort: 'met hint' | 'herkend' | 'na voorbeeld') {
     setToestand(vraagHulp(toestand, soort))
     setHulpOpen(false)
-    setTimeout(() => invoerRef.current?.focus())
+    setTimeout(() => invoerRef.current?.focus({ preventScroll: true }))
   }
 
   async function naarVolgende() {
@@ -200,7 +203,7 @@ export function OefenSessie({
     await bewaar(nieuw, null, nu())
     if (isKlaar(nieuw)) return onKlaar(nieuw)
     setToestand(nieuw)
-    setTimeout(() => invoerRef.current?.focus())
+    setTimeout(() => invoerRef.current?.focus({ preventScroll: true }))
   }
 
   function controleer(e: FormEvent) {
@@ -289,7 +292,7 @@ export function OefenSessie({
     await bewaar(nieuw, null, nu())
     if (isKlaar(nieuw)) return onKlaar(nieuw)
     setToestand(nieuw)
-    setTimeout(() => invoerRef.current?.focus())
+    setTimeout(() => invoerRef.current?.focus({ preventScroll: true }))
   }
   const hintZichtbaar = !toestand.afgesloten && toestand.hulp === 'met hint' && !laatste
   const voorbeeldZichtbaar = !toestand.afgesloten && toestand.hulp === 'na voorbeeld'
@@ -489,7 +492,6 @@ export function OefenSessie({
             autoCorrect="off"
             spellCheck={false}
             lang={item.oefenrichting.naar}
-            autoFocus
           />
           <div className="knoppen">
             <button className="knop" type="submit" disabled={bezig || antwoord.trim() === ''}>
