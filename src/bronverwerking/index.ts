@@ -81,6 +81,11 @@ function vak(woorden: HerkendWoord[]): Tekstvak {
   }
 }
 
+/** De tekst van elk tekstvak in een regel, van links naar rechts, met positie. */
+export function tekstvakkenVan(regel: HerkendeRegel): { tekst: string; x0: number; y0: number; hoogte: number }[] {
+  return tekstvakken(regel).map((v) => ({ tekst: tekstVan(v.woorden), x0: v.x0, y0: Math.min(...v.woorden.map((w) => w.y0)), hoogte: v.hoogte }))
+}
+
 /** Splitst een herkende regel in tekstvakken bij grote horizontale openingen. */
 function tekstvakken(regel: HerkendeRegel): Tekstvak[] {
   const woorden = regel.woorden
