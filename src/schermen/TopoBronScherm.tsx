@@ -6,6 +6,7 @@ import { koppelAfkortingen } from '../topo/afkortingen'
 import { dekAf, naarJpeg } from '../topo/kaartbeeld'
 import { labelsUit, midden, vakRond } from '../topo/labels'
 import { leesWerkblad } from '../topo/werkblad'
+import { FotoKnoppen } from './FotoKnoppen'
 
 const SOORTEN: { waarde: Plek['soort']; label: string }[] = [
   { waarde: 'land', label: 'Land' },
@@ -254,16 +255,10 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
         {!kaart && (
           <>
             <p>Maak twee foto's: de kaart die je hebt ingevuld, en het werkblad met "Wat moet je leren?".</p>
-            <div className="knoppen">
-              <label className={`knop ${kaartFoto ? 'knop-rustig' : ''}`}>
-                {kaartFoto ? '✓ Kaart' : '📷 Foto van de kaart'}
-                <input type="file" accept="image/*" capture="environment" hidden onChange={(e) => setKaartFoto(e.target.files?.[0] ?? null)} />
-              </label>
-              <label className={`knop ${werkbladFoto ? 'knop-rustig' : ''}`}>
-                {werkbladFoto ? '✓ Werkblad' : '📷 Foto van het werkblad'}
-                <input type="file" accept="image/*" capture="environment" hidden onChange={(e) => setWerkbladFoto(e.target.files?.[0] ?? null)} />
-              </label>
-            </div>
+            <p className="label">1. De kaart {kaartFoto && <span className="gedempt">✓ {kaartFoto.name}</span>}</p>
+            <FotoKnoppen wat="de kaart" gekozen={kaartFoto !== null} uit={bezig !== null} onKies={(b) => b?.[0] && setKaartFoto(b[0])} />
+            <p className="label">2. Het werkblad {werkbladFoto && <span className="gedempt">✓ {werkbladFoto.name}</span>}</p>
+            <FotoKnoppen wat="het werkblad" gekozen={werkbladFoto !== null} uit={bezig !== null} onKies={(b) => b?.[0] && setWerkbladFoto(b[0])} />
             <p className="gedempt">Tips: goed licht, geen schaduw, telefoon recht boven de pagina. De foto's blijven op deze telefoon.</p>
             <div className="knoppen">
               <button className="knop" disabled={!kaartFoto || !werkbladFoto || bezig !== null} onClick={() => void herkennen()}>

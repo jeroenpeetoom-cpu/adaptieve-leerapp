@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { regelsUitTekst, verwerkRegels, type Twijfel, type Voorstel } from '../bronverwerking'
 import { splits, splitsbareWoorden, voegSamen } from '../bronnen/bewerken'
 import { kanBevestigen, nogTeBekijken } from '../bronnen/leeritems'
@@ -7,6 +7,7 @@ import { controleerBestand, herken } from '../herkenning/herkenner'
 import { isInhoudelijkeWijziging, type Strategie } from '../leerlogica'
 import { echteDb } from '../opslag/database'
 import { legStrategieVast } from '../opslag/strategie'
+import { FotoKnoppen } from './FotoKnoppen'
 import { RICHTINGEN } from './NieuweBron'
 
 const STRATEGIEKEUZES: { waarde: Strategie | 'geen'; label: string }[] = [
@@ -120,7 +121,6 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
   const [plakken, setPlakken] = useState<string | null>(null)
   const [plakLos, setPlakLos] = useState<string[]>([])
   const [splitsen, setSplitsen] = useState<string | null>(null)
-  const fotoRef = useRef<HTMLInputElement>(null)
 
   const laad = useCallback(async () => {
     setBron((await echteDb.bronnen.get(bronId)) ?? null)
@@ -197,7 +197,6 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
       await laad()
     }
     setBezig(null)
-    if (fotoRef.current) fotoRef.current.value = ''
   }
 
   async function opnieuw(pagina: Bronpagina) {
@@ -376,19 +375,7 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
         </p>
 
         <p>Tips: goed licht, geen schaduw, telefoon recht boven de pagina, alleen de woordenlijst in beeld.</p>
-        <label className={`knop ${bezig ? 'uit' : ''}`}>
-          📷 Foto van een pagina toevoegen
-          <input
-            ref={fotoRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            multiple
-            hidden
-            disabled={bezig !== null}
-            onChange={(e) => void fotosGekozen(e.target.files)}
-          />
-        </label>
+        <FotoKnoppen wat="een pagina" meerdere uit={bezig !== null} onKies={(b) => void fotosGekozen(b)} />
         <p className="gedempt">Maximaal {MAX_PAGINAS_PER_KEER} pagina's per keer. De foto blijft op deze telefoon.</p>
         {plakken === null ? (
           <button className="link" onClick={() => setPlakken('')}>
