@@ -37,6 +37,11 @@ describe('beoordeel', () => {
     expect(beoordeel('lucht', ['wolk'])).toBe('fout')
   })
 
+  it('negeert accenten als dat gevraagd wordt, bijvoorbeeld bij plaatsnamen', () => {
+    expect(beoordeel('Wallonie', ['Wallonië'], true)).toBe('goed')
+    expect(beoordeel('Wallonie', ['Wallonië'])).toBe('bijna')
+  })
+
   it('is niet geweten zonder antwoord', () => {
     expect(beoordeel(null, ['brug'])).toBe('niet geweten')
     expect(beoordeel('   ', ['brug'])).toBe('niet geweten')

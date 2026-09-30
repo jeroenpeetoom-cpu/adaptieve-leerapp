@@ -55,7 +55,7 @@ export function stelSessieSamen(
   const gezienWoord = new Set<string>()
   /** Neemt een leeritem op, tenzij het er al in zit of hetzelfde woord al is gekozen. */
   const neem = (item: Leeritem) => {
-    const sleutel = [item.oefenrichting.van, item.oefenrichting.naar, normaliseer(item.vraag), normaliseer(item.toegestaneAntwoorden[0])].join('|')
+    const sleutel = [item.oefenrichting.van, item.oefenrichting.naar, item.plek?.richting ?? '', normaliseer(item.vraag), normaliseer(item.toegestaneAntwoorden[0])].join('|')
     if (gekozen.has(item.id) || gezienWoord.has(sleutel)) return false
     gekozen.add(item.id)
     gezienWoord.add(sleutel)

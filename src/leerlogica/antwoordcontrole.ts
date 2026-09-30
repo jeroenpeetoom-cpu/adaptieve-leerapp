@@ -36,12 +36,18 @@ function bewerkingsafstand(a: string, b: string): number {
   return d[a.length][b.length]
 }
 
-/** Beoordeelt een antwoord; null betekent dat de leerling op "niet geweten" tikte. */
-export function beoordeel(antwoord: string | null, toegestaneAntwoorden: string[]): Oordeel {
+const zonderAccenten = (tekst: string) => tekst.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
+/**
+ * Beoordeelt een antwoord; null betekent dat de leerling op "niet geweten" tikte. Met `negeerAccenten`
+ * telt "Wallonie" als "Wallonië" (voor plaatsnamen, waar de spelling van het accent niet het doel is).
+ */
+export function beoordeel(antwoord: string | null, toegestaneAntwoorden: string[], negeerAccenten = false): Oordeel {
   if (antwoord === null) return 'niet geweten'
-  const gegeven = normaliseer(antwoord)
+  const vorm = (t: string) => (negeerAccenten ? zonderAccenten(normaliseer(t)) : normaliseer(t))
+  const gegeven = vorm(antwoord)
   if (gegeven === '') return 'niet geweten'
-  const toegestaan = toegestaneAntwoorden.map(normaliseer)
+  const toegestaan = toegestaneAntwoorden.map(vorm)
   if (toegestaan.includes(gegeven)) return 'goed'
   const bijna = toegestaan.some(
     (t) => t.length >= MINIMALE_LENGTE_BIJNA && bewerkingsafstand(gegeven, t) === 1,

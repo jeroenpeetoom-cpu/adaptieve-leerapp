@@ -69,7 +69,7 @@ export function Terugblik({ sessie, pogingen, vandaag, instellingen, children }:
               <div className="terugblik-regel">
                 {item.soort === 'plek' ? (
                   <span>
-                    <strong>📍 {item.vraag}</strong> <span className="gedempt">aanwijzen</span>
+                    <strong>📍 {item.vraag}</strong> <span className="gedempt">{item.plek?.richting ?? 'aanwijzen'}</span>
                   </span>
                 ) : (
                   <span>

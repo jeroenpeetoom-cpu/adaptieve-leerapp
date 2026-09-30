@@ -158,7 +158,7 @@ export function beantwoord(
   const alGezien = toestand.pogingen.some((p) => p.id === invoer.pogingId)
   if (!item || alGezien || toestand.afgesloten) return { toestand, poging: null }
 
-  const oordeel = invoer.oordeel ?? beoordeel(invoer.antwoord, item.toegestaneAntwoorden)
+  const oordeel = invoer.oordeel ?? beoordeel(invoer.antwoord, item.toegestaneAntwoorden, item.soort === 'plek')
   const poging: Poging = {
     id: invoer.pogingId,
     sessieId: toestand.sessieId,

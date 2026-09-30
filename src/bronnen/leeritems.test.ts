@@ -85,8 +85,10 @@ describe('leeritems van een kaart', () => {
       plek('Rijn', { x: null, y: null }),
       plek('Maas', { bevestigd: false }),
     ])
-    expect(items.map((i) => i.id)).toEqual(['Luik-aanwijzen', 'Gent-aanwijzen'])
+    expect(items.map((i) => i.id)).toEqual(['Luik-aanwijzen', 'Luik-benoemen', 'Gent-aanwijzen', 'Gent-benoemen'])
     expect(items[0]).toMatchObject({ soort: 'plek', vraag: 'Luik', toetsstof: true, plek: { kaartId: 'k1', x: 0.4, y: 0.5, soort: 'stad', richting: 'aanwijzen' } })
-    expect(items[1].toetsstof).toBe(false)
+    expect(items[2].toetsstof).toBe(false)
+    expect(items[1].plek?.richting).toBe('benoemen')
+    expect(leeritemsVanPlekken({ ...topo, plekrichtingen: ['aanwijzen'] }, [plek('Luik')]).map((i) => i.id)).toEqual(['Luik-aanwijzen'])
   })
 })

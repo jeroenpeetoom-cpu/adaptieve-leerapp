@@ -29,6 +29,7 @@ import type { Database } from '../opslag/database'
 import { CodewoordMelding, MISSIE, Sterrenkaart } from '../weergave/ruimte'
 import { Voorleesknop } from '../weergave/voorlezen'
 import { Aanwijzen } from './Aanwijzen'
+import { KaartUitsnede } from './KaartUitsnede'
 import { Leermoment } from './Leermoment'
 
 const TAALNAAM = { en: 'Engels', nl: 'Nederlands' } as const
@@ -137,6 +138,8 @@ export function OefenSessie({
   const pogingId = `${toestand.sessieId}-${toestand.pogingen.length + 1}`
 
   const item = huidigLeeritem(toestand)!
+  const benoemen = item.plek?.richting === 'benoemen'
+  const benoemKaart = item.plek ? kaarten[item.plek.kaartId] : undefined
   const laatste = laatstePogingHier(toestand)
   const goedAntwoord = item.toegestaneAntwoorden[0]
   const taal = TAALNAAM[item.oefenrichting.naar]
@@ -253,7 +256,7 @@ export function OefenSessie({
   const hintZichtbaar = !toestand.afgesloten && toestand.hulp === 'met hint' && !laatste
   const voorbeeldZichtbaar = !toestand.afgesloten && toestand.hulp === 'na voorbeeld'
 
-  if (item.soort === 'plek' && item.plek) {
+  if (item.soort === 'plek' && item.plek && item.plek.richting === 'aanwijzen') {
     const kaart = kaarten[item.plek.kaartId]
     return (
       <section className="kaart sessie" ref={sessieRef}>
@@ -312,15 +315,25 @@ export function OefenSessie({
       ) : (
         <p className="voortgang">{nogTeGaan(toestand) === 1 ? 'Laatste woord' : `Nog ${nogTeGaan(toestand)} woorden`}</p>
       )}
-      <p className="richting">
-        {TAALNAAM[item.oefenrichting.van]} → {taal}
-      </p>
-      {isNieuwLeeritem(toestand, item.id) && !laatste && !toestand.pogingen.some((p) => p.leeritemId === item.id) && (
-        <p className="nieuw-label">✨ Nieuw woord. Weet je het al? Anders tik je op "Weet ik niet".</p>
+      {benoemen && benoemKaart ? (
+        <>
+          <p className="vraag vraag-kaart">{leermoment ? 'Nieuwe plek' : 'Wat ligt hier?'}</p>
+          <p className="richting">{item.plek!.soort}</p>
+          <KaartUitsnede kaart={benoemKaart} plek={item.plek!} naam={leermoment || toestand.afgesloten ? goedAntwoord : undefined} />
+        </>
+      ) : (
+        <p className="richting">
+          {TAALNAAM[item.oefenrichting.van]} → {taal}
+        </p>
       )}
-      <p className="vraag" lang={item.oefenrichting.van}>
-        {item.vraag} <Voorleesknop tekst={item.vraag} taal={item.oefenrichting.van} />
-      </p>
+      {isNieuwLeeritem(toestand, item.id) && !laatste && !toestand.pogingen.some((p) => p.leeritemId === item.id) && (
+        <p className="nieuw-label">✨ {benoemen ? 'Nieuwe plek' : 'Nieuw woord'}. Weet je het al? Anders tik je op "Weet ik niet".</p>
+      )}
+      {!benoemen && (
+        <p className="vraag" lang={item.oefenrichting.van}>
+          {item.vraag} <Voorleesknop tekst={item.vraag} taal={item.oefenrichting.van} />
+        </p>
+      )}
 
       {vondCodewoord && <CodewoordMelding />}
       {feedback && (
@@ -361,7 +374,16 @@ export function OefenSessie({
         </button>
       )}
 
-      {leermoment ? (
+      {leermoment && benoemen ? (
+        <>
+          <p className="feedback">
+            Dit is <strong>{goedAntwoord}</strong>. Kijk goed waar het ligt; straks vraag ik het je nog een keer.
+          </p>
+          <button className="knop" onClick={() => void leermomentKlaar(null)} autoFocus>
+            Volgende
+          </button>
+        </>
+      ) : leermoment ? (
         <Leermoment
           key={item.id}
           item={item}
@@ -389,7 +411,7 @@ export function OefenSessie({
         </button>
       ) : toestand.vorm === 'meerkeuze' ? (
         <>
-          <p className="label">Welk {taal}e woord hoort erbij?</p>
+          <p className="label">{benoemen ? 'Welke plek is dit?' : `Welk ${taal}e woord hoort erbij?`}</p>
           <div className="opties">
             {optiesVoor(item, bronItems, `${pogingId}-${item.id}`).map((optie) => (
               <button key={optie} className="knop knop-rustig optie" disabled={bezig} onClick={() => void verstuur(optie)} lang={item.oefenrichting.naar}>
@@ -420,7 +442,7 @@ export function OefenSessie({
             </p>
           )}
           <label className="label" htmlFor="antwoord">
-            Wat is het in het {taal}?
+            {benoemen ? 'Hoe heet deze plek?' : `Wat is het in het ${taal}?`}
           </label>
           <input
             id="antwoord"

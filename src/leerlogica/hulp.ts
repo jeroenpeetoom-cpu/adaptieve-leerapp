@@ -35,14 +35,16 @@ function zaad(tekst: string): () => number {
  */
 export function optiesVoor(item: Leeritem, bronItems: Leeritem[], zaadTekst: string): string[] {
   const goed = item.toegestaneAntwoorden[0]
-  const anderen = [
-    ...new Set(
-      bronItems
-        .filter((i) => i.bronId === item.bronId && i.id !== item.id && i.oefenrichting.naar === item.oefenrichting.naar)
-        .map((i) => i.toegestaneAntwoorden[0])
-        .filter((a) => !item.toegestaneAntwoorden.includes(a)),
-    ),
-  ]
+  const kandidaten = bronItems.filter((i) => i.bronId === item.bronId && i.id !== item.id && i.oefenrichting.naar === item.oefenrichting.naar)
+  // Bij een plek: eerst namen van dezelfde soort (steden bij een stad), dan de rest.
+  const opVolgorde = item.plek ? [...kandidaten.filter((i) => i.plek?.soort === item.plek!.soort), ...kandidaten.filter((i) => i.plek?.soort !== item.plek!.soort)] : kandidaten
+  const anderen = [...new Set(opVolgorde.map((i) => i.toegestaneAntwoorden[0]).filter((a) => !item.toegestaneAntwoorden.includes(a)))]
+  if (item.plek) {
+    // Houd de volgorde van soort aan: schud alleen binnen de eerste drie.
+    const kans = zaad(zaadTekst)
+    const drie = anderen.slice(0, 3)
+    return [goed, ...drie].map((waarde) => ({ waarde, k: kans() })).sort((a, b) => a.k - b.k).map((x) => x.waarde)
+  }
   const kans = zaad(zaadTekst)
   const schud = <T,>(lijst: T[]) =>
     lijst

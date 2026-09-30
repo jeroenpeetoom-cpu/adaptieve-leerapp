@@ -43,10 +43,10 @@ export function kanBevestigen(woordparen: Woordpaar[]): boolean {
 
 /**
  * Leeritems van een topo-bron: per bevestigde plek één leeritem per oefenrichting, in de volgorde van
- * de plekken (toetsstof eerst, grote dingen eerst). Aanwijzen: "Waar ligt …?".
+ * de plekken (toetsstof eerst, grote dingen eerst). Aanwijzen: "Waar ligt …?"; benoemen: "Wat ligt hier?".
  */
 export function leeritemsVanPlekken(bron: Bron, plekken: Plek[]): Leeritem[] {
-  const richtingen = (bron.plekrichtingen ?? ['aanwijzen', 'benoemen']).filter((r) => r === 'aanwijzen')
+  const richtingen = bron.plekrichtingen ?? ['aanwijzen', 'benoemen']
   return plekken
     .filter((p) => p.bronId === bron.id && p.bevestigd && p.x !== null && p.y !== null && p.naam.trim() !== '')
     .sort((a, b) => a.volgorde - b.volgorde)

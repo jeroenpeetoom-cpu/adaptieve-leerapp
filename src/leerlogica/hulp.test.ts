@@ -46,3 +46,19 @@ describe('opties', () => {
     expect(optiesVoor(bron[0], bron.slice(0, 2), 'p1').sort()).toEqual(['brug', 'wolk'])
   })
 })
+
+describe('opties bij een plek', () => {
+  const plek = (id: string, soort: 'stad' | 'water'): Leeritem => ({
+    ...item(id, id),
+    oefenrichting: { van: 'nl', naar: 'nl' },
+    plek: { kaartId: 'k', x: 0.5, y: 0.5, soort, richting: 'benoemen' },
+  })
+  it('kiest namen van plekken van dezelfde soort', () => {
+    const bron = [plek('Gent', 'stad'), plek('Luik', 'stad'), plek('Maas', 'water'), plek('Namen', 'stad'), plek('Rijn', 'water'), plek('Bergen', 'stad')]
+    const opties = optiesVoor(bron[0], bron, 'zaad')
+    expect(opties).toHaveLength(4)
+    expect(opties).toContain('Gent')
+    expect(opties).not.toContain('Maas')
+    expect(opties).not.toContain('Rijn')
+  })
+})
