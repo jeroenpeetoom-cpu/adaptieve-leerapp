@@ -65,7 +65,7 @@ function KaartMetPlekken({
           const p = positie(e)
           setSlepen({ ...slepen, x1: p.x, y1: p.y })
         }}
-        onPointerUp={(e) => {
+        onPointerUp={() => {
           if (onVak && slepen) {
             const vak = {
               x0: Math.min(slepen.x0, slepen.x1),
