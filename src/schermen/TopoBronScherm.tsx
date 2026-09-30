@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react'
 import type { Bron, Kaart, Plek, Plekrichting, Rechthoek } from '../bronnen/model'
-import { controleerBestand, herkenMeermaals } from '../herkenning/herkenner'
+import { controleerBestand, herkenMeermaals, voorbereiden } from '../herkenning/herkenner'
 import { echteDb } from '../opslag/database'
 import { verwijderBron } from '../opslag/verwijderen'
 import { koppelAfkortingen } from '../topo/afkortingen'
-import { dekAf, naarJpeg } from '../topo/kaartbeeld'
+import { dekAf, grijswaarden, naarJpeg } from '../topo/kaartbeeld'
+import { klikVast, omrekeningUit, reken, vindStippen, type Punt } from '../topo/uitlijnen'
+import { isInhoudelijkeWijziging } from '../leerlogica'
+import { HoekenAantikken } from './HoekenAantikken'
 import { labelsUit, midden, tekstOmAfTeDekken, vakRond } from '../topo/labels'
 import { leesWerkblad } from '../topo/werkblad'
 import { FotoKnoppen } from './FotoKnoppen'
@@ -124,6 +127,10 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
   const [plekken, setPlekken] = useState<Plek[]>([])
   const [kaartFoto, setKaartFoto] = useState<File | null>(null)
   const [werkbladFoto, setWerkbladFoto] = useState<File | null>(null)
+  const [legeFoto, setLegeFoto] = useState<File | null>(null)
+  /** Uitlijnen met een lege kaart: eerst de hoeken op de ingevulde kaart, dan op de lege. */
+  const [uitlijnen, setUitlijnen] = useState<{ leeg: HTMLCanvasElement; leegBeeld: string; hoekenIngevuld: Punt[] | null } | null>(null)
+  const [bewerken, setBewerken] = useState<string | null>(null)
   const [bezig, setBezig] = useState<{ fractie: number; stap: string } | null>(null)
   const [melding, setMelding] = useState<string | null>(null)
   const [gekozen, setGekozen] = useState<string | null>(null)
@@ -213,12 +220,39 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
       if (nieuwePlekken.length === 0) {
         setMelding('Op het werkblad vond ik geen lijst met plekken. Voeg de plekken hieronder zelf toe en tik ze aan op de kaart.')
       }
+      if (legeFoto) {
+        const leeg = await voorbereiden(legeFoto)
+        setUitlijnen({ leeg, leegBeeld: naarJpeg(leeg), hoekenIngevuld: null })
+      }
       await laad()
     } catch {
       setMelding('Het herkennen lukte niet. Probeer het opnieuw, of maak nieuwe foto’s met goed licht.')
     } finally {
       setBezig(null)
     }
+  }
+
+  /** Zet de plekken van de ingevulde kaart over op de lege kaart, en klikt steden vast op hun stipje. */
+  async function lijnUit(hoekenLeeg: Punt[]) {
+    if (!uitlijnen?.hoekenIngevuld || !kaart) return
+    const { leeg, leegBeeld, hoekenIngevuld } = uitlijnen
+    const h = omrekeningUit(hoekenIngevuld, hoekenLeeg)
+    const verhouding = leeg.height / leeg.width
+    const overgezet = plekken.map((p) => (p.x === null || p.y === null ? p : { ...p, ...reken(h, { x: p.x, y: p.y }) }))
+    const stippen = vindStippen(grijswaarden(leeg), leeg.width, leeg.height, hoekenLeeg)
+    const vast = klikVast(
+      overgezet.filter((p) => p.soort === 'stad' && p.x !== null && p.y !== null) as (Plek & { x: number; y: number })[],
+      stippen,
+      verhouding,
+    )
+    const bijgewerkt = overgezet.map((p) => ({ ...p, ...(vast.get(p.id) ?? {}), labelVak: null }))
+    const nieuweKaart: Kaart = { ...kaart, beeld: leegBeeld, origineel: leegBeeld, breedte: leeg.width, hoogte: leeg.height, tekstvakken: [], afgedekt: [], leeg: true }
+    await echteDb.transaction('rw', echteDb.kaarten, echteDb.plekken, async () => {
+      await echteDb.kaarten.put(nieuweKaart)
+      await echteDb.plekken.bulkPut(bijgewerkt)
+    })
+    setUitlijnen(null)
+    await laad()
   }
 
   async function wijzig(plek: Plek, velden: Partial<Plek>) {
@@ -250,13 +284,15 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
       y: null,
       labelVak: null,
       alternatieven: [],
-      bevestigd: false,
+      // Na het bevestigen van de kaart doet een nieuwe plek meteen mee.
+      bevestigd: kaart.blind,
       bronversie: 1,
       volgorde: plekken.length + 1,
     }
     await echteDb.plekken.add(plek)
     setPlekken((p) => [...p, plek])
     setTikmodus({ soort: 'plaats', plekId: plek.id })
+    if (kaart.blind) setBewerken(plek.id)
     naarKaart()
   }
 
@@ -271,6 +307,8 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
 
   /** De blinde kaart opnieuw maken van het origineel, met alle af te dekken stukken. */
   async function maakBlind(k: Kaart, afgedekt: Rechthoek[]) {
+    // Een lege kaart heeft geen afkortingen; alleen wat de leerling zelf afdekte (bijvoorbeeld doorschijnende tekst).
+    if (k.leeg) return afgedekt.length > 0 ? dekAf(k.origineel ?? k.beeld, afgedekt) : (k.origineel ?? k.beeld)
     const stukken = [
       ...plekken.flatMap((p) => (p.labelVak ? [p.labelVak] : [])),
       ...(k.tekstvakken ?? []),
@@ -314,6 +352,7 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
     await echteDb.kaarten.where('bronId').equals(bronId).delete()
     setKaartFoto(null)
     setWerkbladFoto(null)
+    setLegeFoto(null)
     await laad()
   }
 
@@ -338,6 +377,14 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
             <FotoKnoppen wat="de kaart" gekozen={kaartFoto !== null} uit={bezig !== null} onKies={(b) => b?.[0] && setKaartFoto(b[0])} />
             <p className="label">2. Het werkblad {werkbladFoto && <span className="gedempt">✓ {werkbladFoto.name}</span>}</p>
             <FotoKnoppen wat="het werkblad" gekozen={werkbladFoto !== null} uit={bezig !== null} onKies={(b) => b?.[0] && setWerkbladFoto(b[0])} />
+            <p className="label">
+              3. De lege kaart <span className="gedempt">(mag, hoeft niet)</span> {legeFoto && <span className="gedempt">✓ {legeFoto.name}</span>}
+            </p>
+            <p className="gedempt">
+              Heb je dezelfde kaart zonder afkortingen, met alleen de stipjes? Dan oefen je op die schone kaart. Leg een wit vel achter
+              de pagina, zodat tekst van de achterkant niet doorschijnt, en zet de hele pagina op de foto.
+            </p>
+            <FotoKnoppen wat="de lege kaart" gekozen={legeFoto !== null} uit={bezig !== null} onKies={(b) => b?.[0] && setLegeFoto(b[0])} />
             <p className="gedempt">Tips: goed licht, geen schaduw, telefoon recht boven de pagina. De foto's blijven op deze telefoon.</p>
             <div className="knoppen">
               <button className="knop" disabled={!kaartFoto || !werkbladFoto || bezig !== null} onClick={() => void herkennen()}>
@@ -361,7 +408,22 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
         )}
       </section>
 
-      {kaart && (
+      {kaart && uitlijnen && (
+        <section className="kaart">
+          <h2>Kaarten op elkaar leggen</h2>
+          <p>Tik op beide kaarten de vier hoeken van het kaartkader aan. Dan zet de app de plekken over op de lege kaart.</p>
+          {uitlijnen.hoekenIngevuld === null ? (
+            <HoekenAantikken key="ingevuld" beeld={kaart.beeld} titel="Eerst de ingevulde kaart" onKlaar={(h) => setUitlijnen({ ...uitlijnen, hoekenIngevuld: h })} />
+          ) : (
+            <HoekenAantikken key="leeg" beeld={uitlijnen.leegBeeld} titel="Nu de lege kaart" onKlaar={(h) => void lijnUit(h)} />
+          )}
+          <button className="link" onClick={() => setUitlijnen(null)}>
+            Overslaan en de ingevulde kaart gebruiken
+          </button>
+        </section>
+      )}
+
+      {kaart && !uitlijnen && (
         <section className="kaart">
           <h2>{bevestigd ? 'Blinde kaart' : 'Controleer de plekken'}</h2>
           {!bevestigd && (
@@ -404,7 +466,7 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
           <div ref={kaartRef}>
             <KaartMetPlekken
               kaart={kaart}
-              plekken={bevestigd ? [] : plekken}
+              plekken={bevestigd ? plekken.filter((p) => tikmodus?.soort === 'plaats' && p.id === tikmodus.plekId) : plekken}
               gekozen={gekozen}
               vakken={bevestigd ? [] : kaart.afgedekt}
               onTik={tikmodus?.soort === 'plaats' ? (x, y) => void tik(x, y) : null}
@@ -521,6 +583,85 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
 
           {bevestigd && (
             <>
+              <h3>Plekken aanpassen</h3>
+              <p className="gedempt">Een fout in een naam? Pas hem hier aan. Verander je de naam echt, dan begint die plek opnieuw.</p>
+              <ul className="plekkenlijst">
+                {plekken.map((p) => (
+                  <li key={p.id} data-plek={p.id}>
+                    {bewerken === p.id ? (
+                      <>
+                        <div className="plek-regel">
+                          <span className="plek-nummer">📍</span>
+                          <input className="invoer" defaultValue={p.naam} id={`naam-${p.id}`} />
+                          <select className="invoer plek-soort" defaultValue={p.soort} id={`soort-${p.id}`}>
+                            {SOORTEN.map((s) => (
+                              <option key={s.waarde} value={s.waarde}>
+                                {s.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="knoppen plek-acties">
+                          <label className="keuze">
+                            <input type="checkbox" defaultChecked={p.toetsstof} id={`toets-${p.id}`} />
+                            Toetsstof
+                          </label>
+                          <button
+                            className="knop"
+                            onClick={() => {
+                              const naam = (document.getElementById(`naam-${p.id}`) as HTMLInputElement).value.trim()
+                              const soort = (document.getElementById(`soort-${p.id}`) as HTMLSelectElement).value as Plek['soort']
+                              const toetsstof = (document.getElementById(`toets-${p.id}`) as HTMLInputElement).checked
+                              if (!naam) return
+                              const inhoudelijk = isInhoudelijkeWijziging({ woord: p.naam, betekenis: '' }, { woord: naam, betekenis: '' })
+                              void wijzig(p, { naam, soort, toetsstof, bronversie: inhoudelijk ? p.bronversie + 1 : p.bronversie }).then(async () => {
+                                // Een geheugenbeeld hoorde bij de oude naam.
+                                if (inhoudelijk) await echteDb.geheugenbeelden.filter((b) => b.leeritemId.startsWith(`${p.id}-`)).delete()
+                                setBewerken(null)
+                              })
+                            }}
+                          >
+                            Opslaan
+                          </button>
+                          <button
+                            className="knop knop-rustig"
+                            onClick={() => {
+                              setTikmodus({ soort: 'plaats', plekId: p.id })
+                              naarKaart()
+                            }}
+                          >
+                            Verplaatsen
+                          </button>
+                          <button
+                            className="link"
+                            onClick={() => {
+                              if (!window.confirm(`${p.naam} verwijderen?`)) return
+                              void echteDb.plekken.delete(p.id).then(() => setPlekken((l) => l.filter((x) => x.id !== p.id)))
+                            }}
+                          >
+                            Verwijderen
+                          </button>
+                          <button className="link" onClick={() => setBewerken(null)}>
+                            Annuleren
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="woordpaar-regel">
+                        <span>
+                          📍 {p.naam} <span className="gedempt">{p.soort}{p.toetsstof ? ' · toetsstof' : ''}</span>
+                        </span>
+                        <button className="link" onClick={() => setBewerken(p.id)}>
+                          Aanpassen
+                        </button>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              <button className="link" onClick={() => void voegToe()}>
+                + Plek toevoegen
+              </button>
               <p className="gedempt">
                 De afkortingen zijn afgedekt. Zie je nog tekst, zoals een naam die je erbij schreef? Tik op "Afdekken" en trek
                 er een vakje over. Oefenen op deze kaart komt in de volgende versie van de app.

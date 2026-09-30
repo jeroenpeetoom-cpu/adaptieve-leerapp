@@ -105,6 +105,8 @@ export interface Kaart {
   blind: boolean
   /** Stukken die de leerling zelf afdekte, bijvoorbeeld handschrift. */
   afgedekt: Rechthoek[]
+  /** Het beeld is een foto van een lege kaart (alleen stipjes); er hoeft niets afgedekt te worden. */
+  leeg?: boolean
 }
 
 /** Iets met een naam en een positie op een kaart (CONTEXT.md). */

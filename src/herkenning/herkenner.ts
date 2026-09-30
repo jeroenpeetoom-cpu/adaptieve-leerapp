@@ -52,7 +52,7 @@ export function controleerBestand(bestand: File): string | null {
 }
 
 /** Verkleint grote foto's voor snellere herkenning, en draait ze rechtop. */
-async function voorbereiden(bestand: Blob, maxZijde = MAX_ZIJDE): Promise<HTMLCanvasElement> {
+export async function voorbereiden(bestand: Blob, maxZijde = MAX_ZIJDE): Promise<HTMLCanvasElement> {
   const beeld = await createImageBitmap(bestand, { imageOrientation: 'from-image' })
   const schaal = Math.min(1, maxZijde / Math.max(beeld.width, beeld.height))
   const canvas = document.createElement('canvas')

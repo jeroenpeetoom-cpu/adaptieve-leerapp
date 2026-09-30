@@ -57,3 +57,11 @@ export async function dekAf(dataUrl: string, stukken: Rechthoek[]): Promise<stri
   }
   return canvas.toDataURL('image/jpeg', 0.85)
 }
+
+/** Grijswaarden van een canvas, voor het zoeken van stipjes. */
+export function grijswaarden(canvas: HTMLCanvasElement): Uint8Array {
+  const d = canvas.getContext('2d', { willReadFrequently: true })!.getImageData(0, 0, canvas.width, canvas.height).data
+  const uit = new Uint8Array(canvas.width * canvas.height)
+  for (let i = 0, j = 0; i < d.length; i += 4, j++) uit[j] = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]
+  return uit
+}
