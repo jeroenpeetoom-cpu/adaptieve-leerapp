@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import {
+  ankerhint,
+  ankerzin,
   beantwoord,
+  kiesAnkers,
   bepaalAntwoordwijze,
   berekenVoortgang,
   kalenderdag,
@@ -214,6 +217,41 @@ export function OefenSessie({
   )
   const wijze = bepaalAntwoordwijze(item, berekenVoortgang(item, voorDezePositie, instellingen).status, eersteVanDeDag)
 
+  // Ankers: steden op dezelfde kaart die de leerling al zelf heeft teruggehaald (spec topografie, vraag 47).
+  const plekKaart = item.plek ? kaarten[item.plek.kaartId] : undefined
+  const ankers = (() => {
+    if (!item.plek || !plekKaart) return []
+    const bekend = new Map<string, { naam: string; x: number; y: number }>()
+    for (const i of bronItems) {
+      if (!i.plek || i.plek.kaartId !== item.plek.kaartId || i.plek.soort !== 'stad' || i.woordpaarId === item.woordpaarId) continue
+      if (berekenVoortgang(i, voorDezePositie, instellingen).status === 'nog aan het leren') continue
+      bekend.set(i.woordpaarId, { naam: i.toegestaneAntwoorden[0], x: i.plek.x, y: i.plek.y })
+    }
+    return kiesAnkers({ naam: item.toegestaneAntwoorden[0], x: item.plek.x, y: item.plek.y }, [...bekend.values()], plekKaart.hoogte / plekKaart.breedte)
+  })()
+  const topoLeermoment = (onKlaarBeeld: (b: Omit<Geheugenbeeld, 'id' | 'aangemaakt'> | null) => void) =>
+    item.plek && plekKaart ? (
+      <Leermoment
+        key={item.id}
+        item={item}
+        strategie={(() => {
+          const s = strategiePerBron[item.bronId]
+          return s === 'geheugenroute' ? 'beelden koppelen' : s
+        })()}
+        voorgedaan={voorgedaan}
+        route={null}
+        routenaam=""
+        itemTekst={() => ''}
+        onKiesStrategie={(s) => void onKiesStrategie(item.bronId, s)}
+        onVoorgedaan={(s) => void onVoorgedaan(s)}
+        onMaakRoute={() => {}}
+        laatsteReflectie={laatsteReflectie}
+        steuntjeOpen={aantalBeelden['beelden koppelen'] < beeldenMetSteuntje}
+        topo={{ kaart: plekKaart, plek: item.plek, ankerzin: ankerzin(item.toegestaneAntwoorden[0], ankers), bestaandBeeld: geheugenbeelden[item.id] ?? null }}
+        onKlaar={onKlaarBeeld}
+      />
+    ) : null
+
   /** Een woord dat in één keer binnenkomt (en niet letter voor letter) is ingesproken of geplakt. */
   function opInvoer(nieuw: string) {
     const ingesproken = nieuw.trim().length - antwoord.trim().length >= 2
@@ -273,7 +311,9 @@ export function OefenSessie({
             {storing}
           </p>
         )}
-        {kaart ? (
+        {leermoment && kaart ? (
+          topoLeermoment((b) => void leermomentKlaar(b))
+        ) : kaart ? (
           <Aanwijzen
             key={`${item.id}-${toestand.huidige}`}
             item={item}
@@ -286,6 +326,7 @@ export function OefenSessie({
             bezig={bezig}
             andereOpties={bronItems.filter((i) => i.id !== item.id && i.plek?.kaartId === item.plek!.kaartId && i.plek?.richting === 'aanwijzen' && i.plek?.soort === item.plek!.soort).concat(bronItems.filter((i) => i.id !== item.id && i.plek?.kaartId === item.plek!.kaartId && i.plek?.richting === 'aanwijzen' && i.plek?.soort !== item.plek!.soort))}
             zaad={pogingId}
+            hint={[ankerhint(ankers), geheugenbeelden[item.id] ? `Denk aan je beeld: "${geheugenbeelden[item.id]}".` : null].filter(Boolean).join(' ') || null}
             onAntwoord={(antwoord, oordeel) => void verstuur(antwoord, false, oordeel)}
             onHulp={hulp}
             onVolgende={() => void (leermoment ? leermomentKlaar(null) : naarVolgende())}
@@ -375,14 +416,7 @@ export function OefenSessie({
       )}
 
       {leermoment && benoemen ? (
-        <>
-          <p className="feedback">
-            Dit is <strong>{goedAntwoord}</strong>. Kijk goed waar het ligt; straks vraag ik het je nog een keer.
-          </p>
-          <button className="knop" onClick={() => void leermomentKlaar(null)} autoFocus>
-            Volgende
-          </button>
-        </>
+        topoLeermoment((b) => void leermomentKlaar(b))
       ) : leermoment ? (
         <Leermoment
           key={item.id}

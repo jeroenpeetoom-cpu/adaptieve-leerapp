@@ -33,13 +33,15 @@ interface Props {
   /** Andere plekken om uit te kiezen bij meerkeuze (de goede zit er niet in). */
   andereOpties: Leeritem[]
   zaad: string
+  /** Hint met een anker en/of het eigen geheugenbeeld; zonder anker de ligging op de kaart. */
+  hint: string | null
   onAntwoord: (antwoord: string | null, oordeel: Oordeel) => void
   onHulp: (soort: 'met hint' | 'herkend' | 'na voorbeeld') => void
   onVolgende: () => void
 }
 
 /** Aanwijzen: "Waar ligt …?" De leerling tikt op de blinde kaart. */
-export function Aanwijzen({ item, kaart, vorm, hulp, afgesloten, laatste, leermoment, bezig, andereOpties, zaad, onAntwoord, onHulp, onVolgende }: Props) {
+export function Aanwijzen({ item, kaart, vorm, hulp, afgesloten, laatste, leermoment, bezig, andereOpties, zaad, hint, onAntwoord, onHulp, onVolgende }: Props) {
   const [groot, setGroot] = useState(false)
   const [hulpOpen, setHulpOpen] = useState(false)
   const plek = item.plek!
@@ -70,10 +72,10 @@ export function Aanwijzen({ item, kaart, vorm, hulp, afgesloten, laatste, leermo
   else if (laatste) {
     if (laatste.oordeel === 'goed') feedback = laatste.hulp === 'vrij opgehaald' ? 'Goed zo, dat wist je helemaal zelf!' : 'Goed! Je had er hulp bij, dus het komt snel terug.'
     else if (!afgesloten && laatste.oordeel === 'bijna' && tik) feedback = `Bijna! Iets meer naar het ${windrichting(tik, plek, verhouding)}.`
-    else if (!afgesloten) feedback = `Dat is het niet. Hint: het ligt ${omschrijfLigging(plek)}.`
+    else if (!afgesloten) feedback = `Dat is het niet. Hint: ${hint ?? `het ligt ${omschrijfLigging(plek)}.`}`
     else if (laatste.oordeel === 'niet geweten') feedback = `Geeft niet. Hier ligt ${item.vraag}. Het komt straks terug.`
     else feedback = `Hier ligt ${item.vraag}. Het komt straks terug.`
-  } else if (hulp === 'met hint') feedback = `Hint: het ligt ${omschrijfLigging(plek)}.`
+  } else if (hulp === 'met hint') feedback = `Hint: ${hint ?? `het ligt ${omschrijfLigging(plek)}.`}`
   else if (hulp === 'na voorbeeld') feedback = `Hier ligt ${item.vraag}. Tik er nu zelf op.`
 
   return (

@@ -220,7 +220,14 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
           nu={nu}
           onAntwoordToegevoegd={antwoordToegevoegd}
           onKlaar={(toestand) => void laad().then(() => setWeergave({ soort: 'klaar', toestand }))}
-          geheugenbeelden={Object.fromEntries(beelden.map((b) => [b.leeritemId, beeldTekst(b, routes)]))}
+          geheugenbeelden={Object.fromEntries(
+            beelden.flatMap((b) => {
+              const tekst = beeldTekst(b, routes)
+              // Een beeld bij een plek geldt voor aanwijzen én benoemen van die plek.
+              const plek = b.leeritemId.match(/^(.*)-(aanwijzen|benoemen)$/)
+              return plek ? [[`${plek[1]}-aanwijzen`, tekst], [`${plek[1]}-benoemen`, tekst]] : [[b.leeritemId, tekst]]
+            }),
+          )}
           routeVoor={(bronId) => routeMetVrijePlek(bronId, routes, beelden)}
           routenaamVoor={(bronId) =>
             standaardRoutenaam(bronnamen[bronId] ?? 'woorden', routes.filter((r) => r.bronId === bronId))

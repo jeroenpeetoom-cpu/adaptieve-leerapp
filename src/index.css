@@ -974,3 +974,8 @@ select.invoer {
   white-space: nowrap;
   pointer-events: none;
 }
+
+.ankerzin {
+  margin: 0 0 0.75rem;
+  font-weight: 600;
+}

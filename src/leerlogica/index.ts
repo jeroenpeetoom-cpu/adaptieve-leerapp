@@ -2,6 +2,7 @@
 // sessiesamenstelling. Deze module kent geen schermen, geen opslag en geen
 // systeemklok; de huidige tijd komt altijd als invoer binnen (zie spec).
 
+export * from './ankers'
 export * from './antwoordcontrole'
 export * from './antwoordwijze'
 export * from './bronversie'

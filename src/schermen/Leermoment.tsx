@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import type { Leeritem, Strategie } from '../leerlogica'
-import type { Geheugenbeeld } from '../bronnen/model'
+import type { Leeritem, PlekGegevens, Strategie } from '../leerlogica'
+import type { Geheugenbeeld, Kaart } from '../bronnen/model'
 import { MAX_PLEKKEN, MIN_PLEKKEN, type RouteStand } from '../bronnen/routes'
 import { Voorleesknop } from '../weergave/voorlezen'
+import { KaartUitsnede } from './KaartUitsnede'
 
 const TAALNAAM = { en: 'Engels', nl: 'Nederlands' } as const
 const PLAATJE_MAX = 512
@@ -52,8 +53,25 @@ interface Props {
   laatsteReflectie: string | null
   /** Staat het steuntje (invulzinnetje en tips) vanzelf open? Bij de eerste beelden per strategie wel. */
   steuntjeOpen: boolean
+  /** Bij een plek op een kaart: de uitsnede, de ankerzin, en een beeld dat de leerling al maakte bij deze plek. */
+  topo?: { kaart: Kaart; plek: PlekGegevens; ankerzin: string | null; bestaandBeeld: string | null }
   onKlaar: (beeld: Omit<Geheugenbeeld, 'id' | 'aangemaakt'> | null) => void
 }
+
+const VOORDOEN_TOPO: { titel: string; tekst: string }[] = [
+  {
+    titel: 'Zo werkt beelden koppelen bij topo',
+    tekst: 'De plek zie je op de kaart. Voor de naam bedenk je een plaatje in je hoofd dat je aan de naam laat denken. Hoe gekker, hoe beter je het onthoudt.',
+  },
+  {
+    titel: 'Een voorbeeld',
+    tekst: 'Luik ligt aan de Maas. Stel je een luik in de grond voor, waar de Maas doorheen stroomt. Zie je de rivier? Dan denk je aan Luik.',
+  },
+  {
+    titel: 'Nu jij',
+    tekst: 'Bedenk je eigen plaatje bij de naam en beschrijf het in een paar woorden. Straks helpt het je om de naam weer te weten.',
+  },
+]
 
 const VOORDOEN: Record<Strategie, { titel: string; tekst: string }[]> = {
   'beelden koppelen': [
@@ -99,6 +117,7 @@ export function Leermoment({
   onMaakRoute,
   laatsteReflectie,
   steuntjeOpen,
+  topo,
   onKlaar,
 }: Props) {
   const [stap, setStap] = useState(0)
@@ -110,14 +129,36 @@ export function Leermoment({
   const [plekken, setPlekken] = useState<string[]>(Array(MAX_PLEKKEN).fill(''))
   const [doorlopen, setDoorlopen] = useState<Omit<Geheugenbeeld, 'id' | 'aangemaakt'> | null>(null)
   const [steuntje, setSteuntje] = useState(steuntjeOpen)
+  const plekNaam = item.toegestaneAntwoorden[0]
+  const inhoud = topo ? (
+    <>
+      <KaartUitsnede kaart={topo.kaart} plek={topo.plek} naam={plekNaam} />
+      {topo.ankerzin && <p className="ankerzin">🧭 {topo.ankerzin}</p>}
+    </>
+  ) : (
+    <WoordEnBetekenis item={item} />
+  )
   // Het steuntje telt als gebruikt als het bij het bewaren open stond.
+
+  if (topo?.bestaandBeeld) {
+    return (
+      <div className="leermoment">
+        <h3>Nieuwe plek</h3>
+        {inhoud}
+        <p className="feedback">Je beeld bij deze plek: {topo.bestaandBeeld}</p>
+        <button className="knop" onClick={() => onKlaar(null)} autoFocus>
+          Volgende
+        </button>
+      </div>
+    )
+  }
 
   if (strategie === undefined) {
     return (
       <div className="leermoment">
-        <h3>Nieuwe woorden</h3>
-        <WoordEnBetekenis item={item} />
-        <p>Hoe wil je de nieuwe woorden van deze lijst onthouden?</p>
+        <h3>{topo ? 'Nieuwe plek' : 'Nieuwe woorden'}</h3>
+        {inhoud}
+        <p>{topo ? 'Hoe wil je de namen van deze kaart onthouden?' : 'Hoe wil je de nieuwe woorden van deze lijst onthouden?'}</p>
         {laatsteReflectie && (
           <p className="feedback">
             Vorige keer zei je dat dit je het meest hielp: <strong>{laatsteReflectie.toLowerCase()}</strong>.
@@ -126,12 +167,18 @@ export function Leermoment({
         <div className="strategieen">
           <button className="strategie" onClick={() => onKiesStrategie('beelden koppelen')}>
             <strong>🖼️ Beelden koppelen</strong>
-            <span>Je bedenkt bij elk woord een grappig plaatje in je hoofd. Dat werkt goed voor woorden en hun betekenis.</span>
+            <span>
+              {topo
+                ? 'Je bedenkt bij elke naam een grappig plaatje in je hoofd, bijvoorbeeld een luik in de grond bij Luik.'
+                : 'Je bedenkt bij elk woord een grappig plaatje in je hoofd. Dat werkt goed voor woorden en hun betekenis.'}
+            </span>
           </button>
-          <button className="strategie" onClick={() => onKiesStrategie('geheugenroute')}>
-            <strong>🗺️ Geheugenroute</strong>
-            <span>Je legt woorden op plekken in je huis en loopt er in gedachten langs. Handig als je een rijtje woorden tegelijk leert.</span>
-          </button>
+          {!topo && (
+            <button className="strategie" onClick={() => onKiesStrategie('geheugenroute')}>
+              <strong>🗺️ Geheugenroute</strong>
+              <span>Je legt woorden op plekken in je huis en loopt er in gedachten langs. Handig als je een rijtje woorden tegelijk leert.</span>
+            </button>
+          )}
         </div>
         <button className="link" onClick={() => onKiesStrategie('geen')}>
           Liever zonder, gewoon herhalen
@@ -143,9 +190,9 @@ export function Leermoment({
   if (strategie === 'geen') {
     return (
       <div className="leermoment">
-        <h3>Nieuw woord</h3>
-        <WoordEnBetekenis item={item} />
-        <p className="gedempt">Lees het goed. Straks komt het terug.</p>
+        <h3>{topo ? 'Nieuwe plek' : 'Nieuw woord'}</h3>
+        {inhoud}
+        <p className="gedempt">{topo ? 'Kijk goed waar het ligt. Straks komt het terug.' : 'Lees het goed. Straks komt het terug.'}</p>
         <button className="knop" onClick={() => onKlaar(null)} autoFocus>
           Volgende
         </button>
@@ -153,7 +200,7 @@ export function Leermoment({
     )
   }
 
-  const stappen = VOORDOEN[strategie]
+  const stappen = topo && strategie === 'beelden koppelen' ? VOORDOEN_TOPO : VOORDOEN[strategie]
   if (!voorgedaan.includes(strategie) && stap < stappen.length) {
     return (
       <div className="leermoment">
@@ -176,7 +223,7 @@ export function Leermoment({
     )
   }
 
-  if (strategie === 'geheugenroute' && route === null) {
+  if (strategie === 'geheugenroute' && route === null && !topo) {
     const ingevuld = plekken.map((p) => p.trim()).filter(Boolean)
     return (
       <div className="leermoment">
@@ -214,7 +261,7 @@ export function Leermoment({
     )
   }
 
-  const plekIndex = strategie === 'geheugenroute' ? route!.vrijePlek! : null
+  const plekIndex = strategie === 'geheugenroute' && !topo ? route!.vrijePlek! : null
   const plek = plekIndex !== null ? route!.route.plekken[plekIndex] : null
 
   if (doorlopen && route) {
@@ -249,8 +296,8 @@ export function Leermoment({
 
   return (
     <div className="leermoment">
-      <h3>{plek ? `Plek ${plekIndex! + 1}: ${plek}` : 'Maak je eigen beeld'}</h3>
-      <WoordEnBetekenis item={item} />
+      <h3>{plek ? `Plek ${plekIndex! + 1}: ${plek}` : topo ? `Maak een beeld bij ${plekNaam}` : 'Maak je eigen beeld'}</h3>
+      {inhoud}
       <label className="label" htmlFor="beschrijving">
         {plek ? `Wat zie je bij de plek "${plek}"?` : 'Wat zie je voor je?'} <span className="gedempt">(een paar woorden)</span>
       </label>
@@ -259,7 +306,7 @@ export function Leermoment({
         className="invoer"
         value={beschrijving}
         onChange={(e) => setBeschrijving(e.target.value)}
-        placeholder="Bijvoorbeeld: brug tussen twee kussens"
+        placeholder={topo ? 'Bijvoorbeeld: een luik in de grond waar de Maas doorheen stroomt' : 'Bijvoorbeeld: brug tussen twee kussens'}
         maxLength={120}
         autoFocus
       />
@@ -270,7 +317,7 @@ export function Leermoment({
             <strong>Hulp bij bedenken</strong>
           </p>
           <p>
-            Vul aan: <em>Ik zie ___ {plek ? `bij de ${plek}` : 'ergens'}, en het ___.</em>
+            Vul aan: <em>Ik zie ___ {plek ? `bij de ${plek}` : topo ? `bij ${plekNaam}` : 'ergens'}, en het ___.</em>
           </p>
           <ul>
             <li>Maak het groot of gek: een reuzenbrug, een pratende wolk.</li>
