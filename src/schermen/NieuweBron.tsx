@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import type { Bron } from '../bronnen/model'
 import type { Oefenrichting } from '../leerlogica'
 import { echteDb } from '../opslag/database'
+import { PLEKRICHTINGEN } from './TopoBronScherm'
 
 export const RICHTINGEN: { label: string; waarde: Oefenrichting[] }[] = [
   { label: 'Engels → Nederlands', waarde: [{ van: 'en', naar: 'nl' }] },
@@ -9,30 +10,46 @@ export const RICHTINGEN: { label: string; waarde: Oefenrichting[] }[] = [
   { label: 'Allebei', waarde: [{ van: 'en', naar: 'nl' }, { van: 'nl', naar: 'en' }] },
 ]
 
-export function NieuweBron({ onKlaar, onAnnuleer }: { onKlaar: (bronId: string) => void; onAnnuleer: () => void }) {
+export function NieuweBron({ onKlaar, onAnnuleer }: { onKlaar: (bronId: string, topo: boolean) => void; onAnnuleer: () => void }) {
   const [naam, setNaam] = useState('')
   const [toetsdag, setToetsdag] = useState('')
   const [richting, setRichting] = useState(0)
+  const [soort, setSoort] = useState<'woordenlijst' | 'topo'>('woordenlijst')
+  const [plekrichting, setPlekrichting] = useState(0)
 
   async function bewaar(e: FormEvent) {
     e.preventDefault()
     const bron: Bron = {
       id: crypto.randomUUID(),
       naam: naam.trim(),
+      soort,
       taal: 'en',
       toetsdag: toetsdag || null,
-      oefenrichtingen: RICHTINGEN[richting].waarde,
+      oefenrichtingen: soort === 'topo' ? [] : RICHTINGEN[richting].waarde,
+      plekrichtingen: soort === 'topo' ? PLEKRICHTINGEN[plekrichting].waarde : undefined,
       afgerond: false,
       aangemaakt: new Date().toISOString(),
     }
     await echteDb.bronnen.add(bron)
-    onKlaar(bron.id)
+    onKlaar(bron.id, soort === 'topo')
   }
 
   return (
     <form className="kaart" onSubmit={(e) => void bewaar(e)}>
       <h2>Nieuwe bron</h2>
       <p className="gedempt">Eén bron is de leerstof voor één toets of hoofdstuk. Je kunt er later pagina's bij doen.</p>
+
+      <fieldset className="keuzes">
+        <legend className="label">Wat voor huiswerk is het?</legend>
+        <label className="keuze">
+          <input type="radio" name="soort" checked={soort === 'woordenlijst'} onChange={() => setSoort('woordenlijst')} />
+          📝 Woordenlijst
+        </label>
+        <label className="keuze">
+          <input type="radio" name="soort" checked={soort === 'topo'} onChange={() => setSoort('topo')} />
+          🗺️ Topografie (een kaart)
+        </label>
+      </fieldset>
 
       <label className="label" htmlFor="naam">
         Naam
@@ -42,24 +59,38 @@ export function NieuweBron({ onKlaar, onAnnuleer }: { onKlaar: (bronId: string) 
         className="invoer"
         value={naam}
         onChange={(e) => setNaam(e.target.value)}
-        placeholder="Bijvoorbeeld: Engels H3"
+        placeholder={soort === 'topo' ? 'Bijvoorbeeld: Topo H2 België en Luxemburg' : 'Bijvoorbeeld: Engels H3'}
         required
         autoFocus
       />
 
-      <p className="label" style={{ marginTop: '1rem' }}>
-        Vak: Engels <span className="gedempt">(andere talen volgen later)</span>
-      </p>
+      {soort === 'woordenlijst' ? (
+        <>
+          <p className="label" style={{ marginTop: '1rem' }}>
+            Vak: Engels <span className="gedempt">(andere talen volgen later)</span>
+          </p>
 
-      <fieldset className="keuzes">
-        <legend className="label">Wat moet je op de toets kunnen?</legend>
-        {RICHTINGEN.map((r, i) => (
-          <label key={r.label} className="keuze">
-            <input type="radio" name="richting" checked={richting === i} onChange={() => setRichting(i)} />
-            {r.label}
-          </label>
-        ))}
-      </fieldset>
+          <fieldset className="keuzes">
+            <legend className="label">Wat moet je op de toets kunnen?</legend>
+            {RICHTINGEN.map((r, i) => (
+              <label key={r.label} className="keuze">
+                <input type="radio" name="richting" checked={richting === i} onChange={() => setRichting(i)} />
+                {r.label}
+              </label>
+            ))}
+          </fieldset>
+        </>
+      ) : (
+        <fieldset className="keuzes">
+          <legend className="label">Wat wil je oefenen?</legend>
+          {PLEKRICHTINGEN.map((r, i) => (
+            <label key={r.label} className="keuze">
+              <input type="radio" name="plekrichting" checked={plekrichting === i} onChange={() => setPlekrichting(i)} />
+              {r.label}
+            </label>
+          ))}
+        </fieldset>
+      )}
 
       <label className="label" htmlFor="toetsdag">
         Toetsdatum <span className="gedempt">(als je die weet)</span>
@@ -68,7 +99,7 @@ export function NieuweBron({ onKlaar, onAnnuleer }: { onKlaar: (bronId: string) 
 
       <div className="knoppen">
         <button className="knop" type="submit" disabled={naam.trim() === ''}>
-          Verder: foto maken
+          Verder: foto's maken
         </button>
         <button className="knop knop-rustig" type="button" onClick={onAnnuleer}>
           Annuleren

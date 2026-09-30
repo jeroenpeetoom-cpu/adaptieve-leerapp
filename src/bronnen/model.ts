@@ -1,10 +1,16 @@
 import type { Oefenrichting, Taal } from '../leerlogica'
 import type { Twijfel } from '../bronverwerking'
 
+export type Plekrichting = 'aanwijzen' | 'benoemen'
+
 /** De leerstof voor één toets of hoofdstuk (CONTEXT.md). */
 export interface Bron {
   id: string
   naam: string
+  /** Een woordenlijst of een topo-hoofdstuk met een kaart. Ontbreekt bij oudere bronnen (woordenlijst). */
+  soort?: 'woordenlijst' | 'topo'
+  /** Alleen bij topo: welke oefenrichtingen per plek. */
+  plekrichtingen?: Plekrichting[]
   /** Taal van het vak; de betekenis is altijd Nederlands. */
   taal: Exclude<Taal, 'nl'>
   toetsdag: string | null
@@ -74,4 +80,45 @@ export interface Route {
   /** 3 tot 5 plekken die de leerling goed kent, in vaste volgorde. */
   plekken: string[]
   aangemaakt: string
+}
+
+/** Een rechthoek als fractie van de kaartafmetingen (0 tot 1). */
+export interface Rechthoek {
+  x0: number
+  y0: number
+  x1: number
+  y1: number
+}
+
+/** Een bronpagina met een topografische kaart (CONTEXT.md). */
+export interface Kaart {
+  id: string
+  bronId: string
+  /** De kaart als verkleinde JPEG; na bevestigen de blinde versie, zonder afkortingen. */
+  beeld: string
+  breedte: number
+  hoogte: number
+  blind: boolean
+  /** Afgedekte stukken, om de blinde kaart opnieuw te kunnen maken. */
+  afgedekt: Rechthoek[]
+}
+
+/** Iets met een naam en een positie op een kaart (CONTEXT.md). */
+export interface Plek {
+  id: string
+  bronId: string
+  kaartId: string
+  naam: string
+  soort: 'stad' | 'water' | 'gebied' | 'land'
+  toetsstof: boolean
+  /** Positie als fractie van de kaartafmetingen; null zolang de plek nog aangetikt moet worden. */
+  x: number | null
+  y: number | null
+  /** Waar de afkorting op de kaart stond, om af te dekken. */
+  labelVak: Rechthoek | null
+  /** Andere namen die bij dezelfde afkorting passen; de leerling kiest in de controle. */
+  alternatieven: string[]
+  bevestigd: boolean
+  bronversie: number
+  volgorde: number
 }

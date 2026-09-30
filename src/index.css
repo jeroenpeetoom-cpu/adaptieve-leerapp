@@ -718,3 +718,117 @@ select.invoer {
   flex-direction: column;
   gap: 0.5rem;
 }
+
+.kaartvenster {
+  overflow: auto;
+  max-height: 70vh;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  margin: 0.5rem 0;
+  touch-action: pan-x pan-y pinch-zoom;
+}
+
+.kaartbeeld {
+  position: relative;
+  width: 100%;
+}
+
+.kaartvenster.groot .kaartbeeld {
+  width: 220%;
+}
+
+.kaartbeeld img {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+}
+
+.kaartbeeld.tikbaar {
+  cursor: crosshair;
+}
+
+.kaartstip {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  min-width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  background: #2f6fd6;
+  color: #fff;
+  font: 700 0.8rem system-ui, sans-serif;
+  padding: 0 0.3rem;
+  cursor: pointer;
+}
+
+.kaartstip.twijfel {
+  background: #b7791f;
+}
+
+.kaartstip.gekozen {
+  background: var(--accent);
+  color: #1a1300;
+  outline: 3px solid #fff;
+}
+
+.afdekstip {
+  position: absolute;
+  width: 0.8rem;
+  height: 0.8rem;
+  transform: translate(-50%, -50%);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px dashed #000;
+  pointer-events: none;
+}
+
+.plekkenlijst {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 1rem;
+}
+
+.plekkenlijst > li {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.5rem 0;
+}
+
+.plekkenlijst > li.met-twijfel {
+  border-left: 4px solid var(--accent);
+  padding-left: 0.5rem;
+}
+
+.plekkenlijst > li.gekozen {
+  background: rgba(245, 185, 66, 0.12);
+}
+
+.plek-regel {
+  display: grid;
+  grid-template-columns: 2rem 1fr 6.5rem;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.plek-regel .invoer {
+  font-size: 1rem;
+  padding: 0.45rem;
+}
+
+.plek-nummer {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 999px;
+  background: #2f6fd6;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.plek-acties {
+  margin-top: 0.3rem;
+  align-items: center;
+}

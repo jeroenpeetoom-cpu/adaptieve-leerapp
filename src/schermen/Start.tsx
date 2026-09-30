@@ -16,13 +16,14 @@ interface Props {
   onInstellingen: () => void
   onInzichten: () => void
   onNieuweBron: () => void
-  onOpenBron: (bronId: string) => void
+  onOpenBron: (bronId: string, topo: boolean) => void
   onTestfunctie: () => void
 }
 
 export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onOpenBron, onTestfunctie }: Props) {
   const [bronnen, setBronnen] = useState<Bron[] | null>(null)
   const [paren, setParen] = useState<Woordpaar[]>([])
+  const [plekkenPerBron, setPlekkenPerBron] = useState<Record<string, number>>({})
   const [bezig, setBezig] = useState(false)
   const [laatsteBackup, setLaatsteBackup] = useState<string | null>(null)
   const [sessieMinuten, setSessieMinuten] = useState(STANDAARD_INSTELLINGEN.sessieMinuten)
@@ -30,6 +31,8 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
   const laad = useCallback(async () => {
     setBronnen((await echteDb.bronnen.toArray()).sort((a, b) => b.aangemaakt.localeCompare(a.aangemaakt)))
     setParen(await echteDb.woordparen.toArray())
+    const plekken = await echteDb.plekken.toArray()
+    setPlekkenPerBron(plekken.reduce<Record<string, number>>((a, p) => ({ ...a, [p.bronId]: (a[p.bronId] ?? 0) + 1 }), {}))
     setLaatsteBackup(await echteDb.leesMeta<string | null>('laatsteBackup', null))
     setSessieMinuten(await echteDb.leesMeta('sessieMinuten', STANDAARD_INSTELLINGEN.sessieMinuten))
   }, [])
@@ -69,11 +72,20 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
                   const open = eigen.length - klaar
                   return (
                     <li key={b.id}>
-                      <button className="bron-knop" onClick={() => onOpenBron(b.id)}>
-                        <strong>{b.naam}</strong>
+                      <button className="bron-knop" onClick={() => onOpenBron(b.id, b.soort === 'topo')}>
+                        <strong>
+                          {b.soort === 'topo' ? '🗺️ ' : '📝 '}
+                          {b.naam}
+                        </strong>
                         <span className="gedempt">
-                          {klaar} {klaar === 1 ? 'woord' : 'woorden'}
-                          {open > 0 && ` · ${open} nog controleren`}
+                          {b.soort === 'topo' ? (
+                            `${plekkenPerBron[b.id] ?? 0} ${plekkenPerBron[b.id] === 1 ? 'plek' : 'plekken'}`
+                          ) : (
+                            <>
+                              {klaar} {klaar === 1 ? 'woord' : 'woorden'}
+                              {open > 0 && ` · ${open} nog controleren`}
+                            </>
+                          )}
                           {b.afgerond && ' · afgerond'}
                         </span>
                       </button>
@@ -83,7 +95,7 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
               </ul>
             )}
             <button className="knop" onClick={onNieuweBron}>
-              + Nieuwe bron (foto)
+              + Nieuwe bron (woordenlijst of kaart)
             </button>
           </section>
         )}
