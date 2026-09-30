@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Bron, Kaart, Plek, Plekrichting } from '../bronnen/model'
-import { controleerBestand, herkenTweeKeer } from '../herkenning/herkenner'
+import { controleerBestand, herkenMeermaals } from '../herkenning/herkenner'
 import { echteDb } from '../opslag/database'
 import { koppelAfkortingen } from '../topo/afkortingen'
 import { dekAf, naarJpeg } from '../topo/kaartbeeld'
@@ -108,10 +108,15 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
     setMelding(null)
     try {
       setBezig({ fractie: 0, stap: 'Werkblad lezen' })
-      const wb = await herkenTweeKeer(werkbladFoto, 'kolom', (f, stap) => setBezig({ fractie: f / 2, stap: `Werkblad: ${stap.toLowerCase()}` }))
+      const wb = await herkenMeermaals(werkbladFoto, 'kolom', ['gewoon', 'grijs'], (f, stap) =>
+        setBezig({ fractie: f * 0.4, stap: `Werkblad: ${stap.toLowerCase()}` }),
+      )
       const werkblad = leesWerkblad(wb.varianten)
-      setBezig({ fractie: 0.5, stap: 'Kaart lezen' })
-      const k = await herkenTweeKeer(kaartFoto, 'losse tekst', (f, stap) => setBezig({ fractie: 0.5 + f / 2, stap: `Kaart: ${stap.toLowerCase()}` }))
+      setBezig({ fractie: 0.4, stap: 'Kaart lezen' })
+      // Drie keer: gewoon, zwart-wit, en het rode kanaal voor tekst op rode en oranje vlakken.
+      const k = await herkenMeermaals(kaartFoto, 'losse tekst', ['gewoon', 'grijs', 'rood'], (f, stap) =>
+        setBezig({ fractie: 0.4 + f * 0.6, stap: `Kaart: ${stap.toLowerCase()}` }),
+      )
       const voorstel = koppelAfkortingen(labelsUit(k.varianten, k.breedte, k.hoogte), werkblad.plekken, werkblad.woorden)
 
       const nieuweKaart: Kaart = {
@@ -272,7 +277,7 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
           <div className="feedback" role="status">
             <p>{bezig.stap}…</p>
             <progress max={1} value={bezig.fractie} style={{ width: '100%' }} />
-            <p className="gedempt">Elke foto wordt twee keer gelezen; dit duurt even.</p>
+            <p className="gedempt">Elke foto wordt een paar keer gelezen, op verschillende manieren; dit duurt even.</p>
           </div>
         )}
         {melding && (

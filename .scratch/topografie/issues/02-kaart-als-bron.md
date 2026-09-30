@@ -18,7 +18,8 @@
 - [x] Tests dekken het koppelen van afkortingen aan namen, inclusief dubbele afkortingen
 
 Uitwerking:
-- Elke foto wordt twee keer herkend: gewoon en voorbewerkt (twee keer zo groot, zwart-wit, meer contrast). Het werkblad als kolom (PSM 4), de kaart als losse tekst (PSM 11). Zonder voorbewerking werd het gele vak "Wat moet je leren?" niet gelezen.
-- Op de echte kaart en het echte werkblad: 22 van de 25 plekken automatisch gevonden; Luxemburg (land en stad) en de Rijn moeten worden aangetikt.
+- Het werkblad wordt twee keer herkend (gewoon en zwart-wit genormaliseerd, als kolom, PSM 4); zonder voorbewerking werd het gele vak "Wat moet je leren?" niet gelezen.
+- De kaart wordt drie keer herkend als losse tekst (PSM 11): gewoon, zwart-wit genormaliseerd op dubbele grootte, en het rode kanaal genormaliseerd (voor tekst op rode en oranje vlakken, zoals Lux). Normaliseren rekt het contrast op tussen de donkerste en lichtste 1%. De foto wordt niet eerst verkleind tot 1600 pixels: dat maakte kleine afkortingen onleesbaar (eerste test op de S22 miste Vl, Ch, Na, Wa, Ba, Ar en Lu).
+- Op de echte kaart en het echte werkblad: 24 van de 26 plekken automatisch gevonden; Gent en de Rijn moeten worden aangetikt. Lu, Ma en Br zijn dubbelzinnig en worden voorgelegd.
 - Een aangetikte plek krijgt een afdekvak zo groot als een gewone afkorting. Tekst die de herkenning niet zag (zoals een bijgeschreven naam), kan met "Afdekken" worden weggetikt.
 - De controle toont de plekken met nummers op de kaart; na bevestigen is alleen de blinde kaart te zien.

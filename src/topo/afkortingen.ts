@@ -48,11 +48,14 @@ function overlapt(a: KaartLabel, b: KaartLabel): boolean {
   return a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1
 }
 
-/** Voegt labels samen die twee herkenningen op dezelfde plek vonden. */
+/**
+ * Voegt labels samen die meerdere herkenningen op dezelfde plek vonden. Alleen dezelfde tekst wordt
+ * samengevoegd: een andere tekst op die plek mag een goede afkorting niet verdringen.
+ */
 export function voegLabelsSamen(labels: KaartLabel[]): KaartLabel[] {
   const uit: KaartLabel[] = []
   for (const l of [...labels].sort((a, b) => b.zekerheid - a.zekerheid)) {
-    if (!uit.some((u) => overlapt(u, l))) uit.push(l)
+    if (!uit.some((u) => overlapt(u, l) && sleutel(u.tekst) === sleutel(l.tekst))) uit.push(l)
   }
   return uit
 }

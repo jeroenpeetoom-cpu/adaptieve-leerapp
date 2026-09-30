@@ -163,6 +163,17 @@ describe('afkortingen koppelen', () => {
     expect(van('Ardennen')?.label).toBeNull()
   })
 
+  it('laat een andere tekst op dezelfde plek een goede afkorting niet verdringen', () => {
+    const v = koppelAfkortingen([label('An', 0.44, 0.47, 80), label('Anl', 0.44, 0.47, 96)], plekken, woorden)
+    expect(v.find((p) => p.naam === 'Antwerpen')?.label?.tekst).toBe('An')
+  })
+
+  it('maakt nooit een plek van een categoriewoord', () => {
+    const { woorden: w } = leesWerkblad([[regel(30, 100, 'Landen'), regel(30, 150, 'Kleur de Steden')]])
+    expect(w).not.toContain('Landen')
+    expect(w).not.toContain('Steden')
+  })
+
   it('voegt labels samen die twee herkenningen op dezelfde plek vonden', () => {
     const dubbel = koppelAfkortingen([label('An', 0.44, 0.47, 80), label('An', 0.441, 0.471, 95)], plekken, woorden)
     expect(dubbel.find((p) => p.naam === 'Antwerpen')?.label?.zekerheid).toBe(95)

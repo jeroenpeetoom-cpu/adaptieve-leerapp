@@ -100,7 +100,10 @@ function leesVariant(regels: HerkendeRegel[]): { lijsten: Lijst[]; woorden: stri
       inVak = true
       continue
     }
-    for (const w of vak.tekst.split(/[\s,]+/)) if (/^\p{Lu}\p{L}{3,}/u.test(w)) woorden.push(w.replace(/[^\p{L}-]/gu, ''))
+    for (const w of vak.tekst.split(/[\s,]+/)) {
+      // Categoriewoorden ("Landen", "Steden") zijn nooit een plek.
+      if (/^\p{Lu}\p{L}{3,}/u.test(w) && !soortVan(w)) woorden.push(w.replace(/[^\p{L}-]/gu, ''))
+    }
     const [eerste, ...rest] = vak.tekst.split(/\s+/)
     const soort = soortVan(eerste ?? '')
     const onderKop = kop !== undefined && Math.abs(vak.x0 - kop.x0) < kop.hoogte * 3

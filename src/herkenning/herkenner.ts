@@ -63,15 +63,40 @@ async function voorbereiden(bestand: Blob, maxZijde = MAX_ZIJDE): Promise<HTMLCa
   return canvas
 }
 
-/** Groter, zwart-wit en met meer contrast: leest vaak beter bij gekleurde achtergronden en kleine letters. */
-function voorbewerkt(bron: HTMLCanvasElement, schaal: number): HTMLCanvasElement {
+export type Variant = 'gewoon' | 'grijs' | 'rood'
+
+/** Een voorbewerkt canvas nooit groter dan dit (geheugen van de telefoon). */
+const MAX_ZIJDE_VOORBEWERKT = 4000
+
+/**
+ * Twee keer zo groot, en één kanaal genormaliseerd: de donkerste 1% wordt zwart, de lichtste 1% wit,
+ * en alles daartussen wordt opgerekt. "grijs" leest donkere tekst op lichte vlakken beter, "rood"
+ * leest tekst op rode en oranje vlakken beter (die worden in het rode kanaal licht).
+ */
+function voorbewerkt(bron: HTMLCanvasElement, variant: Exclude<Variant, 'gewoon'>): { canvas: HTMLCanvasElement; schaal: number } {
+  const schaal = Math.min(2, MAX_ZIJDE_VOORBEWERKT / Math.max(bron.width, bron.height))
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(bron.width * schaal)
   canvas.height = Math.round(bron.height * schaal)
-  const ctx = canvas.getContext('2d')!
-  ctx.filter = 'grayscale(1) contrast(1.6)'
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!
   ctx.drawImage(bron, 0, 0, canvas.width, canvas.height)
-  return canvas
+  const beeld = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  const d = beeld.data
+  const waarde = (i: number) => (variant === 'rood' ? d[i] : 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2])
+  const histogram = new Array<number>(256).fill(0)
+  for (let i = 0; i < d.length; i += 4) histogram[Math.round(waarde(i))]++
+  const totaal = d.length / 4
+  let laag = 0
+  let hoog = 255
+  for (let som = 0; laag < 255 && (som += histogram[laag]) < totaal * 0.01; laag++);
+  for (let som = 0; hoog > 0 && (som += histogram[hoog]) < totaal * 0.01; hoog--);
+  const bereik = Math.max(1, hoog - laag)
+  for (let i = 0; i < d.length; i += 4) {
+    const v = Math.max(0, Math.min(255, ((waarde(i) - laag) / bereik) * 255))
+    d[i] = d[i + 1] = d[i + 2] = v
+  }
+  ctx.putImageData(beeld, 0, 0)
+  return { canvas, schaal }
 }
 
 type Opmaak = 'losse tekst' | 'kolom'
@@ -109,7 +134,7 @@ export async function herken(bestand: Blob, opVoortgang: Voortgang): Promise<Her
 }
 
 export interface Herkenningen {
-  /** De herkende regels per variant (gewoon en voorbewerkt), in pixels van het gewone beeld. */
+  /** De herkende regels per variant, in pixels van het gewone beeld. */
   varianten: HerkendeRegel[][]
   breedte: number
   hoogte: number
@@ -117,19 +142,28 @@ export interface Herkenningen {
 }
 
 /**
- * Herkent een foto twee keer: gewoon en voorbewerkt (groter, zwart-wit, meer contrast). Samen vinden
- * die meer, vooral op een kaart of een gekleurd werkblad. Een werkblad leest het best als kolom,
- * een kaart als losse tekst.
+ * Herkent een foto meerdere keren, gewoon en voorbewerkt. Samen vinden die veel meer, vooral op een
+ * gekleurde kaart of werkblad. Een werkblad leest het best als kolom, een kaart als losse tekst.
  */
-export async function herkenTweeKeer(bestand: Blob, opmaak: Opmaak, opVoortgang: Voortgang): Promise<Herkenningen> {
+export async function herkenMeermaals(
+  bestand: Blob,
+  opmaak: Opmaak,
+  varianten: Variant[],
+  opVoortgang: Voortgang,
+): Promise<Herkenningen> {
   try {
     const w = await krijgWorker()
-    const canvas = await voorbereiden(bestand, 1600)
-    voortgang = (f, stap) => opVoortgang(f / 2, stap)
-    const gewoon = await herkenCanvas(w, canvas, opmaak, 1)
-    voortgang = (f, stap) => opVoortgang(0.5 + f / 2, stap)
-    const groot = await herkenCanvas(w, voorbewerkt(canvas, 2), opmaak, 2)
-    return { varianten: [gewoon, groot], breedte: canvas.width, hoogte: canvas.height, canvas }
+    const canvas = await voorbereiden(bestand)
+    const uit: HerkendeRegel[][] = []
+    for (const [i, variant] of varianten.entries()) {
+      voortgang = (f, stap) => opVoortgang((i + f) / varianten.length, stap)
+      if (variant === 'gewoon') uit.push(await herkenCanvas(w, canvas, opmaak, 1))
+      else {
+        const { canvas: voor, schaal } = voorbewerkt(canvas, variant)
+        uit.push(await herkenCanvas(w, voor, opmaak, schaal))
+      }
+    }
+    return { varianten: uit, breedte: canvas.width, hoogte: canvas.height, canvas }
   } catch (fout) {
     throw new Herkenningsfout(fout instanceof Error ? fout.message : String(fout))
   } finally {
