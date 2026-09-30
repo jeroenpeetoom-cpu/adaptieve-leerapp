@@ -50,6 +50,13 @@ describe('sessiesamenstelling binnen een tijdsbudget', () => {
     expect(s.nieuw).toHaveLength(7) // 720 s - 3 × 20 s = 660 s, dus 7 × 90 s
   })
 
+  it('geeft toetsstof voorrang bij herhalingen', () => {
+    const extra = { ...item('extra'), toetsstof: false }
+    const toets = { ...item('toets'), toetsstof: true }
+    const pogingen = [geoefend('extra', 1), geoefend('toets', 3)] // extra wacht langer
+    expect(ids(samen([extra, toets], pogingen, [bron()], '2026-10-10').herhalingen)).toEqual(['toets', 'extra'])
+  })
+
   it('neemt niet meer herhalingen dan in het budget passen; de rest blijft aan de beurt', () => {
     const herhaal = reeks(50, 'h')
     const s = samen(herhaal, herhaal.map((it) => geoefend(it.id)), [bron()], '2026-10-10')

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { leeritemsVan } from '../bronnen/leeritems'
-import type { Bron, Bronpagina, Geheugenbeeld, Woordpaar } from '../bronnen/model'
+import { leeritemsVanBron } from '../bronnen/leeritems'
+import type { Bron, Bronpagina, Geheugenbeeld, Plek, Woordpaar } from '../bronnen/model'
 import {
   berekenPlanning,
   berekenStrategiestap,
@@ -41,6 +41,7 @@ export function Inzichten({ onTerug }: { onTerug: () => void }) {
     pogingen: Poging[]
     beelden: Geheugenbeeld[]
     keuzes: Strategiekeuze[]
+    plekken: Plek[]
   } | null>(null)
 
   const laad = useCallback(async () => {
@@ -51,6 +52,7 @@ export function Inzichten({ onTerug }: { onTerug: () => void }) {
       pogingen: await echteDb.pogingen.toArray(),
       beelden: await echteDb.geheugenbeelden.toArray(),
       keuzes: await leesStrategieKeuzes(echteDb),
+      plekken: await echteDb.plekken.toArray(),
     })
   }, [])
 
@@ -59,9 +61,9 @@ export function Inzichten({ onTerug }: { onTerug: () => void }) {
   }, [laad])
 
   if (!gegevens) return null
-  const { bronnen, paren, paginas, pogingen, beelden, keuzes } = gegevens
+  const { bronnen, paren, paginas, pogingen, beelden, keuzes, plekken } = gegevens
   const vandaag = kalenderdag(new Date().toISOString(), instellingen.tijdzone)
-  const items = bronnen.flatMap((b) => leeritemsVan(b, paren))
+  const items = bronnen.flatMap((b) => leeritemsVanBron(b, paren, plekken))
   const statusVan = new Map(items.map((i) => [i.id, berekenVoortgang(i, pogingen, instellingen).status]))
 
   const geleerd: GeleerdMet[] = beelden.flatMap((b) => {
@@ -74,7 +76,7 @@ export function Inzichten({ onTerug }: { onTerug: () => void }) {
   // Komende herhalingen per dag; te late herhalingen tellen als vandaag.
   const perDag = new Map<number, number>()
   for (const b of bronnen.filter((b) => !b.afgerond)) {
-    for (const item of leeritemsVan(b, paren)) {
+    for (const item of leeritemsVanBron(b, paren, plekken)) {
       const dag = berekenPlanning(item.id, pogingen, instellingen, item.bronversie).volgendeDag
       if (dag === null) continue
       const over = Math.max(0, dagenTussen(vandaag, dag))
@@ -90,7 +92,7 @@ export function Inzichten({ onTerug }: { onTerug: () => void }) {
         <h2>Per bron</h2>
         {bronnen.length === 0 && <p className="gedempt">Nog geen bronnen.</p>}
         {bronnen.map((b) => {
-          const eigen = leeritemsVan(b, paren)
+          const eigen = leeritemsVanBron(b, paren, plekken)
           const mislukt = paginas.filter((p) => p.bronId === b.id && p.status === 'mislukt').length
           const open = paren.filter((wp) => wp.bronId === b.id && !wp.bevestigd).length
           return (

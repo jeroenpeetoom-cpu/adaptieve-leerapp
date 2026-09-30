@@ -23,11 +23,12 @@ import {
   type SessieToestand,
   type Strategie,
 } from '../leerlogica'
-import type { Geheugenbeeld } from '../bronnen/model'
+import type { Geheugenbeeld, Kaart } from '../bronnen/model'
 import type { RouteStand } from '../bronnen/routes'
 import type { Database } from '../opslag/database'
 import { CodewoordMelding, MISSIE, Sterrenkaart } from '../weergave/ruimte'
 import { Voorleesknop } from '../weergave/voorlezen'
+import { Aanwijzen } from './Aanwijzen'
 import { Leermoment } from './Leermoment'
 
 const TAALNAAM = { en: 'Engels', nl: 'Nederlands' } as const
@@ -59,6 +60,8 @@ interface Props {
   /** Alle pogingen van vóór deze sessie, om te bepalen of de leerling mag zeggen of moet typen. */
   eerderePogingen: Poging[]
   instellingen: Instellingen
+  /** De kaarten van topo-bronnen, voor aanwijzen. */
+  kaarten: Record<string, Kaart>
 }
 
 /** Na zoveel milliseconden stilte wordt een ingesproken antwoord vanzelf gecontroleerd. */
@@ -112,6 +115,7 @@ export function OefenSessie({
   beeldenMetSteuntje,
   eerderePogingen,
   instellingen,
+  kaarten,
 }: Props) {
   const [toestand, setToestand] = useState(begintoestand)
   const [antwoord, setAntwoord] = useState('')
@@ -147,13 +151,13 @@ export function OefenSessie({
     }
   }
 
-  async function verstuur(tekst: string | null, ingesproken = false) {
+  async function verstuur(tekst: string | null, ingesproken = false, vooraf?: Poging['oordeel']) {
     if (bezig) return
     if (insprekenTimer.current) clearTimeout(insprekenTimer.current)
     ingesprokenRef.current = false
     setTypMelding(false)
     const tijdstip = nu()
-    const uitkomst = beantwoord(toestand, { pogingId, antwoord: tekst, tijdstip, ingesproken })
+    const uitkomst = beantwoord(toestand, { pogingId, antwoord: tekst, tijdstip, ingesproken, oordeel: vooraf })
     if (!uitkomst.poging) return
     if (await bewaar(uitkomst.toestand, uitkomst.poging, tijdstip)) {
       setToestand(uitkomst.toestand)
@@ -242,6 +246,52 @@ export function OefenSessie({
   }
   const hintZichtbaar = !toestand.afgesloten && toestand.hulp === 'met hint' && !laatste
   const voorbeeldZichtbaar = !toestand.afgesloten && toestand.hulp === 'na voorbeeld'
+
+  if (item.soort === 'plek' && item.plek) {
+    const kaart = kaarten[item.plek.kaartId]
+    return (
+      <section className="kaart">
+        <Sterrenkaart
+          totaal={toestand.leeritems.length}
+          gedaan={toestand.huidige + (toestand.afgesloten ? 1 : 0)}
+          codewoorden={codewoorden}
+          sprong={vondCodewoord}
+        />
+        <p className="voortgang">{nogTeGaan(toestand) === 1 ? 'Laatste plek' : `Nog ${nogTeGaan(toestand)} te gaan`}</p>
+        {vondCodewoord && <CodewoordMelding />}
+        {storing && (
+          <p className="feedback feedback-storing" role="alert">
+            {storing}
+          </p>
+        )}
+        {kaart ? (
+          <Aanwijzen
+            key={`${item.id}-${toestand.huidige}`}
+            item={item}
+            kaart={kaart}
+            vorm={toestand.vorm}
+            hulp={toestand.hulp}
+            afgesloten={toestand.afgesloten}
+            laatste={laatste}
+            leermoment={leermoment}
+            bezig={bezig}
+            andereOpties={bronItems.filter((i) => i.id !== item.id && i.plek?.kaartId === item.plek!.kaartId && i.plek?.richting === 'aanwijzen' && i.plek?.soort === item.plek!.soort).concat(bronItems.filter((i) => i.id !== item.id && i.plek?.kaartId === item.plek!.kaartId && i.plek?.richting === 'aanwijzen' && i.plek?.soort !== item.plek!.soort))}
+            zaad={pogingId}
+            onAntwoord={(antwoord, oordeel) => void verstuur(antwoord, false, oordeel)}
+            onHulp={hulp}
+            onVolgende={() => void (leermoment ? leermomentKlaar(null) : naarVolgende())}
+          />
+        ) : (
+          <>
+            <p className="feedback feedback-storing">De kaart van deze plek ontbreekt. Laad de kaart opnieuw in bij de bron.</p>
+            <button className="knop" onClick={() => void verstuur(null, false, 'niet geweten')}>
+              Overslaan
+            </button>
+          </>
+        )}
+      </section>
+    )
+  }
 
   return (
     <section className="kaart">

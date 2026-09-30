@@ -204,6 +204,17 @@ describe('sessie', () => {
     expect(t.leeritems.slice(5).map((i) => i.id)).toEqual(terug)
   })
 
+  it('neemt een vooraf beoordeeld antwoord over, zoals een tik op de kaart', () => {
+    const { toestand, poging } = beantwoord(startSessie('s1', [bridge], [eerderGoed]), {
+      pogingId: 'tik',
+      antwoord: '0.51,0.47',
+      tijdstip: t,
+      oordeel: 'bijna',
+    })
+    expect(poging).toMatchObject({ oordeel: 'bijna', antwoord: '0.51,0.47' })
+    expect(toestand.afgesloten).toBe(false) // nieuwe kans met hint
+  })
+
   describe('mijn antwoord was ook goed', () => {
     it('voegt het antwoord toe en markeert de poging, zonder vrij opgehaald te tellen', () => {
       const river = item('3', 'river', 'rivier')

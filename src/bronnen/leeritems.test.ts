@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { kanBevestigen, leeritemsVan, nogTeBekijken } from './leeritems'
-import type { Bron, Woordpaar } from './model'
+import { kanBevestigen, leeritemsVan, leeritemsVanPlekken, nogTeBekijken } from './leeritems'
+import type { Bron, Plek, Woordpaar } from './model'
 
 const bron: Bron = {
   id: 'b1',
@@ -56,5 +56,37 @@ describe('bevestigen', () => {
   it('kan niet met lege velden of zonder nieuwe woordparen', () => {
     expect(kanBevestigen([wp('a', { bevestigd: false, betekenis: ' ' })])).toBe(false)
     expect(kanBevestigen([wp('a')])).toBe(false)
+  })
+})
+
+describe('leeritems van een kaart', () => {
+  const topo: Bron = { ...bron, id: 't1', soort: 'topo', oefenrichtingen: [], plekrichtingen: ['aanwijzen', 'benoemen'] }
+  const plek = (id: string, extra: Partial<Plek> = {}): Plek => ({
+    id,
+    bronId: 't1',
+    kaartId: 'k1',
+    naam: id,
+    soort: 'stad',
+    toetsstof: true,
+    x: 0.4,
+    y: 0.5,
+    labelVak: null,
+    alternatieven: [],
+    bevestigd: true,
+    bronversie: 1,
+    volgorde: 1,
+    ...extra,
+  })
+
+  it('maakt een aanwijs-leeritem per bevestigde, geplaatste plek, in volgorde', () => {
+    const items = leeritemsVanPlekken(topo, [
+      plek('Gent', { volgorde: 2, toetsstof: false }),
+      plek('Luik', { volgorde: 1 }),
+      plek('Rijn', { x: null, y: null }),
+      plek('Maas', { bevestigd: false }),
+    ])
+    expect(items.map((i) => i.id)).toEqual(['Luik-aanwijzen', 'Gent-aanwijzen'])
+    expect(items[0]).toMatchObject({ soort: 'plek', vraag: 'Luik', toetsstof: true, plek: { kaartId: 'k1', x: 0.4, y: 0.5, soort: 'stad', richting: 'aanwijzen' } })
+    expect(items[1].toetsstof).toBe(false)
   })
 })

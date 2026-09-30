@@ -45,6 +45,8 @@ export interface Antwoord {
   tijdstip: Tijdstip
   /** Het antwoord is ingesproken in plaats van getypt. */
   ingesproken?: boolean
+  /** Al beoordeeld buiten de antwoordcontrole, zoals een tik op de kaart. */
+  oordeel?: Oordeel
 }
 
 function laatsteOordeel(toestand: Pick<SessieToestand, 'pogingen' | 'laatsteOordeelVooraf'>, itemId: string) {
@@ -156,7 +158,7 @@ export function beantwoord(
   const alGezien = toestand.pogingen.some((p) => p.id === invoer.pogingId)
   if (!item || alGezien || toestand.afgesloten) return { toestand, poging: null }
 
-  const oordeel = beoordeel(invoer.antwoord, item.toegestaneAntwoorden)
+  const oordeel = invoer.oordeel ?? beoordeel(invoer.antwoord, item.toegestaneAntwoorden)
   const poging: Poging = {
     id: invoer.pogingId,
     sessieId: toestand.sessieId,

@@ -1,5 +1,5 @@
 import type { BronInfo, Leeritem } from '../leerlogica'
-import type { Bron, Woordpaar } from './model'
+import type { Bron, Plek, Woordpaar } from './model'
 
 /** Leeritems van een bron: één per bevestigd woordpaar en oefenrichting. */
 export function leeritemsVan(bron: Bron, woordparen: Woordpaar[]): Leeritem[] {
@@ -39,4 +39,34 @@ export function kanBevestigen(woordparen: Woordpaar[]): boolean {
     nogTeBekijken(open).length === 0 &&
     open.every((wp) => wp.woord.trim() !== '' && wp.betekenis.trim() !== '')
   )
+}
+
+/**
+ * Leeritems van een topo-bron: per bevestigde plek één leeritem per oefenrichting, in de volgorde van
+ * de plekken (toetsstof eerst, grote dingen eerst). Aanwijzen: "Waar ligt …?".
+ */
+export function leeritemsVanPlekken(bron: Bron, plekken: Plek[]): Leeritem[] {
+  const richtingen = (bron.plekrichtingen ?? ['aanwijzen', 'benoemen']).filter((r) => r === 'aanwijzen')
+  return plekken
+    .filter((p) => p.bronId === bron.id && p.bevestigd && p.x !== null && p.y !== null && p.naam.trim() !== '')
+    .sort((a, b) => a.volgorde - b.volgorde)
+    .flatMap((p) =>
+      richtingen.map((richting) => ({
+        id: `${p.id}-${richting}`,
+        soort: 'plek' as const,
+        bronId: bron.id,
+        woordpaarId: p.id,
+        bronversie: p.bronversie,
+        oefenrichting: { van: 'nl' as const, naar: 'nl' as const },
+        vraag: p.naam,
+        toegestaneAntwoorden: [p.naam],
+        plek: { kaartId: p.kaartId, x: p.x!, y: p.y!, soort: p.soort, richting },
+        toetsstof: p.toetsstof,
+      })),
+    )
+}
+
+/** Alle leeritems van een bron, van welke soort ook. */
+export function leeritemsVanBron(bron: Bron, woordparen: Woordpaar[], plekken: Plek[]): Leeritem[] {
+  return bron.soort === 'topo' ? leeritemsVanPlekken(bron, plekken) : leeritemsVan(bron, woordparen)
 }

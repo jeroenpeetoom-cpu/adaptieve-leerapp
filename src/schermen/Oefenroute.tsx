@@ -10,7 +10,7 @@ import {
   type SessieToestand,
   type Strategie,
 } from '../leerlogica'
-import type { Geheugenbeeld, Route } from '../bronnen/model'
+import type { Geheugenbeeld, Kaart, Route } from '../bronnen/model'
 import { beeldTekst, routeMetVrijePlek, standaardRoutenaam } from '../bronnen/routes'
 import { legStrategieVast, type Reflectie } from '../opslag/strategie'
 import { ReflectieVraag } from './Reflectie'
@@ -56,6 +56,7 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
   const [strategiePerBron, setStrategiePerBron] = useState<Record<string, Strategie | 'geen'>>({})
   const [voorgedaan, setVoorgedaan] = useState<Strategie[]>([])
   const [routes, setRoutes] = useState<Route[]>([])
+  const [kaarten, setKaarten] = useState<Record<string, Kaart>>({})
   const [laatsteReflectie, setLaatsteReflectie] = useState<Reflectie | null>(null)
   /** De bron die de leerling koos om te oefenen; null is alles samen. "Nog een rondje" blijft daarbij. */
   const [gekozenBron, setGekozenBron] = useState<string | null>(null)
@@ -73,6 +74,7 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     setExtraAntwoorden(await db.leesMeta<Record<string, string[]>>('extraAntwoorden', {}))
     setBeelden(await db.geheugenbeelden.toArray())
     setRoutes(await db.routes.toArray())
+    setKaarten(Object.fromEntries((await db.kaarten.toArray()).map((k) => [k.id, k])))
     setLaatsteReflectie(await db.leesMeta<Reflectie | null>('laatsteReflectie', null))
     setStrategiePerBron(await db.leesMeta<Record<string, Strategie | 'geen'>>('strategiePerBron', {}))
     setVoorgedaan(await db.leesMeta<Strategie[]>('voorgedaan', []))
@@ -205,6 +207,7 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
           beeldenMetSteuntje={instellingen.beeldenMetSteuntje}
           eerderePogingen={pogingen}
           instellingen={instellingen}
+          kaarten={kaarten}
           strategiePerBron={strategiePerBron}
           voorgedaan={voorgedaan}
           onKiesStrategie={kiesStrategie}

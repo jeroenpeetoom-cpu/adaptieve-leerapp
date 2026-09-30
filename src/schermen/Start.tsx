@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Leerling } from '../bronnen/leerling'
-import { bronInfo, leeritemsVan } from '../bronnen/leeritems'
-import type { Bron, Woordpaar } from '../bronnen/model'
+import { bronInfo, leeritemsVanBron } from '../bronnen/leeritems'
+import type { Bron, Plek, Woordpaar } from '../bronnen/model'
 import { STANDAARD_INSTELLINGEN } from '../leerlogica'
 import { echteDb } from '../opslag/database'
 import { Oefenroute } from './Oefenroute'
@@ -23,7 +23,7 @@ interface Props {
 export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onOpenBron, onTestfunctie }: Props) {
   const [bronnen, setBronnen] = useState<Bron[] | null>(null)
   const [paren, setParen] = useState<Woordpaar[]>([])
-  const [plekkenPerBron, setPlekkenPerBron] = useState<Record<string, number>>({})
+  const [plekken, setPlekken] = useState<Plek[]>([])
   const [bezig, setBezig] = useState(false)
   const [laatsteBackup, setLaatsteBackup] = useState<string | null>(null)
   const [sessieMinuten, setSessieMinuten] = useState(STANDAARD_INSTELLINGEN.sessieMinuten)
@@ -31,8 +31,7 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
   const laad = useCallback(async () => {
     setBronnen((await echteDb.bronnen.toArray()).sort((a, b) => b.aangemaakt.localeCompare(a.aangemaakt)))
     setParen(await echteDb.woordparen.toArray())
-    const plekken = await echteDb.plekken.toArray()
-    setPlekkenPerBron(plekken.reduce<Record<string, number>>((a, p) => ({ ...a, [p.bronId]: (a[p.bronId] ?? 0) + 1 }), {}))
+    setPlekken(await echteDb.plekken.toArray())
     setLaatsteBackup(await echteDb.leesMeta<string | null>('laatsteBackup', null))
     setSessieMinuten(await echteDb.leesMeta('sessieMinuten', STANDAARD_INSTELLINGEN.sessieMinuten))
   }, [])
@@ -42,7 +41,8 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
   }, [laad])
 
   if (bronnen === null) return null
-  const leeritems = bronnen.flatMap((b) => leeritemsVan(b, paren))
+  const leeritems = bronnen.flatMap((b) => leeritemsVanBron(b, paren, plekken))
+  const plekkenVan = (bronId: string) => plekken.filter((p) => p.bronId === bronId)
   const backupNodig =
     leeritems.length > 0 &&
     (laatsteBackup === null || Date.now() - new Date(laatsteBackup).getTime() > BACKUP_HERINNERING_DAGEN * 86_400_000)
@@ -58,7 +58,7 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
         nu={nu}
         instellingen={{ ...STANDAARD_INSTELLINGEN, sessieMinuten }}
         onBezig={setBezig}
-        leeg={<p>Nog geen woorden. Maak een foto van je woordenlijst om te beginnen.</p>}
+        leeg={<p>Nog niets om te oefenen. Maak een foto van je woordenlijst of topokaart om te beginnen.</p>}
         onder={() => (
           <section className="kaart">
             <h2>Je bronnen</h2>
@@ -79,7 +79,9 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
                         </strong>
                         <span className="gedempt">
                           {b.soort === 'topo' ? (
-                            `${plekkenPerBron[b.id] ?? 0} ${plekkenPerBron[b.id] === 1 ? 'plek' : 'plekken'}`
+                            `${plekkenVan(b.id).length} ${plekkenVan(b.id).length === 1 ? 'plek' : 'plekken'}${
+                              plekkenVan(b.id).length > 0 && !plekkenVan(b.id).every((p) => p.bevestigd) ? ' · nog controleren' : ''
+                            }`
                           ) : (
                             <>
                               {klaar} {klaar === 1 ? 'woord' : 'woorden'}

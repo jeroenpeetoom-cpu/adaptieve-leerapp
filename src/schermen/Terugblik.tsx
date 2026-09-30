@@ -67,10 +67,16 @@ export function Terugblik({ sessie, pogingen, vandaag, instellingen, children }:
           return (
             <li key={item.id}>
               <div className="terugblik-regel">
-                <span>
-                  <strong lang={item.oefenrichting.van}>{item.vraag}</strong> →{' '}
-                  <span lang={item.oefenrichting.naar}>{item.toegestaneAntwoorden[0]}</span>
-                </span>
+                {item.soort === 'plek' ? (
+                  <span>
+                    <strong>📍 {item.vraag}</strong> <span className="gedempt">aanwijzen</span>
+                  </span>
+                ) : (
+                  <span>
+                    <strong lang={item.oefenrichting.van}>{item.vraag}</strong> →{' '}
+                    <span lang={item.oefenrichting.naar}>{item.toegestaneAntwoorden[0]}</span>
+                  </span>
+                )}
                 <StatusLabel status={status} />
               </div>
               <p className="gedempt">

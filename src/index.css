@@ -847,3 +847,67 @@ select.invoer {
 .kaartbeeld.afdekstand {
   touch-action: none;
 }
+
+.vraag-kaart {
+  font-size: 1.6rem;
+}
+
+.tikpunt {
+  position: absolute;
+  width: 1rem;
+  height: 1rem;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: #ff8a8a;
+  border: 2px solid #fff;
+  pointer-events: none;
+}
+
+.tikpunt.goed {
+  background: #6fd08c;
+}
+
+.doelpunt {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  border: 3px solid #6fd08c;
+  background: rgba(111, 208, 140, 0.25);
+  pointer-events: none;
+  animation: doel 1.2s ease-in-out infinite alternate;
+}
+
+.doel-stad {
+  width: 2.2rem;
+  height: 2.2rem;
+}
+
+.doel-water,
+.doel-gebied,
+.doel-land {
+  width: 5rem;
+  height: 5rem;
+}
+
+@keyframes doel {
+  from {
+    box-shadow: 0 0 0 0 rgba(111, 208, 140, 0.6);
+  }
+  to {
+    box-shadow: 0 0 0 10px rgba(111, 208, 140, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doelpunt {
+    animation: none;
+  }
+}
+
+.optie-stip {
+  background: var(--accent);
+  color: #1a1300;
+  min-width: 2rem;
+  height: 2rem;
+  font-size: 0.95rem;
+}

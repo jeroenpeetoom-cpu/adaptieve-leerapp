@@ -2,8 +2,20 @@
 
 export type Tijdstip = string
 
-/** Soort leeritem. Nu alleen woordpaar; topografie volgt (zie .scratch/topografie/). */
-export type LeeritemSoort = 'woordpaar'
+/** Soort leeritem: een woordpaar of een plek op een kaart. */
+export type LeeritemSoort = 'woordpaar' | 'plek'
+
+export type PlekSoort = 'stad' | 'water' | 'gebied' | 'land'
+
+/** Wat een leeritem van een plek nodig heeft: waar het ligt, en welke oefenrichting. */
+export interface PlekGegevens {
+  kaartId: string
+  /** Positie als fractie van de kaartafmetingen. */
+  x: number
+  y: number
+  soort: PlekSoort
+  richting: 'aanwijzen' | 'benoemen'
+}
 
 export type Taal = 'en' | 'nl'
 
@@ -16,12 +28,17 @@ export interface Leeritem {
   id: string
   soort: LeeritemSoort
   bronId: string
+  /** Het woordpaar of de plek waaruit dit leeritem komt. */
   woordpaarId: string
   bronversie: number
   oefenrichting: Oefenrichting
   /** Wat de leerling te zien krijgt, zoals "bridge". */
   vraag: string
   toegestaneAntwoorden: string[]
+  /** Alleen bij een plek. */
+  plek?: PlekGegevens
+  /** Hoort bij de toetsstof; krijgt voorrang als er weinig tijd is. */
+  toetsstof?: boolean
 }
 
 export type Hulp = 'vrij opgehaald' | 'met hint' | 'herkend' | 'na voorbeeld'

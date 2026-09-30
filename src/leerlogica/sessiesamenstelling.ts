@@ -85,7 +85,7 @@ export function stelSessieSamen(
         const laatst = laatstGeoefend(i)
         return laatst === null || kalenderdag(laatst, instellingen.tijdzone) < start
       })
-      .sort((a, b) => (laatstGeoefend(a) ?? '').localeCompare(laatstGeoefend(b) ?? ''))
+      .sort((a, b) => Number(b.toetsstof ?? false) - Number(a.toetsstof ?? false) || (laatstGeoefend(a) ?? '').localeCompare(laatstGeoefend(b) ?? ''))
     const quotum = Math.ceil(nodig.length / d)
     for (const item of nodig.slice(0, quotum)) {
       if (gebruikt + tempo.herhalingSec > maximum) {
@@ -103,7 +103,12 @@ export function stelSessieSamen(
   const herhalingen: Leeritem[] = []
   const aanDeBeurt = actief
     .filter((i) => isAanDeBeurt(planning.get(i.id)!, vandaag))
-    .sort((a, b) => planning.get(a.id)!.volgendeDag!.localeCompare(planning.get(b.id)!.volgendeDag!))
+    // Toetsstof eerst, daarna de langst wachtende.
+    .sort(
+      (a, b) =>
+        Number(b.toetsstof ?? false) - Number(a.toetsstof ?? false) ||
+        planning.get(a.id)!.volgendeDag!.localeCompare(planning.get(b.id)!.volgendeDag!),
+    )
   for (const item of aanDeBeurt) {
     if (gebruikt + tempo.herhalingSec > budget) break
     if (neem(item)) {
