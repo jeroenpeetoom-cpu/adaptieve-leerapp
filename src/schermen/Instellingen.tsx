@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Leerling } from '../bronnen/leerling'
 import { leesBackup, maakBackup, OngeldigeBackup, zetBackupTerug } from '../opslag/backup'
 import { isBlijvend, vraagBlijvendeOpslag } from '../opslag/blijvend'
+import { STANDAARD_INSTELLINGEN } from '../leerlogica'
 import { echteDb } from '../opslag/database'
 import { isGeluidUit, zetGeluidUit } from '../weergave/voorlezen'
 import { ProfielFormulier } from './Profiel'
@@ -20,12 +21,14 @@ export function Instellingen({ onTerug, onGewist }: { onTerug: () => void; onGew
   const [wissen, setWissen] = useState(false)
   const [wisTekst, setWisTekst] = useState('')
   const [geluidUit, setGeluidUit] = useState(isGeluidUit)
+  const [sessieMinuten, setSessieMinuten] = useState(STANDAARD_INSTELLINGEN.sessieMinuten)
   const importRef = useRef<HTMLInputElement>(null)
 
   const laad = useCallback(async () => {
     setLeerling((await echteDb.leerlingen.toArray())[0] ?? null)
     setBlijvend(await isBlijvend())
     setLaatsteBackup(await echteDb.leesMeta<string | null>('laatsteBackup', null))
+    setSessieMinuten(await echteDb.leesMeta('sessieMinuten', STANDAARD_INSTELLINGEN.sessieMinuten))
   }, [])
 
   useEffect(() => {
@@ -99,6 +102,33 @@ export function Instellingen({ onTerug, onGewist }: { onTerug: () => void; onGew
           />
         </section>
       )}
+
+      <section className="kaart">
+        <h2>Oefentijd per dag</h2>
+        <label className="label" htmlFor="sessieduur">
+          Hoe lang duurt een sessie ongeveer?
+        </label>
+        <select
+          id="sessieduur"
+          className="invoer"
+          value={sessieMinuten}
+          onChange={(e) => {
+            const minuten = Number(e.target.value)
+            setSessieMinuten(minuten)
+            void echteDb.schrijfMeta('sessieMinuten', minuten)
+          }}
+        >
+          {[8, 10, 12, 15, 20].map((m) => (
+            <option key={m} value={m}>
+              {m} minuten
+            </option>
+          ))}
+        </select>
+        <p className="gedempt">
+          De app vult die tijd eerst met herhalingen en daarna met nieuwe woorden, en past zich aan je eigen tempo aan. Voor
+          een toets kan het soms wat langer duren.
+        </p>
+      </section>
 
       <section className="kaart">
         <h2>Geluid</h2>

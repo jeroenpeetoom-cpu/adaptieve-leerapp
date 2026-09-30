@@ -1,7 +1,8 @@
+import { normaliseer } from './antwoordcontrole'
 import { berekenPlanning, isAanDeBeurt } from './herhaalplanning'
 import type { Instellingen } from './instellingen'
-import { dagenTussen } from './tijd'
-import { normaliseer } from './antwoordcontrole'
+import { berekenTempo, type Tempo } from './tempo'
+import { dagenTussen, kalenderdag, telDagenOp } from './tijd'
 import type { Leeritem, Poging } from './types'
 
 export interface BronInfo {
@@ -12,15 +13,24 @@ export interface BronInfo {
 }
 
 export interface Samenstelling {
+  /** Generale repetitie: leeritems van een bron met een toets over 1 of 2 dagen. */
+  repetitie: Leeritem[]
   herhalingen: Leeritem[]
   nieuw: Leeritem[]
+  /** Geschatte duur in minuten, op het tempo van de leerling. */
+  minuten: number
+  /** De sessie duurt langer dan het budget, omdat een toets dat vraagt. */
+  langer: boolean
 }
 
 /**
- * Stelt een sessie samen: eerst herhalingen die aan de beurt zijn (langst wachtend eerst),
- * daarna nieuwe leeritems als er ruimte is, of altijd bij een toets die binnenkort is.
- * Heeft een bron een toetsdatum, dan worden de nieuwe leeritems die nog over zijn gelijk verdeeld
- * over de dagen tot de toets (minstens maxNieuw, hoogstens maxNieuwMetToets per sessie).
+ * Stelt een sessie samen binnen een tijdsbudget:
+ * 1. generale repetitie: in de laatste dagen vóór een toets komen alle leeritems van die bron één keer
+ *    langs, verdeeld over die dagen, ook als ze nog niet aan de beurt zijn;
+ * 2. herhalingen die aan de beurt zijn, de langst wachtende eerst, zolang ze in de tijd passen;
+ * 3. nieuwe leeritems: voor een bron met een toets zoveel als nodig om alles uiterlijk een paar dagen
+ *    vóór de toets geleerd te hebben (ook als de sessie dan langer duurt), daarna tot het budget vol is.
+ * Hetzelfde woord komt maar één keer in een sessie.
  */
 export function stelSessieSamen(
   leeritems: Leeritem[],
@@ -28,54 +38,87 @@ export function stelSessieSamen(
   bronnen: BronInfo[],
   vandaag: string,
   instellingen: Instellingen,
+  tempo: Tempo = berekenTempo(pogingen, instellingen),
 ): Samenstelling {
   const bronPerId = new Map(bronnen.map((b) => [b.bronId, b]))
   const actief = leeritems.filter((i) => !bronPerId.get(i.bronId)?.afgerond)
+  const planning = new Map(actief.map((i) => [i.id, berekenPlanning(i.id, pogingen, instellingen, i.bronversie)]))
+  const laatstGeoefend = (item: Leeritem) =>
+    pogingen
+      .filter((p) => p.leeritemId === item.id && p.bronversie === item.bronversie)
+      .reduce<string | null>((laatst, p) => (laatst === null || p.tijdstip > laatst ? p.tijdstip : laatst), null)
 
-  const planningen = actief.map((item) => ({
-    item,
-    planning: berekenPlanning(item.id, pogingen, instellingen, item.bronversie),
-  }))
-
-  const herhalingen = planningen
-    .filter(({ planning }) => isAanDeBeurt(planning, vandaag))
-    .sort((a, b) => a.planning.volgendeDag!.localeCompare(b.planning.volgendeDag!))
-    .slice(0, instellingen.maxHerhalingen)
-    .map(({ item }) => item)
-
-  const toetsBinnenkort = (item: Leeritem) => {
-    const toetsdag = bronPerId.get(item.bronId)?.toetsdag
-    if (!toetsdag) return false
-    const dagen = dagenTussen(vandaag, toetsdag)
-    return dagen >= 0 && dagen <= instellingen.toetsVoorrangDagen
-  }
-
-  const nogNieuw = planningen.filter(({ planning }) => planning.volgendeDag === null).map(({ item }) => item)
-
-  // Per bron met een toets in de toekomst: de resterende nieuwe leeritems gelijk verdelen over de dagen tot de toets.
-  let limiet = instellingen.maxNieuw
-  for (const bron of bronnen) {
-    if (!bron.toetsdag || bron.afgerond) continue
-    const dagen = dagenTussen(vandaag, bron.toetsdag)
-    if (dagen < 0) continue
-    const over = nogNieuw.filter((i) => i.bronId === bron.bronId).length
-    const perDag = Math.ceil(over / Math.max(dagen, 1))
-    limiet = Math.max(limiet, Math.min(perDag, instellingen.maxNieuwMetToets))
-  }
-
-  const ruimte = herhalingen.length < instellingen.maxHerhalingen
-  const nieuw = nogNieuw
-    .filter((item) => ruimte || toetsBinnenkort(item))
-    .sort((a, b) => Number(toetsBinnenkort(b)) - Number(toetsBinnenkort(a)))
-    .slice(0, limiet)
-
-  // Hetzelfde woord (bijvoorbeeld in twee bronnen) komt maar één keer in een sessie.
-  const gezien = new Set<string>()
-  const uniek = (item: Leeritem) => {
+  const gekozen = new Set<string>()
+  const gezienWoord = new Set<string>()
+  /** Neemt een leeritem op, tenzij het er al in zit of hetzelfde woord al is gekozen. */
+  const neem = (item: Leeritem) => {
     const sleutel = [item.oefenrichting.van, item.oefenrichting.naar, normaliseer(item.vraag), normaliseer(item.toegestaneAntwoorden[0])].join('|')
-    if (gezien.has(sleutel)) return false
-    gezien.add(sleutel)
+    if (gekozen.has(item.id) || gezienWoord.has(sleutel)) return false
+    gekozen.add(item.id)
+    gezienWoord.add(sleutel)
     return true
   }
-  return { herhalingen: herhalingen.filter(uniek), nieuw: nieuw.filter(uniek) }
+
+  const toetsOver = (bronId: string): number | null => {
+    const toetsdag = bronPerId.get(bronId)?.toetsdag
+    return toetsdag ? dagenTussen(vandaag, toetsdag) : null
+  }
+
+  // 1. Generale repetitie.
+  const repetitie: Leeritem[] = []
+  for (const bron of bronnen) {
+    const d = toetsOver(bron.bronId)
+    if (d === null || d < 1 || d > instellingen.repetitieDagen || bron.afgerond) continue
+    const start = telDagenOp(bron.toetsdag!, -instellingen.repetitieDagen)
+    const nodig = actief
+      .filter((i) => i.bronId === bron.bronId && planning.get(i.id)!.volgendeDag !== null)
+      .filter((i) => {
+        const laatst = laatstGeoefend(i)
+        return laatst === null || kalenderdag(laatst, instellingen.tijdzone) < start
+      })
+      .sort((a, b) => (laatstGeoefend(a) ?? '').localeCompare(laatstGeoefend(b) ?? ''))
+    const quotum = Math.ceil(nodig.length / d)
+    for (const item of nodig.slice(0, quotum)) if (neem(item)) repetitie.push(item)
+  }
+
+  // 2. Herhalingen binnen het budget.
+  const budget = instellingen.sessieMinuten * 60
+  let gebruikt = repetitie.length * tempo.herhalingSec
+  const herhalingen: Leeritem[] = []
+  const aanDeBeurt = actief
+    .filter((i) => isAanDeBeurt(planning.get(i.id)!, vandaag))
+    .sort((a, b) => planning.get(a.id)!.volgendeDag!.localeCompare(planning.get(b.id)!.volgendeDag!))
+  for (const item of aanDeBeurt) {
+    if (gebruikt + tempo.herhalingSec > budget) break
+    if (neem(item)) {
+      herhalingen.push(item)
+      gebruikt += tempo.herhalingSec
+    }
+  }
+
+  // 3. Nieuwe leeritems: eerst wat een toets vraagt, dan tot het budget vol is.
+  const nogNieuw = actief.filter((i) => planning.get(i.id)!.volgendeDag === null)
+  const nieuw: Leeritem[] = []
+  const voegNieuwToe = (item: Leeritem) => {
+    if (nieuw.length >= instellingen.maxNieuwPerSessie) return
+    if (neem(item)) {
+      nieuw.push(item)
+      gebruikt += tempo.nieuwSec
+    }
+  }
+  for (const bron of bronnen) {
+    const d = toetsOver(bron.bronId)
+    if (d === null || d < 0 || bron.afgerond) continue
+    const eigen = nogNieuw.filter((i) => i.bronId === bron.bronId)
+    const dagenOver = d - instellingen.toetsKlaarDagenVooraf
+    const quotum = dagenOver <= 0 ? eigen.length : Math.ceil(eigen.length / dagenOver)
+    for (const item of eigen.slice(0, quotum)) voegNieuwToe(item)
+  }
+  for (const item of nogNieuw) {
+    if (gebruikt + tempo.nieuwSec > budget) break
+    voegNieuwToe(item)
+  }
+
+  const minuten = Math.ceil(gebruikt / 60)
+  return { repetitie, herhalingen, nieuw, minuten, langer: gebruikt > budget + 30 }
 }

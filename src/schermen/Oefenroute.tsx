@@ -104,14 +104,30 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
       instellingen,
     )
   const samenstelling = samenstellingVoor(null)
-  const aantal = samenstelling.herhalingen.length + samenstelling.nieuw.length
+  const totaal = (s: typeof samenstelling) => s.repetitie.length + s.herhalingen.length + s.nieuw.length
+  const aantal = totaal(samenstelling)
   const perBron = [...new Set(leeritems.map((i) => i.bronId))]
     .map((bronId) => ({ bronId, s: samenstellingVoor(bronId) }))
-    .filter(({ s }) => s.herhalingen.length + s.nieuw.length > 0)
+    .filter(({ s }) => totaal(s) > 0)
+
+  /** Korte omschrijving van wat er klaarstaat, met de geschatte duur. */
+  const omschrijving = (s: typeof samenstelling) => {
+    const delen = []
+    if (s.repetitie.length > 0) delen.push(`${s.repetitie.length} voor de generale repetitie`)
+    if (s.herhalingen.length > 0) delen.push(`${s.herhalingen.length} ${s.herhalingen.length === 1 ? 'herhaling' : 'herhalingen'}`)
+    if (s.nieuw.length > 0) delen.push(`${s.nieuw.length} ${s.nieuw.length === 1 ? 'nieuw woord' : 'nieuwe woorden'}`)
+    return `${delen.join(', ')} · ongeveer ${s.minuten} ${s.minuten === 1 ? 'minuut' : 'minuten'}`
+  }
+  const langerMelding = (s: typeof samenstelling) =>
+    s.langer ? (
+      <p className="feedback" role="note">
+        📅 Er komt een toets aan. Vandaag duurt het wat langer, ongeveer {s.minuten} minuten, zodat je op tijd alles geleerd hebt.
+      </p>
+    ) : null
 
   function startNieuweSessie(bronId: string | null = gekozenBron): boolean {
     const gekozen = samenstellingVoor(bronId)
-    const items = [...gekozen.herhalingen, ...gekozen.nieuw]
+    const items = [...gekozen.repetitie, ...gekozen.herhalingen, ...gekozen.nieuw]
     if (items.length === 0) return false
     setGekozenBron(bronId)
     setMelding(null)
@@ -247,10 +263,8 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
                 <li key={bronId}>
                   <button className="bron-knop" onClick={() => startNieuweSessie(bronId)}>
                     <strong>{bronnamen[bronId] ?? 'Bron'}</strong>
-                    <span className="gedempt">
-                      {s.herhalingen.length} {s.herhalingen.length === 1 ? 'herhaling' : 'herhalingen'} en {s.nieuw.length}{' '}
-                      {s.nieuw.length === 1 ? 'nieuw woord' : 'nieuwe woorden'}
-                    </span>
+                    <span className="gedempt">{omschrijving(s)}</span>
+                    {s.langer && <span className="gedempt">📅 toets op komst: wat langer vandaag</span>}
                   </button>
                 </li>
               ))}
@@ -262,10 +276,10 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
         ) : aantal > 0 ? (
           <>
             <p>
-              {samenstelling.herhalingen.length} {samenstelling.herhalingen.length === 1 ? 'herhaling' : 'herhalingen'} en{' '}
-              {samenstelling.nieuw.length} {samenstelling.nieuw.length === 1 ? 'nieuw woord' : 'nieuwe woorden'}
-              {perBron.length === 1 && bronnamen[perBron[0].bronId] ? ` uit ${bronnamen[perBron[0].bronId]}` : ''}.
+              {omschrijving(samenstelling)}
+              {perBron.length === 1 && bronnamen[perBron[0].bronId] ? ` · ${bronnamen[perBron[0].bronId]}` : ''}
             </p>
+            {langerMelding(samenstelling)}
             <button className="knop" onClick={() => startNieuweSessie(null)}>
               Start ({aantal} {aantal === 1 ? 'woord' : 'woorden'})
             </button>

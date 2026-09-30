@@ -25,11 +25,13 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
   const [paren, setParen] = useState<Woordpaar[]>([])
   const [bezig, setBezig] = useState(false)
   const [laatsteBackup, setLaatsteBackup] = useState<string | null>(null)
+  const [sessieMinuten, setSessieMinuten] = useState(STANDAARD_INSTELLINGEN.sessieMinuten)
 
   const laad = useCallback(async () => {
     setBronnen((await echteDb.bronnen.toArray()).sort((a, b) => b.aangemaakt.localeCompare(a.aangemaakt)))
     setParen(await echteDb.woordparen.toArray())
     setLaatsteBackup(await echteDb.leesMeta<string | null>('laatsteBackup', null))
+    setSessieMinuten(await echteDb.leesMeta('sessieMinuten', STANDAARD_INSTELLINGEN.sessieMinuten))
   }, [])
 
   useEffect(() => {
@@ -51,7 +53,7 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
         leeritems={leeritems}
         bronnen={bronnen.map(bronInfo)}
         nu={nu}
-        instellingen={STANDAARD_INSTELLINGEN}
+        instellingen={{ ...STANDAARD_INSTELLINGEN, sessieMinuten }}
         onBezig={setBezig}
         leeg={<p>Nog geen woorden. Maak een foto van je woordenlijst om te beginnen.</p>}
         onder={() => (
