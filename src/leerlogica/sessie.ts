@@ -11,7 +11,7 @@ export type Vorm = 'typen' | 'meerkeuze'
  *   Bij een nieuw leeritem (de voorkennischeck) geldt dat alleen voor "bijna": wie een woord nog
  *   niet kent, krijgt meteen een leermoment in plaats van een hint.
  * - Daarna, of na "niet geweten", is het leeritem afgesloten en ziet de leerling het antwoord.
- * - Een leeritem dat niet goed ging, komt aan het eind van de sessie één keer terug.
+ * - Een leeritem dat niet goed ging, komt een paar vragen later één keer terug.
  * - Was de laatste poging op een leeritem fout of niet geweten, dan komt het als meerkeuze
  *   (hulp "herkend"); na een goede meerkeuze is het weer een typvraag.
  */
@@ -237,21 +237,34 @@ function schud<T>(lijst: T[], zaadTekst: string): T[] {
   return kopie
 }
 
+/** Een leeritem dat niet goed ging, komt terug na zoveel andere vragen (of aan het eind als er minder over zijn). */
+export const TERUG_NA = 3
+
+/**
+ * De plek in de wachtrij waar een teruggezet leeritem komt: een paar vragen later, en niet vlak na of voor
+ * een leeritem van hetzelfde woordpaar of dezelfde plek (zoals de andere richting).
+ */
+function terugPlek(leeritems: Leeritem[], na: number, item: Leeritem): number {
+  const buur = (i: number) => leeritems[i]?.woordpaarId === item.woordpaarId
+  for (let plek = Math.min(leeritems.length, na + 1 + TERUG_NA); plek <= leeritems.length; plek++) {
+    if (!buur(plek - 1) && !buur(plek)) return plek
+  }
+  return leeritems.length
+}
+
 export function volgende(toestand: SessieToestand): SessieToestand {
   if (!toestand.afgesloten) return toestand
   const item = huidigLeeritem(toestand)!
   const laatste = toestand.pogingen.at(-1)!
   const terugzetten = laatste.oordeel !== 'goed' && !toestand.teruggezet.includes(item.id)
-  let leeritems = terugzetten ? [...toestand.leeritems, item] : toestand.leeritems
-  // Teruggezette leeritems komen in wisselende volgorde, niet in de volgorde waarin ze geleerd zijn
-  // (bij een geheugenroute moet de leerling ze ook los van de route kunnen ophalen).
-  const positie = toestand.huidige + 1
-  if (toestand.aantalGepland !== undefined && positie === toestand.aantalGepland) {
-    leeritems = [...leeritems.slice(0, positie), ...schud(leeritems.slice(positie), toestand.sessieId)]
+  let leeritems = toestand.leeritems
+  if (terugzetten) {
+    const plek = terugPlek(leeritems, toestand.huidige, item)
+    leeritems = [...leeritems.slice(0, plek), item, ...leeritems.slice(plek)]
   }
   return opPositie(
     { ...toestand, leeritems, teruggezet: terugzetten ? [...toestand.teruggezet, item.id] : toestand.teruggezet },
-    positie,
+    toestand.huidige + 1,
   )
 }
 

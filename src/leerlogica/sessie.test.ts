@@ -192,28 +192,27 @@ describe('sessie', () => {
     })
   })
 
-  it('laat teruggezette leeritems in wisselende volgorde terugkomen', () => {
-    const vijf = ['a', 'b', 'c', 'd', 'e'].map((id) => item(id, id, `${id}${id}`))
-    let s = startSessie('zaad-1', vijf)
-    for (let i = 0; i < 5; i++) s = volgende(antwoord(s, null).toestand)
-    const terug = s.leeritems.slice(5).map((i) => i.id)
-    expect([...terug].sort()).toEqual(['a', 'b', 'c', 'd', 'e'])
-    expect(huidigLeeritem(s)?.id).toBe(terug[0])
-    // Vast per sessie: dezelfde sessie geeft dezelfde volgorde.
-    let t = startSessie('zaad-1', vijf)
-    for (let i = 0; i < 5; i++) t = volgende(antwoord(t, null).toestand)
-    expect(t.leeritems.slice(5).map((i) => i.id)).toEqual(terug)
+  it('laat een leeritem dat niet goed ging een paar vragen later terugkomen, niet meteen', () => {
+    const zes = ['a', 'b', 'c', 'd', 'e', 'f'].map((id) => item(id, id, `${id}${id}`))
+    let s = startSessie('s', zes)
+    s = volgende(antwoord(s, null).toestand) // a niet geweten
+    expect(s.leeritems.map((i) => i.id)).toEqual(['a', 'b', 'c', 'd', 'a', 'e', 'f'])
   })
 
-  it('neemt een vooraf beoordeeld antwoord over, zoals een tik op de kaart', () => {
-    const { toestand, poging } = beantwoord(startSessie('s1', [bridge], [eerderGoed]), {
-      pogingId: 'tik',
-      antwoord: '0.51,0.47',
-      tijdstip: t,
-      oordeel: 'bijna',
-    })
-    expect(poging).toMatchObject({ oordeel: 'bijna', antwoord: '0.51,0.47' })
-    expect(toestand.afgesloten).toBe(false) // nieuwe kans met hint
+  it('zet een teruggezet leeritem nooit vlak naast de andere richting van hetzelfde woord', () => {
+    const heen = (id: string) => ({ ...item(`${id}-heen`, id, `${id}${id}`), woordpaarId: id })
+    const terug = (id: string) => ({ ...item(`${id}-terug`, id, `${id}${id}`), woordpaarId: id })
+    // a-heen gaat fout; op de gewone terugplek zou hij naast a-terug staan.
+    let s = startSessie('s', [heen('a'), heen('b'), heen('c'), terug('a'), heen('d'), heen('e')])
+    s = volgende(antwoord(s, null).toestand)
+    const ids = s.leeritems.map((i) => i.woordpaarId)
+    for (let i = 0; i < ids.length - 1; i++) expect(ids[i] === 'a' && ids[i + 1] === 'a').toBe(false)
+  })
+
+  it('zet aan het eind terug als er weinig over is', () => {
+    let s = startSessie('s', [bridge, cloud])
+    s = volgende(antwoord(s, null).toestand)
+    expect(s.leeritems.map((i) => i.id)).toEqual(['1', '2', '1'])
   })
 
   describe('mijn antwoord was ook goed', () => {
