@@ -119,7 +119,11 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     return `${delen.join(', ')} · ongeveer ${s.minuten} ${s.minuten === 1 ? 'minuut' : 'minuten'}`
   }
   const langerMelding = (s: typeof samenstelling) =>
-    s.langer ? (
+    s.tekort ? (
+      <p className="feedback" role="note">
+        📅 Er komt een toets aan, en niet alles past meer in de tijd. Een extra rondje helpt, of begin de volgende keer eerder.
+      </p>
+    ) : s.langer ? (
       <p className="feedback" role="note">
         📅 Er komt een toets aan. Vandaag duurt het wat langer, ongeveer {s.minuten} minuten, zodat je op tijd alles geleerd hebt.
       </p>

@@ -118,7 +118,7 @@ export function Instellingen({ onTerug, onGewist }: { onTerug: () => void; onGew
             void echteDb.schrijfMeta('sessieMinuten', minuten)
           }}
         >
-          {[8, 10, 12, 15, 20].map((m) => (
+          {[8, 10, 12, 15].map((m) => (
             <option key={m} value={m}>
               {m} minuten
             </option>
@@ -126,7 +126,7 @@ export function Instellingen({ onTerug, onGewist }: { onTerug: () => void; onGew
         </select>
         <p className="gedempt">
           De app vult die tijd eerst met herhalingen en daarna met nieuwe woorden, en past zich aan je eigen tempo aan. Voor
-          een toets kan het soms wat langer duren.
+          een toets kan het wat langer duren, maar nooit meer dan 15 minuten.
         </p>
       </section>
 

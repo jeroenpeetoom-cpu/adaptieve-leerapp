@@ -19,8 +19,10 @@ export interface Samenstelling {
   nieuw: Leeritem[]
   /** Geschatte duur in minuten, op het tempo van de leerling. */
   minuten: number
-  /** De sessie duurt langer dan het budget, omdat een toets dat vraagt. */
+  /** De sessie duurt langer dan het budget, omdat een toets dat vraagt (nooit langer dan het maximum). */
   langer: boolean
+  /** Een toets vraagt meer dan er vandaag in het maximum past; de rest schuift door. */
+  tekort: boolean
 }
 
 /**
@@ -29,7 +31,8 @@ export interface Samenstelling {
  *    langs, verdeeld over die dagen, ook als ze nog niet aan de beurt zijn;
  * 2. herhalingen die aan de beurt zijn, de langst wachtende eerst, zolang ze in de tijd passen;
  * 3. nieuwe leeritems: voor een bron met een toets zoveel als nodig om alles uiterlijk een paar dagen
- *    vóór de toets geleerd te hebben (ook als de sessie dan langer duurt), daarna tot het budget vol is.
+ *    vóór de toets geleerd te hebben, daarna tot het budget vol is.
+ * Een toets mag de sessie laten uitlopen tot het maximum, nooit verder; wat niet past schuift door.
  * Hetzelfde woord komt maar één keer in een sessie.
  */
 export function stelSessieSamen(
@@ -64,6 +67,12 @@ export function stelSessieSamen(
     return toetsdag ? dagenTussen(vandaag, toetsdag) : null
   }
 
+  const maximum = instellingen.maxSessieMinuten * 60
+  // Ook een eerder ingestelde langere duur blijft binnen het maximum.
+  const budget = Math.min(instellingen.sessieMinuten * 60, maximum)
+  let gebruikt = 0
+  let tekort = false
+
   // 1. Generale repetitie.
   const repetitie: Leeritem[] = []
   for (const bron of bronnen) {
@@ -78,12 +87,19 @@ export function stelSessieSamen(
       })
       .sort((a, b) => (laatstGeoefend(a) ?? '').localeCompare(laatstGeoefend(b) ?? ''))
     const quotum = Math.ceil(nodig.length / d)
-    for (const item of nodig.slice(0, quotum)) if (neem(item)) repetitie.push(item)
+    for (const item of nodig.slice(0, quotum)) {
+      if (gebruikt + tempo.herhalingSec > maximum) {
+        tekort = true
+        break
+      }
+      if (neem(item)) {
+        repetitie.push(item)
+        gebruikt += tempo.herhalingSec
+      }
+    }
   }
 
   // 2. Herhalingen binnen het budget.
-  const budget = instellingen.sessieMinuten * 60
-  let gebruikt = repetitie.length * tempo.herhalingSec
   const herhalingen: Leeritem[] = []
   const aanDeBeurt = actief
     .filter((i) => isAanDeBeurt(planning.get(i.id)!, vandaag))
@@ -99,12 +115,13 @@ export function stelSessieSamen(
   // 3. Nieuwe leeritems: eerst wat een toets vraagt, dan tot het budget vol is.
   const nogNieuw = actief.filter((i) => planning.get(i.id)!.volgendeDag === null)
   const nieuw: Leeritem[] = []
-  const voegNieuwToe = (item: Leeritem) => {
-    if (nieuw.length >= instellingen.maxNieuwPerSessie) return
+  const voegNieuwToe = (item: Leeritem, grens: number) => {
+    if (nieuw.length >= instellingen.maxNieuwPerSessie || gebruikt + tempo.nieuwSec > grens) return false
     if (neem(item)) {
       nieuw.push(item)
       gebruikt += tempo.nieuwSec
     }
+    return true
   }
   for (const bron of bronnen) {
     const d = toetsOver(bron.bronId)
@@ -112,13 +129,17 @@ export function stelSessieSamen(
     const eigen = nogNieuw.filter((i) => i.bronId === bron.bronId)
     const dagenOver = d - instellingen.toetsKlaarDagenVooraf
     const quotum = dagenOver <= 0 ? eigen.length : Math.ceil(eigen.length / dagenOver)
-    for (const item of eigen.slice(0, quotum)) voegNieuwToe(item)
+    for (const item of eigen.slice(0, quotum)) {
+      if (!voegNieuwToe(item, maximum)) {
+        tekort = true
+        break
+      }
+    }
   }
   for (const item of nogNieuw) {
-    if (gebruikt + tempo.nieuwSec > budget) break
-    voegNieuwToe(item)
+    if (!voegNieuwToe(item, budget)) break
   }
 
   const minuten = Math.ceil(gebruikt / 60)
-  return { repetitie, herhalingen, nieuw, minuten, langer: gebruikt > budget + 30 }
+  return { repetitie, herhalingen, nieuw, minuten, langer: gebruikt > budget + 30, tekort }
 }

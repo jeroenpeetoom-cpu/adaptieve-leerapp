@@ -4,6 +4,8 @@ export interface Instellingen {
   intervallen: number[]
   /** Gewenste duur van een sessie in minuten. */
   sessieMinuten: number
+  /** Een sessie duurt nooit langer dan dit, ook niet voor een toets. */
+  maxSessieMinuten: number
   /** Schatting van de duur van een herhaling, zolang het eigen tempo nog niet bekend is. */
   schattingHerhalingSec: number
   /** Schatting van de duur van een nieuw leeritem met leermoment. */
@@ -27,6 +29,7 @@ export interface Instellingen {
 export const STANDAARD_INSTELLINGEN: Instellingen = {
   intervallen: [1, 3, 7, 14, 30, 60, 120],
   sessieMinuten: 12,
+  maxSessieMinuten: 15,
   schattingHerhalingSec: 20,
   schattingNieuwSec: 90,
   pauzeGrensSec: 180,

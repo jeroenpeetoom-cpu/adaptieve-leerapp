@@ -57,6 +57,11 @@ describe('sessiesamenstelling binnen een tijdsbudget', () => {
     expect(s.nieuw).toEqual([])
   })
 
+  it('houdt ook een eerder ingestelde langere duur binnen 15 minuten', () => {
+    const s = stelSessieSamen(reeks(40), [], [bron()], '2026-10-01', { ...STANDAARD_INSTELLINGEN, sessieMinuten: 20 }, tempo)
+    expect(s.nieuw).toHaveLength(10)
+  })
+
   it('neemt geen leeritems op die nog niet aan de beurt zijn', () => {
     const s = samen([item('h')], [geoefend('h')], [bron()], '2026-10-01')
     expect(s.herhalingen).toEqual([])
@@ -84,17 +89,19 @@ describe('sessiesamenstelling binnen een tijdsbudget', () => {
 })
 
 describe('planning voor een toets', () => {
-  it('leert alle nieuwe leeritems uiterlijk 3 dagen vóór de toets, ook als de sessie dan langer duurt', () => {
-    // 52 leeritems, toets over 7 dagen: 4 dagen om alles te leren, dus 13 per dag.
-    const s = samen(reeks(52), [], [bron({ toetsdag: '2026-10-08' })], '2026-10-01')
-    expect(s.nieuw).toHaveLength(13)
-    expect(s.langer).toBe(true)
-    expect(s.minuten).toBe(20) // 13 × 90 s
+  it('verdeelt de nieuwe leeritems over de dagen tot 3 dagen vóór de toets, en laat de sessie zo nodig uitlopen', () => {
+    // 40 leeritems, toets over 7 dagen: 4 dagen om alles te leren, dus 10 per dag (15 minuten).
+    const s = samen(reeks(40), [], [bron({ toetsdag: '2026-10-08' })], '2026-10-01')
+    expect(s.nieuw).toHaveLength(10)
+    expect(s).toMatchObject({ minuten: 15, langer: true, tekort: false })
   })
 
-  it('leert bij weinig tijd alles wat over is in één keer, tot de veiligheidsgrens', () => {
-    expect(samen(reeks(10), [], [bron({ toetsdag: '2026-10-03' })], '2026-10-01').nieuw).toHaveLength(10)
-    expect(samen(reeks(50), [], [bron({ toetsdag: '2026-10-03' })], '2026-10-01').nieuw).toHaveLength(30)
+  it('duurt nooit langer dan 15 minuten; wat niet past schuift door en de app meldt een tekort', () => {
+    // 52 leeritems over 4 dagen zou 13 per dag vragen (20 minuten); er passen er 10.
+    const s = samen(reeks(52), [], [bron({ toetsdag: '2026-10-08' })], '2026-10-01')
+    expect(s.nieuw).toHaveLength(10)
+    expect(s).toMatchObject({ minuten: 15, tekort: true })
+    expect(samen(reeks(50), [], [bron({ toetsdag: '2026-10-03' })], '2026-10-01').nieuw).toHaveLength(10)
   })
 
   it('gebruikt gewoon het budget als de toets ver weg is of voorbij', () => {
