@@ -89,6 +89,23 @@ describe('werkblad lezen', () => {
     expect(plekken.map((p) => p.naam).sort()).toEqual(['Brussel', 'Gent'])
   })
 
+  it('ruimt afgebroken namen, samengeplakte namen en een verkeerde soort op', () => {
+    const goed = [regel(30, 100, 'Steden Brussel, Gent, Rotterdam'), regel(30, 150, 'Zee Noordzee'), regel(30, 200, 'Gebergte Ardennen')]
+    const rommel = [regel(30, 100, 'Steden Brussel Gent, Rott'), regel(30, 150, 'Zee Noorc'), regel(30, 200, 'Rivieren Ardennen')]
+    const { plekken } = leesWerkblad([goed, goed, rommel])
+    expect(plekken.map((p) => `${p.naam}/${p.soort}`).sort()).toEqual(['Ardennen/gebied', 'Brussel/stad', 'Gent/stad', 'Noordzee/water', 'Rotterdam/stad'])
+  })
+
+  it('voegt een anders herkende naam samen met de bekende', () => {
+    const { plekken } = leesWerkblad([[regel(30, 100, 'Rivieren Rijn, Schelde, Maas')], [regel(30, 100, 'Rivieren Rijn, Scheide, Maas')]])
+    expect(plekken.map((p) => p.naam)).toEqual(['Rijn', 'Schelde', 'Maas'])
+  })
+
+  it('houdt korte namen die op elkaar lijken, en langere samenstellingen, wel apart', () => {
+    expect(leesWerkblad([[regel(30, 100, 'Steden Luik, Lier')]]).plekken.map((p) => p.naam)).toEqual(['Luik', 'Lier'])
+    expect(leesWerkblad([[regel(30, 100, 'Steden Bergen, Bergen op Zoom')]]).plekken.map((p) => p.naam)).toEqual(['Bergen', 'Bergen op Zoom'])
+  })
+
   it('knipt rommel van de herkenning na een naam af', () => {
     const { plekken } = leesWerkblad([[regel(30, 100, 'Steden Bastogne An -, Gent 0 t rad')]])
     expect(plekken.map((p) => p.naam)).toEqual(['Bastogne', 'Gent'])
@@ -166,6 +183,17 @@ describe('afkortingen koppelen', () => {
   it('laat een andere tekst op dezelfde plek een goede afkorting niet verdringen', () => {
     const v = koppelAfkortingen([label('An', 0.44, 0.47, 80), label('Anl', 0.44, 0.47, 96)], plekken, woorden)
     expect(v.find((p) => p.naam === 'Antwerpen')?.label?.tekst).toBe('An')
+  })
+
+  it('maakt geen tweede plek van een andere herkenning van dezelfde afkorting', () => {
+    // "VI" en "Vl" op dezelfde plek; het werkblad heeft ook de vervormde spelling "Vlaandere".
+    const v = koppelAfkortingen([label('VI', 0.5, 0.49, 82), label('Vla', 0.5, 0.49, 70)], plekken, [...woorden, 'Vlaandere'])
+    expect(v.filter((p) => p.naam.startsWith('Vlaand'))).toHaveLength(1)
+  })
+
+  it('maakt geen nieuwe plek van een woord dat bijna een bekende naam is', () => {
+    const v = koppelAfkortingen([label('An', 0.9, 0.1)], plekken.filter((p) => p.naam !== 'Antwerpen').concat([{ naam: 'Antwerpen', soort: 'stad', toetsstof: true }]), ['Antwerpe'])
+    expect(v.filter((p) => p.naam.startsWith('Antwerp'))).toHaveLength(1)
   })
 
   it('maakt nooit een plek van een categoriewoord', () => {

@@ -1,5 +1,5 @@
 // Afkortingen op een ingevulde kaart koppelen aan plekken van het werkblad. Pure module.
-import { sleutel, type Soort, type WerkbladPlek } from './werkblad'
+import { lijktOp, sleutel, type Soort, type WerkbladPlek } from './werkblad'
 
 /** Een stukje tekst op de kaart, met positie als fractie van de kaartafmetingen (0 tot 1). */
 export interface KaartLabel {
@@ -93,12 +93,17 @@ export function koppelAfkortingen(labels: KaartLabel[], plekken: WerkbladPlek[],
     }
   }
 
-  // Afkortingen zonder plek: zoek een woord van het werkblad dat ermee begint.
-  const bekend = new Set(voorstel.map((p) => sleutel(p.naam)))
+  // Afkortingen zonder plek: zoek een woord van het werkblad dat ermee begint. Twee dingen worden
+  // nooit een nieuwe plek: tekst op de plek van een al gekoppelde afkorting (een andere herkenning van
+  // dezelfde afkorting), en een woord dat bijna hetzelfde is als een bekende naam ("Vlaandere").
+  const bekend = voorstel.map((p) => sleutel(p.naam))
+  const lijktOpBekend = (w: string) => bekend.some((b) => lijktOp(b, sleutel(w)))
+  const bezet = () => voorstel.flatMap((p) => (p.label ? [p.label] : []))
   for (const l of [...vrij].sort((a, b) => a.y0 - b.y0 || a.x0 - b.x0)) {
-    const woord = woorden.find((w) => !bekend.has(sleutel(w)) && past(l.tekst, w))
+    if (bezet().some((b) => overlapt(b, l))) continue
+    const woord = woorden.find((w) => !lijktOpBekend(w) && past(l.tekst, w))
     if (!woord) continue
-    bekend.add(sleutel(woord))
+    bekend.push(sleutel(woord))
     voorstel.push({ naam: woord, soort: 'stad', toetsstof: false, label: l, alternatieven: [] })
     vrij.delete(l)
   }

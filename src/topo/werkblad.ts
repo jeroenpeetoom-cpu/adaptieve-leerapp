@@ -32,6 +32,24 @@ export const sleutel = (naam: string) =>
     .toLowerCase()
     .replace(/[^a-z]/g, '')
 
+/** Twee sleutels zijn bijna hetzelfde: de ene begint met de andere, of ze verschillen hooguit twee letters. */
+export function lijktOp(a: string, b: string): boolean {
+  if (a === b) return true
+  const [kort, lang] = a.length <= b.length ? [a, b] : [b, a]
+  // Een afgebroken naam ("Rott", "Noorc"): het begin klopt, op hooguit één letter na. Meer dan vijf
+  // letters verschil is een andere naam ("Bergen" en "Bergen op Zoom").
+  if (kort.length >= 4 && lang.length - kort.length <= 5) {
+    let anders = 0
+    for (let i = 0; i < kort.length; i++) if (kort[i] !== lang[i]) anders++
+    if (anders <= (kort.length >= 5 ? 1 : 0)) return lang.length - kort.length <= 2 || anders <= 1
+  }
+  if (Math.abs(a.length - b.length) > 2 || Math.min(a.length, b.length) < 5) return false
+  const d = Array.from({ length: a.length + 1 }, (_, i) => Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)))
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
+  return d[a.length][b.length] <= 2
+}
+
 function soortVan(woord: string): Soort | null {
   const schoon = woord.replace(/[^\p{L}']/gu, '')
   // De herkenning mist soms de laatste letter ("Stede", "Rivierer"): vergelijk ook het begin.
@@ -45,6 +63,8 @@ function soortVan(woord: string): Soort | null {
   return null
 }
 
+const VERBINDING = new Set(['op', 'aan', 'den', 'de', 'van', 'het', 'ter', 'der', 'bij', 'en'])
+
 function namenUit(lijst: string): string[] {
   return lijst
     .split(/,|\s+en\s+/)
@@ -52,15 +72,23 @@ function namenUit(lijst: string): string[] {
       // Een naam is een of meer woorden met een hoofdletter; wat daarna komt is rommel van de herkenning.
       const woorden = n.replace(/[^\p{L}\s'-]/gu, ' ').trim().split(/\s+/)
       const naam: string[] = []
-      for (const w of woorden) {
+      for (let i = 0; i < woorden.length; i++) {
+        const w = woorden[i]
+        // Verbindingswoorden horen bij de naam als er weer een hoofdletter volgt ("Bergen op Zoom").
+        if (naam.length > 0 && VERBINDING.has(w) && /^\p{Lu}\p{Ll}/u.test(woorden[i + 1] ?? '')) {
+          naam.push(w)
+          continue
+        }
         if (!/^\p{Lu}\p{Ll}/u.test(w) || (naam.length > 0 && w.length < 3)) break
         naam.push(w)
       }
-      return naam.slice(0, 3)
+      return naam.slice(0, 5)
     })
     // Twee lange woorden met een hoofdletter zijn meestal twee namen zonder komma ("Mechelen Leuven");
     // korte samenstellingen zoals "Den Haag" blijven heel.
-    .flatMap((woorden) => (woorden.length > 1 && woorden.every((w) => w.length >= 5) ? woorden : [woorden.join(' ')]))
+    .flatMap((woorden) =>
+      woorden.length > 1 && woorden.every((w) => w.length >= 5 && !VERBINDING.has(w)) ? woorden : [woorden.join(' ')],
+    )
     // Minstens vier letters: afgebroken afkortingen zoals "Vla" zijn geen naam.
     .filter((n) => n.replace(/[^\p{L}]/gu, '').length >= 4)
 }
@@ -128,6 +156,8 @@ function leesVariant(regels: HerkendeRegel[]): { lijsten: Lijst[]; woorden: stri
 export function leesWerkblad(varianten: HerkendeRegel[][]): Werkblad {
   const perSleutel = new Map<string, WerkbladPlek>()
   const woorden = new Set<string>()
+  /** Hoe vaak een naam met een soort gelezen is, over alle lijsten en varianten. */
+  const tellingen = new Map<string, number>()
   for (const regels of varianten) {
     const { lijsten, woorden: w } = leesVariant(regels)
     w.forEach((x) => woorden.add(x))
@@ -135,17 +165,25 @@ export function leesWerkblad(varianten: HerkendeRegel[][]): Werkblad {
       for (const naam of lijst.namen) {
         // Dezelfde naam kan twee plekken zijn (Luxemburg, land en stad): de soort hoort bij de sleutel.
         const k = `${lijst.soort}:${sleutel(naam)}`
-        // Een afgebroken naam ("Brusse") hoort bij de volledige ("Brussel").
+        tellingen.set(k, (tellingen.get(k) ?? 0) + 1)
+        // Een afgebroken of anders herkende naam ("Brusse", "Scheide") hoort bij de bekende ("Brussel", "Schelde").
+        const woordenIn = (t: string) => t.trim().split(/\s+/).length
         const afgebroken = [...perSleutel.keys()].find(
-          (b) => b.startsWith(`${lijst.soort}:`) && b !== k && (b.startsWith(k) || k.startsWith(b)) && Math.min(b.length, k.length) >= 7,
+          (b) =>
+            b !== k &&
+            b.startsWith(`${lijst.soort}:`) &&
+            woordenIn(perSleutel.get(b)!.naam) === woordenIn(naam) &&
+            lijktOp(b.slice(b.indexOf(':') + 1), k.slice(k.indexOf(':') + 1)),
         )
         if (afgebroken) {
           const bestaand = perSleutel.get(afgebroken)!
           bestaand.toetsstof ||= lijst.toetsstof
+          const samen = (tellingen.get(afgebroken) ?? 0) + (tellingen.get(k) ?? 0)
           if (k.length > afgebroken.length) {
             perSleutel.delete(afgebroken)
             perSleutel.set(k, { ...bestaand, naam })
-          }
+            tellingen.set(k, samen)
+          } else tellingen.set(afgebroken, samen)
           continue
         }
         const bestaand = perSleutel.get(k)
@@ -158,5 +196,26 @@ export function leesWerkblad(varianten: HerkendeRegel[][]): Werkblad {
       }
     }
   }
-  return { plekken: [...perSleutel.values()], woorden: [...woorden] }
+  let plekken = [...perSleutel.values()]
+
+  // Een naam die uit andere namen bestaat ("Brussel Gent"), is twee namen die aan elkaar kwamen.
+  const enkel = new Set(plekken.map((p) => sleutel(p.naam)))
+  plekken = plekken.filter((p) => {
+    const delen = p.naam.split(/\s+/)
+    return delen.length < 2 || !delen.every((d) => enkel.has(sleutel(d)))
+  })
+
+  // Dezelfde naam bij twee soorten: houd de soort die veel vaker gelezen is, tenzij beide in het vak
+  // "Wat moet je leren?" staan (Luxemburg is een land én een stad).
+  plekken = plekken.filter((p) => {
+    const anderen = plekken.filter((q) => q !== p && q.soort !== p.soort && sleutel(q.naam) === sleutel(p.naam))
+    const telling = (x: WerkbladPlek) => tellingen.get(`${x.soort}:${sleutel(x.naam)}`) ?? 0
+    return anderen.every((q) => {
+      if (p.toetsstof && q.toetsstof) return true
+      // Staat de andere soort in het vak en deze niet, dan wint het vak.
+      if (q.toetsstof && !p.toetsstof) return false
+      return telling(p) * 2 > telling(q)
+    })
+  })
+  return { plekken, woorden: [...woorden] }
 }
