@@ -1112,3 +1112,23 @@ select.invoer {
 .modusbalk .knoppen {
   margin-top: 0;
 }
+
+/* De hele kaart past in het scherm onder de vraag en de knoppen; inzoomen schuift binnen dit vak. */
+.kaartvenster-passend {
+  height: 56dvh;
+  max-height: none;
+  display: flex;
+  /* "safe": bij inzoomen niet links afgesneden, maar gewoon te schuiven. */
+  justify-content: safe center;
+  align-items: flex-start;
+}
+
+.kaartvenster-passend .kaartbeeld {
+  flex: none;
+  max-width: none;
+}
+
+.kaartvenster-passend .kaartbeeld img {
+  width: 100%;
+  height: 100%;
+}

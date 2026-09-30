@@ -2,20 +2,19 @@ import { useState } from 'react'
 import type { Kaart } from '../bronnen/model'
 import type { PlekGegevens } from '../leerlogica'
 
-/** Startzoom: een stad iets dichterbij, een gebied, water of land met meer omgeving. */
-const START_ZOOM = { stad: 1.6, water: 1.2, gebied: 1.2, land: 1.2 } as const
-const ZOOMSTAPPEN = [1, 1.2, 1.6, 2.2, 3]
+/** Altijd beginnen met de hele kaart; de leerling zoomt zelf in als dat nodig is. */
+const ZOOMSTAPPEN = [1, 1.5, 2.2, 3]
 /** Verhouding hoogte/breedte van de uitsnede als er is ingezoomd. */
 const VENSTER = 0.7
 
 const begrens = (v: number) => Math.max(0, Math.min(100, v))
 
 /**
- * Een uitsnede van de kaart met de plek zo veel mogelijk in het midden, zodat de leerling de plek ziet
- * zonder te scrollen, ook als het toetsenbord openstaat. In- en uitzoomen kan; "hele kaart" toont alles.
+ * De kaart met een plek die oplicht. Begint altijd met de hele kaart, klein genoeg om met de vraag en het
+ * invulveld op het scherm te passen. Inzoomen doet de leerling zelf; de plek blijft dan in het midden.
  */
 export function KaartUitsnede({ kaart, plek, naam }: { kaart: Kaart; plek: PlekGegevens; naam?: string }) {
-  const [zoom, setZoom] = useState<number>(START_ZOOM[plek.soort])
+  const [zoom, setZoom] = useState<number>(1)
   const v = kaart.hoogte / kaart.breedte
   // Bij de hele kaart past het venster zich aan de kaart aan, anders een vaste verhouding.
   const venster = zoom === 1 ? v : VENSTER
@@ -35,8 +34,9 @@ export function KaartUitsnede({ kaart, plek, naam }: { kaart: Kaart; plek: PlekG
           backgroundSize: `${zoom * 100}% auto`,
           backgroundPosition: `${posX}% ${posY}%`,
           aspectRatio: `${1 / venster}`,
-          maxHeight: zoom === 1 ? '60vh' : undefined,
-          marginInline: zoom === 1 ? 'auto' : undefined,
+          // De hele kaart past altijd in het scherm, zodat de vraag erboven zichtbaar blijft.
+          width: `min(100%, calc(42dvh / ${venster}))`,
+          marginInline: 'auto',
         }}
         role="img"
         aria-label={naam ? `Kaart: ${naam}` : 'Kaart met een plek die oplicht'}

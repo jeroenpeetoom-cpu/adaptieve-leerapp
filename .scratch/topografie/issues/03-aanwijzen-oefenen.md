@@ -20,4 +20,4 @@ Uitwerking:
 - Hulp: kiezen uit vier plekken (letters A tot D op de kaart, bij voorkeur van dezelfde soort) of laten zien waar het ligt.
 - Een nieuwe plek die de leerling niet weet, krijgt een eenvoudig leermoment (de plek licht op); geheugenbeeld en ankers volgen in ticket 05.
 - Benoemen-leeritems worden nog niet gemaakt (ticket 04).
-
+- Op verzoek: nooit vanzelf inzoomen. Bij aanwijzen past de hele kaart onder de vraag en de knoppen in het scherm (vak van 56% van de schermhoogte); inzoomen met − en + schuift binnen dat vak, zodat de bovenkant altijd zichtbaar blijft. De uitsnede bij benoemen en het leermoment begint ook met de hele kaart.

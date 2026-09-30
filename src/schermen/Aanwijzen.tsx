@@ -153,10 +153,11 @@ export function Aanwijzen({ item, kaart, vorm, hulp, afgesloten, laatste, leermo
         </button>
         {zoom > 1 && <span className="gedempt">Schuif met je vinger over de kaart</span>}
       </div>
-      <div className="kaartvenster" ref={vensterRef}>
+      <div className="kaartvenster kaartvenster-passend" ref={vensterRef}>
         <div
           className={`kaartbeeld ${!afgesloten && !leermoment && vorm !== 'meerkeuze' ? 'tikbaar' : ''}`}
-          style={{ width: `${zoom * 100}%` }}
+          // Bij zoom 1 past de hele kaart in het vak; inzoomen maakt hem groter binnen het vak.
+          style={{ height: `${zoom * 100}%`, width: 'auto', aspectRatio: `${kaart.breedte} / ${kaart.hoogte}` }}
           onClick={(e) => {
             const r = e.currentTarget.getBoundingClientRect()
             kaartTik((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height)
