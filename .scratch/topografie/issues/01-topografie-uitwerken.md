@@ -4,7 +4,7 @@
 
 **Blocked by:** de eerste versie (woordenschat), `.scratch/eerste-versie/`
 
-**Status:** needs-triage (grill-sessie bezig)
+**Status:** done
 
 Eerst een korte grill-sessie. Open vragen daarin zijn onder meer:
 - hoe dicht bij de stip een tik als goed telt;
@@ -14,8 +14,8 @@ Eerst een korte grill-sessie. Open vragen daarin zijn onder meer:
 
 Daarna volgen een specificatie en tickets.
 
-- [ ] Grill-sessie gehouden en besluiten vastgelegd
-- [ ] Specificatie en tickets gemaakt
+- [x] Grill-sessie gehouden en besluiten vastgelegd
+- [x] Tickets gemaakt: `.scratch/eerste-versie/issues/15-tijdsbudget-toetsplanning.md` en `.scratch/topografie/issues/02` t/m `05`
 
 ## Analyse van echt huiswerk (Noordhoff, "België en Luxemburg", 2 pagina's)
 
@@ -33,4 +33,5 @@ Daarna volgen een specificatie en tickets.
 - **Volgorde (vraag 45, bevestigd):** eerst de toetsstof uit "Wat moet je leren?", daarna de extra plekken; bij herhalingen en de generale repetitie heeft de toetsstof voorrang. Binnen de toetsstof de grote dingen eerst: landen en zee, dan gebieden, rivieren en steden.
 - **Wanneer een tik goed is (vraag 46, bevestigd):** per soort een andere afstand: een kleine cirkel rond het stipje bij een stad, een grote cirkel rond de plek van de afkorting bij water, gebied of land. Net buiten de cirkel (binnen twee keer de afstand) is *bijna*: "Bijna! Iets meer naar het oosten", met één nieuwe kans met hulp *met hint*. Na het antwoord licht de goede plek altijd op. Extra punten langs rivieren of in gebieden kunnen later, als de benadering onterecht fouten geeft.
 - **Leermoment en strategie (vraag 47, bevestigd):** een nieuwe plek licht op de kaart op met de naam, met een geheugenbeeld voor de naam (beelden koppelen of zonder; geen geheugenroute bij topo), en met ankers: de app noemt de windrichting ten opzichte van plekken die de leerling al kent ("Antwerpen ligt ten noorden van Brussel") en gebruikt die ook als hint. De windrichting wordt berekend uit de posities op de kaart.
-
+- **Begrippen (vraag 48, bevestigd):** Kaart, Plek (soort stad, water, gebied of land), Anker, en de oefenrichtingen aanwijzen en benoemen; zie `CONTEXT.md`.
+- **Later:** feiten en relaties (aan welk water, wat ligt ertussen, Vlaams of Waals, grenzen, kenmerken).
