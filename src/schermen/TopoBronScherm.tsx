@@ -370,20 +370,36 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
               ingevuld, en een fout leer je anders verkeerd.
             </p>
           )}
-          {tikmodus?.soort === 'plaats' && (
-            <p className="feedback" role="status">
-              👆 Tik op de kaart waar <strong>{plekken.find((p) => p.id === tikmodus.plekId)?.naam || 'de nieuwe plek'}</strong> ligt: op
-              het stipje, de rivier of in het gebied.{' '}
-              <button className="link" onClick={() => setTikmodus(null)}>
-                Annuleren
-              </button>
-            </p>
-          )}
-          {tikmodus?.soort === 'afdekken' && (
-            <p className="feedback" role="status">
-              ✎ Trek met je vinger een vakje over tekst die nog zichtbaar is, zoals een naam die je erbij schreef. Een korte tik
-              dekt een klein stukje af.
-            </p>
+          {tikmodus && (
+            <div className="modusbalk" role="status">
+              {tikmodus.soort === 'plaats' ? (
+                <>
+                  <p>
+                    👆 Tik op de kaart waar <strong>{plekken.find((p) => p.id === tikmodus.plekId)?.naam || 'de nieuwe plek'}</strong> ligt: op
+                    het stipje, de rivier of in het gebied.
+                  </p>
+                  <div className="knoppen">
+                    <button className="knop knop-rustig" onClick={() => setTikmodus(null)}>
+                      Annuleren
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p>✎ Trek met je vinger een vakje over tekst die nog zichtbaar is. Een korte tik dekt een klein stukje af.</p>
+                  <div className="knoppen">
+                    <button className="knop" onClick={() => setTikmodus(null)}>
+                      ✓ Klaar met afdekken
+                    </button>
+                    {kaart.afgedekt.length > 0 && (
+                      <button className="knop knop-rustig" onClick={() => void bewaarAfgedekt(kaart.afgedekt.slice(0, -1))}>
+                        ↶ Ongedaan maken
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           )}
           <div ref={kaartRef}>
             <KaartMetPlekken
@@ -404,18 +420,9 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
             <button className="link" onClick={() => setGroot(!groot)}>
               {groot ? '🔍 Kleiner' : '🔍 Groter (om beter te kunnen tikken)'}
             </button>
-            {tikmodus?.soort !== 'afdekken' ? (
-              <button className="link" onClick={() => setTikmodus({ soort: 'afdekken' })}>
+            {!tikmodus && (
+              <button className="link" onClick={() => (setTikmodus({ soort: 'afdekken' }), naarKaart())}>
                 ✎ Nog tekst zichtbaar? Afdekken
-              </button>
-            ) : (
-              <button className="link" onClick={() => setTikmodus(null)}>
-                ✓ Klaar met afdekken
-              </button>
-            )}
-            {kaart.afgedekt.length > 0 && (
-              <button className="link" onClick={() => void bewaarAfgedekt(kaart.afgedekt.slice(0, -1))}>
-                ↶ Ongedaan maken
               </button>
             )}
           </div>

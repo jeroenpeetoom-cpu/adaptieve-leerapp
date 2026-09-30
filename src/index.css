@@ -1091,3 +1091,24 @@ select.invoer {
   border-color: var(--accent);
   background: rgba(245, 185, 66, 0.15);
 }
+
+/* Blijft bovenaan staan tijdens aantikken of afdekken, zodat Klaar altijd in beeld is. */
+.modusbalk {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--vlak);
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  margin: 0.5rem 0;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+
+.modusbalk p {
+  margin: 0 0 0.4rem;
+}
+
+.modusbalk .knoppen {
+  margin-top: 0;
+}
