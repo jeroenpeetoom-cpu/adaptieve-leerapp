@@ -1,4 +1,4 @@
-import type { Oefenrichting, Taal } from '../leerlogica'
+import type { Oefenrichting, PlekSoort, Taal } from '../leerlogica'
 import type { Twijfel } from '../bronverwerking'
 
 export type Plekrichting = 'aanwijzen' | 'benoemen'
@@ -115,7 +115,7 @@ export interface Plek {
   bronId: string
   kaartId: string
   naam: string
-  soort: 'stad' | 'water' | 'gebied' | 'land'
+  soort: PlekSoort
   toetsstof: boolean
   /** Positie als fractie van de kaartafmetingen; null zolang de plek nog aangetikt moet worden. */
   x: number | null

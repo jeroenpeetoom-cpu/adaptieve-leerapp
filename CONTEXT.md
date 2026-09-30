@@ -29,7 +29,7 @@ Een bronpagina met een topografische kaart waarop de plekken van een bron zijn v
 _Avoid_: plattegrond, atlas
 
 **Plek**:
-Iets met een naam en een positie op een kaart, van één soort: *stad*, *water*, *gebied* of *land*, zoals Antwerpen of de Maas.
+Iets met een naam en een positie op een kaart, van één soort: *stad*, *rivier*, *zee*, *gebied*, *gebergte*, *land* of *ander water* (zoals een meer of kanaal), bijvoorbeeld Antwerpen, de Maas of de Ardennen.
 _Avoid_: locatie, topo-item, punt
 
 **Anker**:

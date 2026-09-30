@@ -43,7 +43,7 @@ describe('beeldvoorstel', () => {
   })
 
   it('maakt bij een plaatsnaam een voorstel met de soort en herkenbare delen', () => {
-    expect(voorstelVoorPlek('Noordzee', 'water', register, 'z').emoji).toBe('🌊 🧭')
+    expect(voorstelVoorPlek('Noordzee', 'zee', register, 'z').emoji).toBe('🌊 🧭')
     expect(voorstelVoorPlek('Luik', 'stad', register, 'z').zin).toContain('Klinkt "Luik" als iets wat je kent?')
   })
 })

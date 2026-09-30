@@ -1,12 +1,8 @@
+import { SOORTEN } from './plekken'
 import type { Oordeel, PlekSoort } from './types'
 
 /** Straal waarbinnen een tik goed is, als fractie van de kaartbreedte. */
-export const STRAAL: Record<PlekSoort, number> = {
-  stad: 0.035,
-  water: 0.09,
-  gebied: 0.09,
-  land: 0.09,
-}
+export const STRAAL = Object.fromEntries(Object.entries(SOORTEN).map(([k, v]) => [k, v.straal])) as Record<PlekSoort, number>
 
 /** Tot zoveel keer de straal is een tik "bijna". */
 export const BIJNA_FACTOR = 2

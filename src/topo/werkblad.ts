@@ -2,7 +2,9 @@
 // Pure module; de herkenner levert de regels, eventueel van meerdere varianten van dezelfde foto.
 import { tekstvakkenVan, type HerkendeRegel } from '../bronverwerking'
 
-export type Soort = 'stad' | 'water' | 'gebied' | 'land'
+import type { PlekSoort } from '../leerlogica'
+
+export type Soort = PlekSoort
 
 export interface WerkbladPlek {
   naam: string
@@ -20,9 +22,23 @@ export interface Werkblad {
 const CATEGORIE: [RegExp, Soort][] = [
   [/^(landen|land)$/i, 'land'],
   [/^(steden|stad|hoofdsteden|plaatsen)$/i, 'stad'],
-  [/^(wateren|water|rivieren|rivier|zee|zeeën|zeeen|meren|meer|kanalen)$/i, 'water'],
-  [/^(gebieden|gebied|gebergte|gebergten|provincies|provincie|streken|streek|eilanden|eiland|regio's)$/i, 'gebied'],
+  [/^(rivieren|rivier)$/i, 'rivier'],
+  [/^(zee|zeeën|zeeen|oceanen|oceaan)$/i, 'zee'],
+  // "Wateren" kan van alles zijn: de naam bepaalt daarna of het een zee, rivier of ander water is.
+  [/^(wateren|water|meren|meer|kanalen|kanaal)$/i, 'water'],
+  [/^(gebergte|gebergten)$/i, 'gebergte'],
+  [/^(gebieden|gebied|provincies|provincie|streken|streek|eilanden|eiland|regio's)$/i, 'gebied'],
 ]
+
+/** Bij een lijst "Wateren": een zee of oceaan aan de naam herkennen, meren en kanalen als ander water, de rest als rivier. */
+function waterSoort(naam: string): Soort {
+  if (/(zee|oceaan)$/i.test(naam.replace(/\s+/g, ''))) return 'zee'
+  if (/(meer|kanaal|plas)$/i.test(naam.replace(/\s+/g, ''))) return 'water'
+  return 'rivier'
+}
+
+/** Van twee soorten voor dezelfde naam is de ene preciezer ("Gebergte" boven "Gebieden"). */
+const PRECIEZER: Partial<Record<Soort, Soort[]>> = { gebied: ['gebergte'], water: ['rivier', 'zee'] }
 
 /** Zonder accenten en hoofdletters, om namen uit verschillende herkenningen samen te voegen. */
 export const sleutel = (naam: string) =>
@@ -65,6 +81,20 @@ function soortVan(woord: string): Soort | null {
 
 const VERBINDING = new Set(['op', 'aan', 'den', 'de', 'van', 'het', 'ter', 'der', 'bij', 'en'])
 
+/** Aardrijkskundige woorden die bij de naam ervoor horen ("Atlantische Oceaan", "Noordelijke IJszee"). */
+const AARDRIJKSKUNDIG = /^(oceaan|zee|ijszee|meer|kanaal|golf|baai|woud|gebergte|eilanden|eiland|delta|vlakte|plateau|rivier|kust)$/i
+
+/**
+ * Twee lange woorden met een hoofdletter zijn meestal twee namen zonder komma ("Mechelen Leuven"), tenzij
+ * het tweede een aardrijkskundig woord is of het eerste een bijvoeglijk naamwoord ("Atlantische").
+ */
+function zijnLosseNamen(woorden: string[]): boolean {
+  if (woorden.some((w) => w.length < 5 || VERBINDING.has(w))) return false
+  if (woorden.slice(1).some((w) => AARDRIJKSKUNDIG.test(w))) return false
+  if (woorden.slice(0, -1).some((w) => /(ische|sche|lijke|ige)$/i.test(w))) return false
+  return true
+}
+
 function namenUit(lijst: string): string[] {
   return lijst
     .split(/,|\s+en\s+/)
@@ -79,16 +109,15 @@ function namenUit(lijst: string): string[] {
           naam.push(w)
           continue
         }
-        if (!/^\p{Lu}\p{Ll}/u.test(w) || (naam.length > 0 && w.length < 3)) break
+        // Een naam begint met een hoofdletter en een kleine letter, of met de IJ ("IJsselmeer").
+        if (!/^(\p{Lu}\p{Ll}|IJ)/u.test(w) || (naam.length > 0 && w.length < 3)) break
         naam.push(w)
       }
       return naam.slice(0, 5)
     })
     // Twee lange woorden met een hoofdletter zijn meestal twee namen zonder komma ("Mechelen Leuven");
     // korte samenstellingen zoals "Den Haag" blijven heel.
-    .flatMap((woorden) =>
-      woorden.length > 1 && woorden.every((w) => w.length >= 5 && !VERBINDING.has(w)) ? woorden : [woorden.join(' ')],
-    )
+    .flatMap((woorden) => (woorden.length > 1 && zijnLosseNamen(woorden) ? woorden : [woorden.join(' ')]))
     // Minstens vier letters: afgebroken afkortingen zoals "Vla" zijn geen naam.
     .filter((n) => n.replace(/[^\p{L}]/gu, '').length >= 4)
 }
@@ -163,15 +192,16 @@ export function leesWerkblad(varianten: HerkendeRegel[][]): Werkblad {
     w.forEach((x) => woorden.add(x))
     for (const lijst of lijsten) {
       for (const naam of lijst.namen) {
+        const soortHier = lijst.soort === 'water' ? waterSoort(naam) : lijst.soort
         // Dezelfde naam kan twee plekken zijn (Luxemburg, land en stad): de soort hoort bij de sleutel.
-        const k = `${lijst.soort}:${sleutel(naam)}`
+        const k = `${soortHier}:${sleutel(naam)}`
         tellingen.set(k, (tellingen.get(k) ?? 0) + 1)
         // Een afgebroken of anders herkende naam ("Brusse", "Scheide") hoort bij de bekende ("Brussel", "Schelde").
         const woordenIn = (t: string) => t.trim().split(/\s+/).length
         const afgebroken = [...perSleutel.keys()].find(
           (b) =>
             b !== k &&
-            b.startsWith(`${lijst.soort}:`) &&
+            b.startsWith(`${soortHier}:`) &&
             woordenIn(perSleutel.get(b)!.naam) === woordenIn(naam) &&
             lijktOp(b.slice(b.indexOf(':') + 1), k.slice(k.indexOf(':') + 1)),
         )
@@ -187,7 +217,7 @@ export function leesWerkblad(varianten: HerkendeRegel[][]): Werkblad {
           continue
         }
         const bestaand = perSleutel.get(k)
-        if (!bestaand) perSleutel.set(k, { naam, soort: lijst.soort, toetsstof: lijst.toetsstof })
+        if (!bestaand) perSleutel.set(k, { naam, soort: soortHier, toetsstof: lijst.toetsstof })
         else {
           bestaand.toetsstof ||= lijst.toetsstof
           // Een naam met accenten ("Wallonië") gaat voor op een vervormde ("Wallonié").
@@ -203,6 +233,14 @@ export function leesWerkblad(varianten: HerkendeRegel[][]): Werkblad {
   plekken = plekken.filter((p) => {
     const delen = p.naam.split(/\s+/)
     return delen.length < 2 || !delen.every((d) => enkel.has(sleutel(d)))
+  })
+
+  // Dezelfde naam bij een algemene en een preciezere soort (de Ardennen als gebied én gebergte): houd de
+  // preciezere, en neem mee of hij toetsstof is.
+  plekken = plekken.filter((p) => {
+    const precies = plekken.find((q) => q !== p && sleutel(q.naam) === sleutel(p.naam) && (PRECIEZER[p.soort] ?? []).includes(q.soort))
+    if (precies) precies.toetsstof ||= p.toetsstof
+    return !precies
   })
 
   // Dezelfde naam bij twee soorten: houd de soort die veel vaker gelezen is, tenzij beide in het vak

@@ -2,6 +2,8 @@
 // zinnetje, plus een klank-tip. Zonder AI en zonder internet (spec, vraag 49). Pure module: het
 // emoji-register wordt meegegeven.
 
+import { SOORTEN, type PlekSoort } from '../leerlogica'
+
 export type EmojiRegister = { nl: Record<string, string[]>; en: Record<string, string[]> }
 
 export interface Beeldvoorstel {
@@ -24,7 +26,6 @@ const ACTIES = [
   'die in je bed ligt',
 ]
 
-const SOORT_EMOJI = { stad: '🏙️', water: '🌊', gebied: '🌳', land: '🗺️' } as const
 
 function kies<T>(lijst: T[], zaad: string): T {
   let h = 0
@@ -65,9 +66,9 @@ export function voorstelVoorWoord(woord: string, betekenis: string, register: Em
 }
 
 /** Voorstel bij een plaatsnaam: emoji bij delen van de naam of de soort, en een klank-tip. */
-export function voorstelVoorPlek(naam: string, soort: keyof typeof SOORT_EMOJI, register: EmojiRegister, zaad: string): Beeldvoorstel {
+export function voorstelVoorPlek(naam: string, soort: PlekSoort, register: EmojiRegister, zaad: string): Beeldvoorstel {
   const delen = emojiVoor(naam, register.nl)
-  const emoji = [SOORT_EMOJI[soort], ...delen].slice(0, 3).join(' ')
+  const emoji = [SOORTEN[soort].emoji, ...delen].slice(0, 3).join(' ')
   const tip =
     delen.length > 0
       ? `In "${naam}" zit iets wat je kent ${delen.join(' ')}. Maak daar een gek plaatje van, precies op die plek op de kaart.`

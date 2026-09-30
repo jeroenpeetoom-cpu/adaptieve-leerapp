@@ -6,18 +6,16 @@ import { verwijderBron } from '../opslag/verwijderen'
 import { koppelAfkortingen } from '../topo/afkortingen'
 import { dekAf, grijswaarden, naarJpeg } from '../topo/kaartbeeld'
 import { klikVast, omrekeningUit, reken, vindStippen, type Punt } from '../topo/uitlijnen'
-import { isInhoudelijkeWijziging } from '../leerlogica'
+import { isInhoudelijkeWijziging, PLEKSOORTEN, SOORTEN as SOORTGEGEVENS } from '../leerlogica'
 import { HoekenAantikken } from './HoekenAantikken'
 import { labelsUit, midden, tekstOmAfTeDekken, vakRond } from '../topo/labels'
 import { leesWerkblad } from '../topo/werkblad'
 import { FotoKnoppen } from './FotoKnoppen'
 
-const SOORTEN: { waarde: Plek['soort']; label: string }[] = [
-  { waarde: 'land', label: 'Land' },
-  { waarde: 'stad', label: 'Stad' },
-  { waarde: 'water', label: 'Water' },
-  { waarde: 'gebied', label: 'Gebied' },
-]
+const SOORTKEUZES: { waarde: Plek['soort']; label: string }[] = PLEKSOORTEN.map((waarde) => ({
+  waarde,
+  label: `${SOORTGEGEVENS[waarde].emoji} ${SOORTGEGEVENS[waarde].naam[0].toUpperCase()}${SOORTGEGEVENS[waarde].naam.slice(1)}`,
+}))
 
 export const PLEKRICHTINGEN: { label: string; waarde: Plekrichting[] }[] = [
   { label: 'Allebei: aanwijzen én benoemen', waarde: ['aanwijzen', 'benoemen'] },
@@ -189,9 +187,8 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
         afgedekt: [],
       }
       // Toetsstof eerst, en daarbinnen de grote dingen (spec topografie, vraag 45).
-      const rang = { land: 0, water: 1, gebied: 2, stad: 3 } as const
       const opVolgorde = [...voorstel].sort(
-        (a, b) => Number(b.toetsstof) - Number(a.toetsstof) || rang[a.soort] - rang[b.soort],
+        (a, b) => Number(b.toetsstof) - Number(a.toetsstof) || SOORTGEGEVENS[a.soort].volgorde - SOORTGEGEVENS[b.soort].volgorde,
       )
       const nieuwePlekken: Plek[] = opVolgorde.map((v, i) => {
         const m = v.label ? midden(v.label) : null
@@ -498,7 +495,7 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
                       <span className="plek-nummer">{i + 1}</span>
                       <input className="invoer" value={p.naam} placeholder="Naam" onChange={(e) => void wijzig(p, { naam: e.target.value })} />
                       <select className="invoer plek-soort" value={p.soort} onChange={(e) => void wijzig(p, { soort: e.target.value as Plek['soort'] })}>
-                        {SOORTEN.map((s) => (
+                        {SOORTKEUZES.map((s) => (
                           <option key={s.waarde} value={s.waarde}>
                             {s.label}
                           </option>
@@ -594,7 +591,7 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
                           <span className="plek-nummer">📍</span>
                           <input className="invoer" defaultValue={p.naam} id={`naam-${p.id}`} />
                           <select className="invoer plek-soort" defaultValue={p.soort} id={`soort-${p.id}`}>
-                            {SOORTEN.map((s) => (
+                            {SOORTKEUZES.map((s) => (
                               <option key={s.waarde} value={s.waarde}>
                                 {s.label}
                               </option>
@@ -649,7 +646,7 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
                     ) : (
                       <div className="woordpaar-regel">
                         <span>
-                          📍 {p.naam} <span className="gedempt">{p.soort}{p.toetsstof ? ' · toetsstof' : ''}</span>
+                          {SOORTGEGEVENS[p.soort].emoji} {p.naam} <span className="gedempt">{SOORTGEGEVENS[p.soort].naam}{p.toetsstof ? ' · toetsstof' : ''}</span>
                         </span>
                         <button className="link" onClick={() => setBewerken(p.id)}>
                           Aanpassen

@@ -5,7 +5,8 @@ export type Tijdstip = string
 /** Soort leeritem: een woordpaar of een plek op een kaart. */
 export type LeeritemSoort = 'woordpaar' | 'plek'
 
-export type PlekSoort = 'stad' | 'water' | 'gebied' | 'land'
+/** Soort plek. "water" is ander water, zoals meren en kanalen (en oudere plekken van vóór de indeling). */
+export type PlekSoort = 'stad' | 'rivier' | 'zee' | 'water' | 'gebied' | 'gebergte' | 'land'
 
 /** Wat een leeritem van een plek nodig heeft: waar het ligt, en welke oefenrichting. */
 export interface PlekGegevens {

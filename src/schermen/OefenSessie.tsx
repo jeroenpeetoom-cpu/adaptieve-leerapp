@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import {
+  SOORTEN,
   ankerhint,
   ankerzin,
   beantwoord,
@@ -362,7 +363,9 @@ export function OefenSessie({
       {benoemen && benoemKaart ? (
         <>
           <p className="vraag vraag-kaart">{leermoment ? 'Nieuwe plek' : 'Wat ligt hier?'}</p>
-          <p className="richting">{item.plek!.soort}</p>
+          <p className="richting">
+            {SOORTEN[item.plek!.soort].emoji} {SOORTEN[item.plek!.soort].naam}
+          </p>
           <KaartUitsnede kaart={benoemKaart} plek={item.plek!} naam={leermoment || toestand.afgesloten ? goedAntwoord : undefined} />
         </>
       ) : (

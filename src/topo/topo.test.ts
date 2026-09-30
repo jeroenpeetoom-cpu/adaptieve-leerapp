@@ -43,9 +43,12 @@ describe('werkblad lezen', () => {
     expect(plekken.map((p) => p.naam).sort()).toEqual(
       ['Amsterdam', 'Antwerpen', 'Ardennen', 'België', 'Brussel', 'Gent', 'Luik', 'Luxemburg', 'Luxemburg', 'Maas', 'Maastricht', 'Noordzee', 'Rijn', 'Rotterdam', 'Schelde', 'Vlaanderen', 'Wallonië'].sort(),
     )
-    expect(plek('Rijn')?.soort).toBe('water')
-    expect(plek('Noordzee')?.soort).toBe('water')
-    expect(plek('Ardennen')?.soort).toBe('gebied')
+    expect(plek('Rijn')?.soort).toBe('rivier')
+    expect(plek('Noordzee')?.soort).toBe('zee')
+    // In het vak staat de Ardennen onder "Gebieden", bij opdracht 2 onder "Gebergte": de preciezere soort wint.
+    expect(plek('Ardennen')?.soort).toBe('gebergte')
+    expect(plek('Ardennen')?.toetsstof).toBe(true)
+    expect(plek('Vlaanderen')?.soort).toBe('gebied')
     expect(plek('België')?.soort).toBe('land')
     expect(plek('Antwerpen')?.soort).toBe('stad')
   })
@@ -67,7 +70,7 @@ describe('werkblad lezen', () => {
     expect(plekken.map((p) => [p.naam, p.soort])).toEqual([
       ['Luik', 'stad'],
       ['Gent', 'stad'],
-      ['Maas', 'water'],
+      ['Maas', 'rivier'],
     ])
   })
 
@@ -93,7 +96,7 @@ describe('werkblad lezen', () => {
     const goed = [regel(30, 100, 'Steden Brussel, Gent, Rotterdam'), regel(30, 150, 'Zee Noordzee'), regel(30, 200, 'Gebergte Ardennen')]
     const rommel = [regel(30, 100, 'Steden Brussel Gent, Rott'), regel(30, 150, 'Zee Noorc'), regel(30, 200, 'Rivieren Ardennen')]
     const { plekken } = leesWerkblad([goed, goed, rommel])
-    expect(plekken.map((p) => `${p.naam}/${p.soort}`).sort()).toEqual(['Ardennen/gebied', 'Brussel/stad', 'Gent/stad', 'Noordzee/water', 'Rotterdam/stad'])
+    expect(plekken.map((p) => `${p.naam}/${p.soort}`).sort()).toEqual(['Ardennen/gebergte', 'Brussel/stad', 'Gent/stad', 'Noordzee/zee', 'Rotterdam/stad'])
   })
 
   it('voegt een anders herkende naam samen met de bekende', () => {
@@ -114,6 +117,11 @@ describe('werkblad lezen', () => {
   it('splitst twee namen zonder komma en negeert afgebroken afkortingen', () => {
     const { plekken } = leesWerkblad([[regel(30, 100, 'Steden Mechelen Leuven, Den Haag'), regel(30, 150, 'Zee Noordzee'), regel(60, 190, 'Vla:')]])
     expect(plekken.map((p) => p.naam)).toEqual(['Mechelen', 'Leuven', 'Den Haag', 'Noordzee'])
+  })
+
+  it('herkent bij "Wateren" een zee, een rivier en ander water aan de naam', () => {
+    const { plekken } = leesWerkblad([[regel(30, 100, 'Wateren Noordzee, Maas, IJsselmeer, Atlantische Oceaan')]])
+    expect(plekken.map((p) => `${p.naam}/${p.soort}`)).toEqual(['Noordzee/zee', 'Maas/rivier', 'IJsselmeer/water', 'Atlantische Oceaan/zee'])
   })
 
   it('bewaart losse woorden om onbekende afkortingen op te zoeken', () => {

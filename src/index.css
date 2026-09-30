@@ -882,9 +882,7 @@ select.invoer {
   height: 2.2rem;
 }
 
-.doel-water,
-.doel-gebied,
-.doel-land {
+.doelpunt:not(.doel-stad) {
   width: 5rem;
   height: 5rem;
 }

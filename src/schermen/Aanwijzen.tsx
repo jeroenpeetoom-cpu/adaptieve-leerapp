@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { Kaart } from '../bronnen/model'
 import {
+  SOORTEN,
   beoordeelTik,
   omschrijfLigging,
   windrichting,
@@ -11,7 +12,6 @@ import {
 } from '../leerlogica'
 import { Voorleesknop } from '../weergave/voorlezen'
 
-const SOORTNAAM = { stad: 'stad', water: 'water', gebied: 'gebied', land: 'land' } as const
 const LETTERS = ['A', 'B', 'C', 'D']
 const ZOOMSTAPPEN = [1, 1.5, 2.2, 3]
 
@@ -107,7 +107,7 @@ export function Aanwijzen({ item, kaart, vorm, hulp, afgesloten, laatste, leermo
         Waar ligt {item.vraag}? <Voorleesknop tekst={`Waar ligt ${item.vraag}?`} taal="nl" />
       </p>
       <p className="richting">
-        {SOORTNAAM[plek.soort]}
+        {SOORTEN[plek.soort].emoji} {SOORTEN[plek.soort].naam}
         {vorm === 'meerkeuze' && !afgesloten ? ' · tik op de goede letter' : ' · tik op de kaart'}
       </p>
 
