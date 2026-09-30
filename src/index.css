@@ -979,3 +979,15 @@ select.invoer {
   margin: 0 0 0.75rem;
   font-weight: 600;
 }
+
+.zoomknoppen {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: -0.25rem 0 0.75rem;
+}
+
+.zoomknoppen .icoonknop {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
