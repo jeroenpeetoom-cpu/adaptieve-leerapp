@@ -24,8 +24,20 @@ _Avoid_: foto, upload, scan
 Een woord en zijn betekenis zoals ze samen in de bron staan, zoals *bridge = brug*.
 _Avoid_: woordje, vertaling
 
+**Kaart**:
+Een bronpagina met een topografische kaart waarop de plekken van een bron zijn vastgelegd.
+_Avoid_: plattegrond, atlas
+
+**Plek**:
+Iets met een naam en een positie op een kaart, van één soort: *stad*, *water*, *gebied* of *land*, zoals Antwerpen of de Maas.
+_Avoid_: locatie, topo-item, punt
+
+**Anker**:
+Een plek die de leerling al kent en die de app gebruikt om een andere plek te beschrijven, zoals "ten noorden van Brussel".
+_Avoid_: referentiepunt, oriëntatiepunt
+
 **Leeritem**:
-Eén ding dat de leerling zonder steun moet kunnen ophalen, met een eigen herhaalplanning en voortgang, zoals "bridge → ?". Uit een woordpaar ontstaan één of twee leeritems, één per oefenrichting.
+Eén ding dat de leerling zonder steun moet kunnen ophalen, met een eigen herhaalplanning en voortgang, zoals "bridge → ?" of "Waar ligt Antwerpen?". Uit een woordpaar of een plek ontstaan één of twee leeritems, één per oefenrichting.
 _Avoid_: kaart, vraag, item, opgave
 
 **Bronversie**:
@@ -37,7 +49,7 @@ Een antwoord dat bij een leeritem als goed geldt. Een leeritem heeft er een of m
 _Avoid_: juiste antwoord, antwoordmodel
 
 **Oefenrichting**:
-Wat een leeritem vraagt en wat het als antwoord verwacht, zoals Engels → Nederlands.
+Wat een leeritem vraagt en wat het als antwoord verwacht. Bij een woordpaar een taalrichting, zoals Engels → Nederlands; bij een plek *aanwijzen* ("Waar ligt Antwerpen?", de leerling tikt op de kaart) of *benoemen* ("Wat ligt hier?", de leerling zegt of typt de naam).
 _Avoid_: modus, kant
 
 **Poging**:
