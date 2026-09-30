@@ -13,3 +13,4 @@ dist-ssr
 .vscode/*
 .idea
 public/tesseract/
+src/beelden/emoji-register.json

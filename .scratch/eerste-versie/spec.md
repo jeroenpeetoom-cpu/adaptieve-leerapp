@@ -192,6 +192,7 @@ Een installeerbare website (PWA) op de Samsung Galaxy S22 van de leerling. De le
 ### Strategiestap
 
 - **Vijf stappen (bevestigd, naar aanleiding van `docs/achtergrond/onderscheidend-vermogen.md`):** voorgedaan → met hulp gemaakt → zelf gemaakt → zelf gekozen → zelfstandig toegepast. De stap is de hoogste waaraan voldaan is. Of de kennis later zonder hulpmiddel blijft, meet de voortgangsstatus.
+- **Beeldvoorstel (vraag 49, bevestigd):** kan de leerling zelf geen beeld bedenken, dan geeft "💡 Help me met een beeld" een voorstel zonder AI en zonder internet: emoji bij de betekenis (of bij delen van een plaatsnaam) uit een ingebouwd emoji-register (emojibase, MIT, Nederlands en Engels), een gek zinnetje en een klank-tip. De leerling kan het overnemen en aanpassen, of om een ander voorstel vragen. Een overgenomen voorstel telt als gemaakt met hulp. Echte plaatjes laten maken is afgewezen: gratis diensten zijn niet kindveilig, betaalde vragen een account en kosten.
 - **Steuntje (bevestigd):** bij de eerste 3 geheugenbeelden per strategie staat een steuntje open (invulzinnetje en drie tips), dat de leerling kan wegklikken; daarna staat het dicht met een knop "Hulp bij bedenken?". Per geheugenbeeld wordt vastgelegd of het steuntje openstond. *Met hulp gemaakt*: minstens één beeld met steuntje. *Zelf gemaakt*: 3 beelden zonder steuntje. Beide getallen zijn instellingen.
 - De regels hieronder beschrijven de oorspronkelijke drie stappen; *zelf gekozen* en *zelfstandig toegepast* werken nog steeds zo.
 

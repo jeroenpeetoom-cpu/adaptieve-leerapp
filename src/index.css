@@ -991,3 +991,20 @@ select.invoer {
   font-size: 1.4rem;
   font-weight: 700;
 }
+
+.voorstel {
+  background: rgba(111, 208, 140, 0.1);
+  border-left: 4px solid #6fd08c;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.voorstel p {
+  margin: 0.25rem 0;
+}
+
+.voorstel-emoji {
+  font-size: 2.6rem;
+  line-height: 1.1;
+}

@@ -4,6 +4,7 @@ import type { Geheugenbeeld, Kaart } from '../bronnen/model'
 import { MAX_PLEKKEN, MIN_PLEKKEN, type RouteStand } from '../bronnen/routes'
 import { Voorleesknop } from '../weergave/voorlezen'
 import { KaartUitsnede } from './KaartUitsnede'
+import { voorstelVoorPlek, voorstelVoorWoord, type Beeldvoorstel, type EmojiRegister } from '../beelden/voorstel'
 
 const TAALNAAM = { en: 'Engels', nl: 'Nederlands' } as const
 const PLAATJE_MAX = 512
@@ -129,6 +130,21 @@ export function Leermoment({
   const [plekken, setPlekken] = useState<string[]>(Array(MAX_PLEKKEN).fill(''))
   const [doorlopen, setDoorlopen] = useState<Omit<Geheugenbeeld, 'id' | 'aangemaakt'> | null>(null)
   const [steuntje, setSteuntje] = useState(steuntjeOpen)
+  const [voorstel, setVoorstel] = useState<Beeldvoorstel | null>(null)
+  const [voorstelNummer, setVoorstelNummer] = useState(0)
+  const [voorstelGebruikt, setVoorstelGebruikt] = useState(false)
+
+  /** Een emoji-voorstel met een gek zinnetje, als de leerling zelf geen beeld kan bedenken (vraag 49). */
+  async function helpMetBeeld() {
+    const register = (await import('../beelden/emoji-register.json')).default as unknown as EmojiRegister
+    const zaad = `${item.id}-${voorstelNummer}`
+    setVoorstelNummer((n) => n + 1)
+    setVoorstel(
+      topo
+        ? voorstelVoorPlek(item.toegestaneAntwoorden[0], topo.plek.soort, register, zaad)
+        : voorstelVoorWoord(item.oefenrichting.van === 'nl' ? item.toegestaneAntwoorden[0] : item.vraag, item.oefenrichting.van === 'nl' ? item.vraag : item.toegestaneAntwoorden[0], register, zaad),
+    )
+  }
   const plekNaam = item.toegestaneAntwoorden[0]
   const inhoud = topo ? (
     <>
@@ -311,6 +327,37 @@ export function Leermoment({
         autoFocus
       />
       <p className="gedempt tip">🎤 Tip: tik op de microfoon van je toetsenbord om je beeld in te spreken.</p>
+      {voorstel ? (
+        <div className="voorstel" role="note">
+          <p className="voorstel-emoji" aria-hidden="true">
+            {voorstel.emoji}
+          </p>
+          <p>{voorstel.zin}</p>
+          <p className="gedempt">Maak het nog gekker, of verander het zodat het jouw eigen beeld wordt.</p>
+          <div className="knoppen">
+            {(voorstel.kort || voorstel.emoji !== '💭') && (
+              <button
+                type="button"
+                className="knop knop-rustig"
+                onClick={() => {
+                  if (voorstel.kort && !beschrijving.trim()) setBeschrijving(voorstel.kort)
+                  if (voorstel.emoji !== '💭' && !emoji.trim()) setEmoji(voorstel.emoji.split(' ').slice(-1)[0])
+                  setVoorstelGebruikt(true)
+                }}
+              >
+                Gebruik dit
+              </button>
+            )}
+            <button type="button" className="link" onClick={() => void helpMetBeeld()}>
+              Ander voorstel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" className="link" onClick={() => void helpMetBeeld()}>
+          💡 Help me met een beeld
+        </button>
+      )}
       {steuntje ? (
         <div className="steuntje" role="note">
           <p>
@@ -371,7 +418,7 @@ export function Leermoment({
               plaatje,
               routeId: route && plekIndex !== null ? route.route.id : null,
               plek: plekIndex,
-              metHulp: steuntje,
+              metHulp: steuntje || voorstelGebruikt,
             }
             // Bij een geheugenroute eerst de route in gedachten doorlopen, daarna verder.
             if (plekIndex !== null) setDoorlopen(beeld)
