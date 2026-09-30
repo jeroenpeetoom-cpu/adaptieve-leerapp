@@ -30,6 +30,8 @@ export async function verwijderBron(db: Database, bronId: string): Promise<void>
     const perBron = await db.leesMeta<Record<string, Strategie | 'geen'>>('strategiePerBron', {})
     delete perBron[bronId]
     await db.schrijfMeta('strategiePerBron', perBron)
+    // Punten worden opnieuw geteld zonder deze bron.
+    await db.meta.bulkDelete(['puntenOoit', 'hoogsteStrategiestap'])
     const extra = await db.leesMeta<Record<string, string[]>>('extraAntwoorden', {})
     await db.schrijfMeta('extraAntwoorden', Object.fromEntries(Object.entries(extra).filter(([id]) => !vanDezeBron(id))))
   })

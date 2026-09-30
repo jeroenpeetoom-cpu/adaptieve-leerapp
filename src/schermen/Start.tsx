@@ -5,6 +5,8 @@ import type { Bron, Plek, Woordpaar } from '../bronnen/model'
 import { STANDAARD_INSTELLINGEN } from '../leerlogica'
 import { echteDb } from '../opslag/database'
 import { verwijderBron } from '../opslag/verwijderen'
+import { leesPunten } from '../opslag/punten'
+import { PuntenBalk } from './Punten'
 import { Oefenroute } from './Oefenroute'
 
 const nu = () => new Date().toISOString()
@@ -28,6 +30,7 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
   const [bezig, setBezig] = useState(false)
   const [laatsteBackup, setLaatsteBackup] = useState<string | null>(null)
   const [sessieMinuten, setSessieMinuten] = useState(STANDAARD_INSTELLINGEN.sessieMinuten)
+  const [punten, setPunten] = useState<number | null>(null)
 
   const laad = useCallback(async () => {
     setBronnen((await echteDb.bronnen.toArray()).sort((a, b) => b.aangemaakt.localeCompare(a.aangemaakt)))
@@ -35,6 +38,7 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
     setPlekken(await echteDb.plekken.toArray())
     setLaatsteBackup(await echteDb.leesMeta<string | null>('laatsteBackup', null))
     setSessieMinuten(await echteDb.leesMeta('sessieMinuten', STANDAARD_INSTELLINGEN.sessieMinuten))
+    setPunten((await leesPunten(echteDb, STANDAARD_INSTELLINGEN)).totaal)
   }, [])
 
   useEffect(() => {
@@ -51,6 +55,7 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
   return (
     <>
       {!bezig && <p className="groet">Hoi {leerling.bijnaam}!</p>}
+      {!bezig && punten !== null && <PuntenBalk punten={punten} />}
       <Oefenroute
         db={echteDb}
         bronnamen={Object.fromEntries(bronnen.map((b) => [b.id, b.naam]))}

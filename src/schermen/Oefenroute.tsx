@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   isKlaar,
   kalenderdag,
@@ -9,12 +9,15 @@ import {
   type Instellingen,
   type Leeritem,
   type Poging,
+  type Puntentelling,
   type SessieToestand,
   type Strategie,
 } from '../leerlogica'
 import type { Geheugenbeeld, Kaart, Route } from '../bronnen/model'
 import { beeldTekst, routeMetVrijePlek, standaardRoutenaam } from '../bronnen/routes'
 import { legStrategieVast, type Reflectie } from '../opslag/strategie'
+import { leesPunten, puntenErbij } from '../opslag/punten'
+import { PuntenErbij } from './Punten'
 import { ReflectieVraag } from './Reflectie'
 import type { Database } from '../opslag/database'
 import { OefenSessie } from './OefenSessie'
@@ -23,7 +26,7 @@ import { Terugblik } from './Terugblik'
 type Weergave =
   | { soort: 'overzicht' }
   | { soort: 'sessie'; toestand: SessieToestand }
-  | { soort: 'klaar'; toestand: SessieToestand }
+  | { soort: 'klaar'; toestand: SessieToestand; erbij: Puntentelling | null; totaal: number }
 
 export interface OverzichtInfo {
   pogingen: Poging[]
@@ -62,6 +65,8 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
   const [laatsteReflectie, setLaatsteReflectie] = useState<Reflectie | null>(null)
   /** De bron die de leerling koos om te oefenen; null is alles samen. "Nog een rondje" blijft daarbij. */
   const [gekozenBron, setGekozenBron] = useState<string | null>(null)
+  /** De punten bij het begin van de sessie, om na afloop te laten zien wat erbij kwam. */
+  const puntenBijStart = useRef<Puntentelling | null>(null)
 
   const setWeergave = useCallback(
     (w: Weergave) => {
@@ -128,7 +133,13 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
   const hervatKnop = (t: SessieToestand, titel: string) => (
     <li key={t.sessieId}>
       <div className="bron-knop gepauzeerd">
-        <button className="bron-knop-hoofd" onClick={() => setWeergave({ soort: 'sessie', toestand: t })}>
+        <button
+          className="bron-knop-hoofd"
+          onClick={() => {
+            void leesPunten(db, instellingen).then((p) => (puntenBijStart.current = p))
+            setWeergave({ soort: 'sessie', toestand: t })
+          }}
+        >
           <strong>{titel}</strong>
           <span className="gedempt">⏸ Ga verder · nog {nogTeGaan(t)}</span>
         </button>
@@ -163,6 +174,7 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     const items = [...gekozen.repetitie, ...gekozen.herhalingen, ...gekozen.nieuw]
     if (items.length === 0) return false
     setGekozenBron(bronId)
+    void leesPunten(db, instellingen).then((p) => (puntenBijStart.current = p))
     setMelding(null)
     const strategiePerItem = Object.fromEntries(
       beelden.map((b) => [b.leeritemId, b.routeId ? ('geheugenroute' as const) : ('beelden koppelen' as const)]),
@@ -219,7 +231,13 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
           bronItems={leeritems}
           nu={nu}
           onAntwoordToegevoegd={antwoordToegevoegd}
-          onKlaar={(toestand) => void laad().then(() => setWeergave({ soort: 'klaar', toestand }))}
+          onKlaar={(toestand) =>
+            void laad()
+              .then(() => leesPunten(db, instellingen))
+              .then((na) =>
+                setWeergave({ soort: 'klaar', toestand, erbij: puntenBijStart.current ? puntenErbij(puntenBijStart.current, na) : null, totaal: na.totaal }),
+              )
+          }
           geheugenbeelden={Object.fromEntries(
             beelden.flatMap((b) => {
               const tekst = beeldTekst(b, routes)
@@ -258,6 +276,7 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
   if (weergave.soort === 'klaar') {
     return (
       <Terugblik sessie={weergave.toestand} pogingen={pogingen} vandaag={vandaag} instellingen={instellingen}>
+        {weergave.erbij && <PuntenErbij erbij={weergave.erbij} totaal={weergave.totaal} />}
         <ReflectieVraag key={weergave.toestand.sessieId} onKies={(tekst) => void bewaarReflectie(weergave.toestand.sessieId, tekst)} />
         {melding && <p className="feedback">{melding}</p>}
         <div className="knoppen">

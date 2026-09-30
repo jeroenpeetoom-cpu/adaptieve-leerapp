@@ -189,6 +189,13 @@ Een installeerbare website (PWA) op de Samsung Galaxy S22 van de leerling. De le
 - **Bron kiezen (op verzoek na de eerste echte sessies):** met meer dan één bron kiest de leerling op het startscherm welke bron hij oefent, of alles samen; "nog een rondje" blijft bij die keuze. Herhalingen van andere bronnen blijven zonder straf klaarstaan.
 - **Geen dubbele woorden:** hetzelfde woord in dezelfde richting (bijvoorbeeld uit twee bronnen) komt maar één keer in een sessie.
 
+### Punten en ruimterang (vraag 51, bevestigd)
+
+- Volhouden: +10 per afgeronde missie. Vooruitgang: +1 per codewoord (vrij opgehaald goed), +5 als een leeritem voor het eerst zelf teruggehaald is, +10 als het voor het eerst later nog geweten is. Leren leren: +20 per bereikte strategiestap.
+- Punten gaan nooit omlaag (de hoogste stand ooit wordt bewaard), behalve als een bron wordt verwijderd; dan wordt opnieuw geteld.
+- Rangen: Verkenner (0), Piloot (250), Kapitein (750), Commandant (1500), Admiraal (3000), met een balk naar de volgende rang op het startscherm. De terugblik toont wat er bij kwam en waar het vandaan komt.
+- Punten motiveren; de echte maatstaf blijft de voortgangsstatus in Inzichten.
+
 ### Strategiestap
 
 - **Vijf stappen (bevestigd, naar aanleiding van `docs/achtergrond/onderscheidend-vermogen.md`):** voorgedaan → met hulp gemaakt → zelf gemaakt → zelf gekozen → zelfstandig toegepast. De stap is de hoogste waaraan voldaan is. Of de kennis later zonder hulpmiddel blijft, meet de voortgangsstatus.
