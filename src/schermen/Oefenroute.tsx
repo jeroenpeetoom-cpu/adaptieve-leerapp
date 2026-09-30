@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   isKlaar,
+  mengVolgorde,
   kalenderdag,
   nogTeGaan,
   startSessie,
@@ -183,10 +184,13 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     setGekozenBron(bronId)
     void leesPunten(db, instellingen).then((p) => (puntenBijStart.current = p))
     setMelding(null)
+    // Door elkaar, en twee richtingen van hetzelfde nooit vlak na elkaar.
+    const sessieId = crypto.randomUUID()
+    items = mengVolgorde(items, sessieId)
     const strategiePerItem = Object.fromEntries(
       beelden.map((b) => [b.leeritemId, b.routeId ? ('geheugenroute' as const) : ('beelden koppelen' as const)]),
     )
-    setWeergave({ soort: 'sessie', toestand: startSessie(crypto.randomUUID(), items, pogingen, strategiePerItem) })
+    setWeergave({ soort: 'sessie', toestand: startSessie(sessieId, items, pogingen, strategiePerItem) })
     return true
   }
 

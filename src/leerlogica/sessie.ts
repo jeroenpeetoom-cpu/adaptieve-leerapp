@@ -254,3 +254,28 @@ export function volgende(toestand: SessieToestand): SessieToestand {
     positie,
   )
 }
+
+/**
+ * Mengt de volgorde van een sessie willekeurig (vast per zaad, zodat hervatten dezelfde volgorde geeft),
+ * zo dat twee leeritems van hetzelfde woordpaar of dezelfde plek (bijvoorbeeld aanwijzen en benoemen van
+ * Luik) niet vlak na elkaar komen: er zitten minstens `afstand` andere leeritems tussen, als dat kan.
+ */
+export function mengVolgorde<T extends { woordpaarId: string }>(items: T[], zaad: string, afstand = 2): T[] {
+  const pool = schud(items, zaad)
+  const over = new Map<string, number>()
+  for (const i of pool) over.set(i.woordpaarId, (over.get(i.woordpaarId) ?? 0) + 1)
+  const uit: T[] = []
+  while (pool.length > 0) {
+    const recent = new Set(uit.slice(-afstand).map((i) => i.woordpaarId))
+    // Kies uit wat mag het item waarvan er nog de meeste over zijn; zo blijven er aan het eind geen paren over.
+    let index = -1
+    for (let i = 0; i < pool.length; i++) {
+      if (recent.has(pool[i].woordpaarId)) continue
+      if (index === -1 || over.get(pool[i].woordpaarId)! > over.get(pool[index].woordpaarId)!) index = i
+    }
+    const gekozen = pool.splice(index === -1 ? 0 : index, 1)[0]
+    over.set(gekozen.woordpaarId, over.get(gekozen.woordpaarId)! - 1)
+    uit.push(gekozen)
+  }
+  return uit
+}

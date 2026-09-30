@@ -4,6 +4,7 @@ import {
   huidigLeeritem,
   isKlaar,
   koppelStrategie,
+  mengVolgorde,
   leermomentNodig,
   kanAntwoordToevoegen,
   nogTeGaan,
@@ -234,5 +235,32 @@ describe('sessie', () => {
       const mk = vraagHulp(startSessie('s1', [bridge, cloud]), 'herkend')
       expect(kanAntwoordToevoegen(antwoord(mk, 'wolk').toestand)).toBe(false)
     })
+  })
+})
+
+describe('volgorde van een sessie', () => {
+  // Tien plekken, elk met aanwijzen en benoemen, in de volgorde van de plekken.
+  const items = Array.from({ length: 10 }, (_, i) => [`p${i}-aanwijzen`, `p${i}-benoemen`].map((id) => ({ id, woordpaarId: `p${i}` }))).flat()
+
+  it('mengt willekeurig, maar vast per zaad', () => {
+    const a = mengVolgorde(items, 'sessie-1')
+    expect(a.map((i) => i.id).sort()).toEqual(items.map((i) => i.id).sort())
+    expect(a).toEqual(mengVolgorde(items, 'sessie-1'))
+    expect(a.map((i) => i.id)).not.toEqual(items.map((i) => i.id))
+    expect(mengVolgorde(items, 'sessie-2').map((i) => i.id)).not.toEqual(a.map((i) => i.id))
+  })
+
+  it('zet twee richtingen van dezelfde plek nooit vlak na elkaar', () => {
+    for (const zaad of ['a', 'b', 'c', 'd', 'e']) {
+      const volgorde = mengVolgorde(items, zaad).map((i) => i.woordpaarId)
+      for (let i = 0; i < volgorde.length; i++) {
+        expect(volgorde.slice(i + 1, i + 3)).not.toContain(volgorde[i])
+      }
+    }
+  })
+
+  it('doet het zo goed als het kan als er te weinig verschillende items zijn', () => {
+    const twee = [{ id: 'a1', woordpaarId: 'a' }, { id: 'a2', woordpaarId: 'a' }]
+    expect(mengVolgorde(twee, 'z')).toHaveLength(2)
   })
 })
