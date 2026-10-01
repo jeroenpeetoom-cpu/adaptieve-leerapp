@@ -8,7 +8,12 @@ import {
   bepaalAntwoordwijze,
   berekenVoortgang,
   kalenderdag,
+  beschrijfVerschil,
+  dichtstbijzijnde,
   hintVoor,
+  markeerVerschil,
+  verschilfeedback,
+  type Teken,
   huidigLeeritem,
   isKlaar,
   isNieuwLeeritem,
@@ -72,8 +77,12 @@ interface Props {
 /** Na zoveel milliseconden stilte wordt een ingesproken antwoord vanzelf gecontroleerd. */
 const WACHT_NA_INSPREKEN = 700
 
-/** Korte feedback (één of twee zinnen) en optioneel een langere uitleg. */
-function feedbackVoor(poging: Poging, afgesloten: boolean, goedAntwoord: string, item: Leeritem, beeld?: string) {
+/**
+ * Korte feedback (één of twee zinnen), optioneel een langere uitleg, en na de laatste poging het eigen
+ * antwoord naast het goede met het verschil gemarkeerd. Bij een nieuw woord zegt de feedback wat klopt
+ * en waar het misgaat; bij een bekend woord eerst alleen wat voor fout het is.
+ */
+function feedbackVoor(poging: Poging, afgesloten: boolean, goedAntwoord: string, item: Leeritem, bekend: boolean, beeld?: string) {
   if (poging.oordeel === 'goed') {
     if (poging.antwoordZelfToegevoegd)
       return {
@@ -86,17 +95,35 @@ function feedbackVoor(poging: Poging, afgesloten: boolean, goedAntwoord: string,
       uitleg: 'Alleen als je een woord zonder hulp weet, komt het steeds later terug. Met hulp oefen je het nog even vaker.',
     }
   }
+  if (poging.oordeel === 'niet geweten' || poging.antwoord === null)
+    return { kort: `Geeft niet. Het antwoord is "${goedAntwoord}". Het komt straks terug.`, uitleg: null }
+
+  const goed = dichtstbijzijnde(poging.antwoord, item.toegestaneAntwoorden)
+  const verschil = verschilfeedback(beschrijfVerschil(poging.antwoord, goed), bekend)
   if (!afgesloten) {
     return poging.oordeel === 'bijna'
-      ? { kort: 'Bijna! Kijk nog eens goed naar de letters.', uitleg: null }
-      : { kort: `Dat is het niet. Hint: ${hintVoor(item, beeld)}`, uitleg: 'Probeer het nog één keer. Lukt het niet, dan krijg je het antwoord te zien.' }
+      ? { kort: `Bijna! ${verschil ?? 'Kijk nog eens goed naar de letters.'}`, uitleg: null }
+      : {
+          kort: `Dat is het niet. ${verschil ? `${verschil} ` : ''}Hint: ${hintVoor(item, beeld)}`,
+          uitleg: 'Probeer het nog één keer. Lukt het niet, dan krijg je het antwoord te zien.',
+        }
   }
-  if (poging.oordeel === 'niet geweten')
-    return { kort: `Geeft niet. Het antwoord is "${goedAntwoord}". Het komt straks terug.`, uitleg: null }
   return {
     kort: `Het goede antwoord is "${goedAntwoord}". Het komt straks terug.`,
     uitleg: 'Straks krijg je dit woord nog een keer, dan kies je uit een paar opties.',
+    vergelijk: markeerVerschil(poging.antwoord, goed),
   }
+}
+
+/** Een antwoord met de letters die niet kloppen gemarkeerd. */
+function Gemarkeerd({ tekens, soort }: { tekens: Teken[]; soort: 'fout' | 'mist' }) {
+  return (
+    <span className="gemarkeerd">
+      {tekens.map((t, i) =>
+        t.klopt ? <span key={i}>{t.teken}</span> : <mark key={i} className={`letter-${soort}`}>{t.teken}</mark>,
+      )}
+    </span>
+  )
 }
 
 export function OefenSessie({
@@ -279,7 +306,10 @@ export function OefenSessie({
   const vondCodewoord =
     toestand.afgesloten && laatste?.oordeel === 'goed' && laatste.hulp === 'vrij opgehaald' && !laatste.antwoordZelfToegevoegd
   const beeld = geheugenbeelden[item.id]
-  const feedback = laatste ? feedbackVoor(laatste, toestand.afgesloten, goedAntwoord, item, beeld) : null
+  const bekend = eerderePogingen.some(
+    (p) => p.leeritemId === item.id && p.oordeel === 'goed' && p.hulp === 'vrij opgehaald' && !p.antwoordZelfToegevoegd,
+  )
+  const feedback = laatste ? feedbackVoor(laatste, toestand.afgesloten, goedAntwoord, item, bekend, beeld) : null
   const leermoment = leermomentNodig(toestand)
 
   async function leermomentKlaar(nieuwBeeld: Omit<Geheugenbeeld, 'id' | 'aangemaakt'> | null) {
@@ -389,6 +419,13 @@ export function OefenSessie({
             {feedback.kort}
             {toestand.afgesloten && <Voorleesknop tekst={goedAntwoord} taal={item.oefenrichting.naar} />}
           </p>
+          {'vergelijk' in feedback && feedback.vergelijk && (
+            <p className="vergelijk">
+              Jij: <Gemarkeerd tekens={feedback.vergelijk.gegeven} soort="fout" />
+              <br />
+              Goed: <Gemarkeerd tekens={feedback.vergelijk.goed} soort="mist" />
+            </p>
+          )}
           {feedback.uitleg && (
             <details>
               <summary>Waarom?</summary>

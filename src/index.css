@@ -146,6 +146,31 @@ h2 {
   border-color: #ff8a8a;
 }
 
+.vergelijk {
+  font-size: 1.15rem;
+  line-height: 1.7;
+}
+
+.gemarkeerd {
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.05em;
+}
+
+.gemarkeerd mark {
+  border-radius: 3px;
+  padding: 0 1px;
+  color: var(--achtergrond);
+}
+
+.letter-fout {
+  background: #ff8a8a;
+  text-decoration: line-through;
+}
+
+.letter-mist {
+  background: #6fd08c;
+}
+
 .testbanner {
   background: repeating-linear-gradient(45deg, #3a2a00, #3a2a00 10px, #4a3600 10px, #4a3600 20px);
   color: #ffe7a8;
