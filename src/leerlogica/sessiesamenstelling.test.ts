@@ -157,3 +157,48 @@ describe('extra oefenen', () => {
     expect(stelExtraSamen(veel, pogingen, [bron({ afgerond: true })], STANDAARD_INSTELLINGEN, tempo)).toEqual([])
   })
 })
+
+describe('eerst de makkelijke richting, dan de moeilijke', () => {
+  const heen = (id: string): Leeritem => ({ ...item(`${id}-en`), woordpaarId: `wp-${id}` })
+  const terug = (id: string): Leeritem => ({ ...item(`${id}-nl`), woordpaarId: `wp-${id}`, oefenrichting: { van: 'nl', naar: 'en' } })
+  const plek = (id: string, richting: 'aanwijzen' | 'benoemen'): Leeritem => ({
+    ...item(`${id}-${richting}`),
+    soort: 'plek',
+    woordpaarId: `pl-${id}`,
+    plek: { kaartId: 'k', x: 0.5, y: 0.5, soort: 'stad', richting },
+  })
+
+  it('laat de moeilijke richting wachten tot de makkelijke zelf is teruggehaald', () => {
+    const s = samen([heen('a'), terug('a')], [], [bron()], '2026-10-01')
+    expect(ids(s.nieuw)).toEqual(['a-en'])
+  })
+
+  it('neemt de moeilijke richting op zodra de makkelijke goed en zonder hulp is opgehaald', () => {
+    const s = samen([heen('a'), terug('a')], [geoefend('a-en', 1)], [bron()], '2026-10-01')
+    expect(ids(s.nieuw)).toEqual(['a-nl'])
+  })
+
+  it('telt een goede poging met hulp nog niet', () => {
+    const metHulp: Poging = { ...geoefend('a-en', 1), hulp: 'herkend' }
+    expect(ids(samen([heen('a'), terug('a')], [metHulp], [bron()], '2026-10-01').nieuw)).toEqual([])
+  })
+
+  it('doet hetzelfde bij plekken: eerst aanwijzen, dan benoemen', () => {
+    const s = samen([plek('x', 'aanwijzen'), plek('x', 'benoemen')], [], [bron()], '2026-10-01')
+    expect(ids(s.nieuw)).toEqual(['x-aanwijzen'])
+  })
+
+  it('laat een moeilijke richting zonder makkelijke tegenhanger gewoon toe', () => {
+    expect(ids(samen([terug('a')], [], [bron()], '2026-10-01').nieuw)).toEqual(['a-nl'])
+  })
+
+  it('laat beide richtingen tegelijk toe als de toets te dichtbij is', () => {
+    const s = samen([heen('a'), terug('a')], [], [bron({ toetsdag: '2026-10-04' })], '2026-10-01')
+    expect(ids(s.nieuw).sort()).toEqual(['a-en', 'a-nl'])
+  })
+
+  it('wacht wel bij een toets die nog ver weg is', () => {
+    const s = samen([heen('a'), terug('a')], [], [bron({ toetsdag: '2026-10-20' })], '2026-10-01')
+    expect(ids(s.nieuw)).toEqual(['a-en'])
+  })
+})

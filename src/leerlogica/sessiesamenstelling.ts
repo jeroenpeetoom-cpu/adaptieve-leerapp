@@ -34,7 +34,9 @@ export interface Samenstelling {
  * 3. nieuwe leeritems: voor een bron met een toets zoveel als nodig om alles uiterlijk een paar dagen
  *    vóór de toets geleerd te hebben, daarna tot het budget vol is.
  * Een toets mag de sessie laten uitlopen tot het maximum, nooit verder; wat niet past schuift door.
- * Hetzelfde woord komt maar één keer in een sessie.
+ * Hetzelfde woord komt maar één keer in een sessie. De moeilijke richting van een woordpaar of plek
+ * wordt pas nieuw als de leerling de makkelijke richting een keer zelf heeft teruggehaald, behalve
+ * als een toets zo dichtbij is dat dat niet meer past.
  */
 export function stelSessieSamen(
   leeritems: Leeritem[],
@@ -119,7 +121,13 @@ export function stelSessieSamen(
   }
 
   // 3. Nieuwe leeritems: eerst wat een toets vraagt, dan tot het budget vol is.
-  const nogNieuw = actief.filter((i) => planning.get(i.id)!.volgendeDag === null)
+  const krap = (bronId: string) => {
+    const d = toetsOver(bronId)
+    return d !== null && d >= 0 && d - instellingen.toetsKlaarDagenVooraf <= 1
+  }
+  const nogNieuw = actief
+    .filter((i) => planning.get(i.id)!.volgendeDag === null)
+    .filter((i) => !isMoeilijkeRichting(i) || krap(i.bronId) || makkelijkeKantOpgehaald(i, actief, pogingen))
   const nieuw: Leeritem[] = []
   const voegNieuwToe = (item: Leeritem, grens: number) => {
     if (nieuw.length >= instellingen.maxNieuwPerSessie || gebruikt + tempo.nieuwSec > grens) return false
@@ -132,10 +140,11 @@ export function stelSessieSamen(
   for (const bron of bronnen) {
     const d = toetsOver(bron.bronId)
     if (d === null || d < 0 || bron.afgerond) continue
-    const eigen = nogNieuw.filter((i) => i.bronId === bron.bronId)
+    const eigen = actief.filter((i) => i.bronId === bron.bronId && planning.get(i.id)!.volgendeDag === null)
     const dagenOver = d - instellingen.toetsKlaarDagenVooraf
     const quotum = dagenOver <= 0 ? eigen.length : Math.ceil(eigen.length / dagenOver)
-    for (const item of eigen.slice(0, quotum)) {
+    // Het quotum telt alle nieuwe leeritems, ook de moeilijke richting die nog moet wachten.
+    for (const item of nogNieuw.filter((i) => i.bronId === bron.bronId).slice(0, quotum)) {
       if (!voegNieuwToe(item, maximum)) {
         tekort = true
         break
@@ -148,6 +157,33 @@ export function stelSessieSamen(
 
   const minuten = Math.ceil(gebruikt / 60)
   return { repetitie, herhalingen, nieuw, minuten, langer: gebruikt > budget + 30, tekort }
+}
+
+/** Nederlands → vreemde taal en benoemen zijn moeilijker: de leerling moet het antwoord zelf maken. */
+export function isMoeilijkeRichting(item: Leeritem): boolean {
+  if (item.plek) return item.plek.richting === 'benoemen'
+  return item.oefenrichting.van === 'nl' && item.oefenrichting.naar !== 'nl'
+}
+
+/**
+ * Of de makkelijke richting van hetzelfde woordpaar of dezelfde plek al eens goed en zonder hulp is
+ * opgehaald. Heeft het geen makkelijke richting, dan hoeft de leerling niet te wachten.
+ */
+function makkelijkeKantOpgehaald(item: Leeritem, leeritems: Leeritem[], pogingen: Poging[]): boolean {
+  const makkelijk = leeritems.filter(
+    (i) => i.bronId === item.bronId && i.woordpaarId === item.woordpaarId && !isMoeilijkeRichting(i),
+  )
+  if (makkelijk.length === 0) return true
+  return makkelijk.some((m) =>
+    pogingen.some(
+      (p) =>
+        p.leeritemId === m.id &&
+        p.bronversie === m.bronversie &&
+        p.oordeel === 'goed' &&
+        p.hulp === 'vrij opgehaald' &&
+        !p.antwoordZelfToegevoegd,
+    ),
+  )
 }
 
 /**
