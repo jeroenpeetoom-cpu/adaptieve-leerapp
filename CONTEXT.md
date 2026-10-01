@@ -76,6 +76,14 @@ _Avoid_: herhaalstatus, schema
 Eén afgeronde oefenbeurt met een vooraf vastgestelde set leeritems en een zichtbaar eindpunt. Herhalingen die aan de beurt zijn gaan voor nieuwe leeritems.
 _Avoid_: les, ronde, oefening
 
+**Raadvraag**:
+Een korte gok vóór de uitleg van een nieuw leeritem, om de aandacht te richten. De gok zelf is nooit een poging.
+_Avoid_: pretest, voorkennistoets
+
+**Toetsronde**:
+Het begin van een sessie waarin leeritems in schoolvorm komen: zonder hulp, zonder nieuwe kans en met de uitslag pas aan het eind. Wat de leerling zo weet, heet *in toetsvorm geweten* en staat naast de voortgangsstatus.
+_Avoid_: proeftoets, examen
+
 **Reflectie**:
 Het korte antwoord van de leerling aan het eind van een sessie over wat hielp. Het is zijn eigen ervaring en telt nooit als bewijs voor voortgang.
 _Avoid_: evaluatie, feedback

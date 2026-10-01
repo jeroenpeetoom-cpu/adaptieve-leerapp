@@ -290,7 +290,14 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
 
   if (weergave.soort === 'klaar') {
     return (
-      <Terugblik sessie={weergave.toestand} pogingen={pogingen} vandaag={vandaag} instellingen={instellingen}>
+      <Terugblik
+        sessie={weergave.toestand}
+        pogingen={pogingen}
+        vandaag={vandaag}
+        instellingen={instellingen}
+        alleItems={leeritems}
+        metBeeld={new Set(beelden.map((b) => b.leeritemId))}
+      >
         {weergave.erbij && <PuntenErbij erbij={weergave.erbij} totaal={weergave.totaal} />}
         <ReflectieVraag key={weergave.toestand.sessieId} onKies={(tekst) => void bewaarReflectie(weergave.toestand.sessieId, tekst)} />
         {melding && <p className="feedback">{melding}</p>}

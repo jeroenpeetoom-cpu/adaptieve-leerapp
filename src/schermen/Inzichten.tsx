@@ -9,6 +9,8 @@ import {
   kalenderdag,
   STANDAARD_INSTELLINGEN,
   toetsvormStand,
+  MINIMUM_PER_GROEP,
+  vergelijkBeelden,
   type GeleerdMet,
   type Poging,
   type Strategie,
@@ -18,7 +20,7 @@ import {
 } from '../leerlogica'
 import { echteDb } from '../opslag/database'
 import { leesStrategieKeuzes } from '../opslag/strategie'
-import { StatusLabel } from './Terugblik'
+import { BeeldvergelijkingTekst, StatusLabel } from './Terugblik'
 
 const instellingen = STANDAARD_INSTELLINGEN
 const STATUSSEN: Voortgangsstatus[] = ['nog aan het leren', 'zelf teruggehaald', 'later nog geweten']
@@ -130,6 +132,17 @@ export function Inzichten({ onTerug }: { onTerug: () => void }) {
 
       <section className="kaart">
         <h2>Hoe je leert</h2>
+        {(() => {
+          const v = vergelijkBeelden(items, pogingen, new Set(beelden.map((b) => b.leeritemId)), instellingen)
+          return v.genoeg ? (
+            <BeeldvergelijkingTekst vergelijking={v} />
+          ) : (
+            <p className="gedempt">
+              🔬 Werkt een eigen beeld bij jou? Dat zie je hier zodra er genoeg is om te vergelijken: minstens {MINIMUM_PER_GROEP} met en{' '}
+              {MINIMUM_PER_GROEP} zonder beeld die je na een week opnieuw kreeg. Nu: {v.met.getoetst} met, {v.zonder.getoetst} zonder.
+            </p>
+          )
+        })()}
         <ul className="inzicht-strategieen">
           {STRATEGIEEN.map(({ strategie, naam }) => {
             const stap = berekenStrategiestap(strategie, keuzes, geleerd, instellingen.drempelZelfGemaakt)
