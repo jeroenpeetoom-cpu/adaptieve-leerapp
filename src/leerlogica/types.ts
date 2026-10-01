@@ -63,6 +63,8 @@ export interface Poging {
   strategie?: Strategie | null
   /** Het antwoord is ingesproken in plaats van getypt. Ontbreekt bij oudere pogingen. */
   ingesproken?: boolean
+  /** Gesteld in een toetsronde: zonder hulp en zonder tussentijdse feedback. Ontbreekt bij oudere pogingen. */
+  toetsvorm?: boolean
   tijdstip: Tijdstip
   regelversie: number
 }

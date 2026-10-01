@@ -8,6 +8,7 @@ import {
   dagenTussen,
   kalenderdag,
   STANDAARD_INSTELLINGEN,
+  toetsvormStand,
   type GeleerdMet,
   type Poging,
   type Strategie,
@@ -108,6 +109,14 @@ export function Inzichten({ onTerug }: { onTerug: () => void }) {
                   </li>
                 ))}
               </ul>
+              {(() => {
+                const t = toetsvormStand(eigen, pogingen)
+                return t.gesteld > 0 ? (
+                  <p>
+                    📝 In toetsvorm geweten: {t.geweten} van de {t.gesteld}
+                  </p>
+                ) : null
+              })()}
               {(mislukt > 0 || open > 0) && (
                 <p className="gedempt">
                   {mislukt > 0 && `⚠ ${mislukt} ${mislukt === 1 ? 'pagina is' : "pagina's zijn"} niet gelukt, die woorden ontbreken nog. `}

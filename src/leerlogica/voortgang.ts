@@ -50,3 +50,21 @@ export function berekenVoortgang(item: Leeritem, pogingen: Poging[], instellinge
   }
   return { status: statusNa(eigen, instellingen), hoogsteOoit }
 }
+
+/**
+ * Hoe de leeritems het in toetsvorm deden, los van de voortgangsstatus: per leeritem telt de laatste
+ * poging in toetsvorm op de huidige bronversie.
+ */
+export function toetsvormStand(leeritems: Leeritem[], pogingen: Poging[]): { gesteld: number; geweten: number } {
+  let gesteld = 0
+  let geweten = 0
+  for (const item of leeritems) {
+    const laatste = pogingen
+      .filter((p) => p.toetsvorm && p.leeritemId === item.id && p.bronversie === item.bronversie)
+      .reduce<Poging | null>((l, p) => (l === null || p.tijdstip > l.tijdstip ? p : l), null)
+    if (!laatste) continue
+    gesteld++
+    if (laatste.oordeel === 'goed' && !laatste.antwoordZelfToegevoegd) geweten++
+  }
+  return { gesteld, geweten }
+}

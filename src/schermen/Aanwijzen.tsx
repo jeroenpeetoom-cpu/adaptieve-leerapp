@@ -38,13 +38,15 @@ interface Props {
   hint: string | null
   /** Het leeritem is nieuw: de eerste tik is een gok. */
   nieuw: boolean
+  /** Toetsronde: geen hulp. */
+  toets?: boolean
   onAntwoord: (antwoord: string | null, oordeel: Oordeel) => void
   onHulp: (soort: 'met hint' | 'herkend' | 'na voorbeeld') => void
   onVolgende: () => void
 }
 
 /** Aanwijzen: "Waar ligt …?" De leerling tikt op de blinde kaart. */
-export function Aanwijzen({ item, kaart, vorm, hulp, afgesloten, laatste, leermoment, bezig, andereOpties, zaad, hint, nieuw, onAntwoord, onHulp, onVolgende }: Props) {
+export function Aanwijzen({ item, kaart, vorm, hulp, afgesloten, laatste, leermoment, bezig, andereOpties, zaad, hint, nieuw, toets, onAntwoord, onHulp, onVolgende }: Props) {
   const [zoom, setZoom] = useState(1)
   const vensterRef = useRef<HTMLDivElement>(null)
   /** Het midden van wat de leerling zag, zodat in- en uitzoomen daar blijft. */
@@ -129,9 +131,11 @@ export function Aanwijzen({ item, kaart, vorm, hulp, afgesloten, laatste, leermo
           <button className="knop knop-rustig" disabled={bezig} onClick={() => onAntwoord(null, 'niet geweten')}>
             Weet ik niet
           </button>
-          <button className="knop knop-rustig" aria-expanded={hulpOpen} disabled={bezig || hulp === 'na voorbeeld'} onClick={() => setHulpOpen(!hulpOpen)}>
-            Hulp
-          </button>
+          {!toets && (
+            <button className="knop knop-rustig" aria-expanded={hulpOpen} disabled={bezig || hulp === 'na voorbeeld'} onClick={() => setHulpOpen(!hulpOpen)}>
+              Hulp
+            </button>
+          )}
         </div>
       )}
       {hulpOpen && !afgesloten && !leermoment && (

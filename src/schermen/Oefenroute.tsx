@@ -156,6 +156,7 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
   const omschrijving = (s: typeof samenstelling) => {
     const delen = []
     if (s.repetitie.length > 0) delen.push(`${s.repetitie.length} voor de generale repetitie`)
+    if (s.toetsvorm.length > 0) delen.unshift(`📝 toetsronde met ${s.toetsvorm.length}`)
     if (s.herhalingen.length > 0) delen.push(`${s.herhalingen.length} ${s.herhalingen.length === 1 ? 'herhaling' : 'herhalingen'}`)
     if (s.nieuw.length > 0) delen.push(`${s.nieuw.length} ${s.nieuw.length === 1 ? 'nieuw woord' : 'nieuwe woorden'}`)
     return `${delen.join(', ')} · ongeveer ${s.minuten} ${s.minuten === 1 ? 'minuut' : 'minuten'}`
@@ -186,11 +187,14 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     setMelding(null)
     // Door elkaar, en twee richtingen van hetzelfde nooit vlak na elkaar.
     const sessieId = crypto.randomUUID()
-    items = mengVolgorde(items, sessieId)
+    // Eerst de toetsronde (schoolvorm), dan de rest; elk deel door elkaar.
+    const inToets = new Set(gekozen.toetsvorm)
+    const toetsItems = mengVolgorde(items.filter((i) => inToets.has(i.id)), sessieId)
+    items = [...toetsItems, ...mengVolgorde(items.filter((i) => !inToets.has(i.id)), sessieId)]
     const strategiePerItem = Object.fromEntries(
       beelden.map((b) => [b.leeritemId, b.routeId ? ('geheugenroute' as const) : ('beelden koppelen' as const)]),
     )
-    setWeergave({ soort: 'sessie', toestand: startSessie(sessieId, items, pogingen, strategiePerItem) })
+    setWeergave({ soort: 'sessie', toestand: startSessie(sessieId, items, pogingen, strategiePerItem, toetsItems.length) })
     return true
   }
 

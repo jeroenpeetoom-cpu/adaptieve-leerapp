@@ -18,6 +18,11 @@ export interface Samenstelling {
   repetitie: Leeritem[]
   herhalingen: Leeritem[]
   nieuw: Leeritem[]
+  /**
+   * Leeritems die in toetsvorm komen: de hele generale repetitie, en herhalingen die al later nog
+   * geweten zijn en de vorige keer niet in toetsvorm kwamen (zo wisselt het af).
+   */
+  toetsvorm: string[]
   /** Geschatte duur in minuten, op het tempo van de leerling. */
   minuten: number
   /** De sessie duurt langer dan het budget, omdat een toets dat vraagt (nooit langer dan het maximum). */
@@ -155,8 +160,19 @@ export function stelSessieSamen(
     if (!voegNieuwToe(item, budget)) break
   }
 
+  const laatstePoging = (item: Leeritem) =>
+    pogingen
+      .filter((p) => p.leeritemId === item.id && p.bronversie === item.bronversie)
+      .reduce<Poging | null>((l, p) => (l === null || p.tijdstip > l.tijdstip ? p : l), null)
+  const toetsvorm = [
+    ...repetitie,
+    ...herhalingen.filter(
+      (i) => berekenVoortgang(i, pogingen, instellingen).status === 'later nog geweten' && !laatstePoging(i)?.toetsvorm,
+    ),
+  ].map((i) => i.id)
+
   const minuten = Math.ceil(gebruikt / 60)
-  return { repetitie, herhalingen, nieuw, minuten, langer: gebruikt > budget + 30, tekort }
+  return { repetitie, herhalingen, nieuw, toetsvorm, minuten, langer: gebruikt > budget + 30, tekort }
 }
 
 /** Nederlands → vreemde taal en benoemen zijn moeilijker: de leerling moet het antwoord zelf maken. */

@@ -202,3 +202,23 @@ describe('eerst de makkelijke richting, dan de moeilijke', () => {
     expect(ids(s.nieuw)).toEqual(['a-en'])
   })
 })
+
+describe('toetsvorm in de samenstelling', () => {
+  it('zet de hele generale repetitie in toetsvorm', () => {
+    const s = samen([item('a')], [geoefend('a', 1)], [bron({ toetsdag: '2026-10-11' })], '2026-10-10')
+    expect(s.repetitie.map((i) => i.id)).toEqual(['a'])
+    expect(s.toetsvorm).toEqual(['a'])
+  })
+
+  it('wisselt af bij herhalingen die al later nog geweten zijn', () => {
+    // Drie keer vrij goed op verschillende dagen: later nog geweten.
+    const pogingen = [geoefend('a', 1), geoefend('a', 4), geoefend('a', 12)]
+    expect(samen([item('a')], pogingen, [bron()], '2027-06-01').toetsvorm).toEqual(['a'])
+    const metToets = [...pogingen, { ...geoefend('a', 25), toetsvorm: true }]
+    expect(samen([item('a')], metToets, [bron()], '2027-06-01').toetsvorm).toEqual([])
+  })
+
+  it('stelt een herhaling die nog geleerd wordt niet in toetsvorm', () => {
+    expect(samen([item('a')], [geoefend('a', 1)], [bron()], '2026-10-10').toetsvorm).toEqual([])
+  })
+})

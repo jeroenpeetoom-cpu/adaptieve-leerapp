@@ -7,6 +7,10 @@ import {
   mengVolgorde,
   leermomentNodig,
   raad,
+  inToetsronde,
+  toetsUitslag,
+  toetsUitslagNodig,
+  uitslagGezien,
   raadvraagNodig,
   kanAntwoordToevoegen,
   nogTeGaan,
@@ -307,5 +311,59 @@ describe('raadvraag bij een nieuw leeritem', () => {
     const { toestand, poging } = beantwoord(t, { pogingId: 'p1', antwoord: null, tijdstip: T })
     expect(poging).toMatchObject({ oordeel: 'niet geweten', antwoord: null })
     expect(leermomentNodig(toestand)).toBe(true)
+  })
+})
+
+describe('toetsronde', () => {
+  const w = (id: string): Leeritem => ({
+    id,
+    soort: 'woordpaar',
+    bronId: 'b',
+    woordpaarId: `wp-${id}`,
+    bronversie: 1,
+    oefenrichting: { van: 'en', naar: 'nl' },
+    vraag: id,
+    toegestaneAntwoorden: [`${id}-nl`],
+  })
+  const T = '2026-10-01T10:00:00.000Z'
+  const oud = (id: string, oordeel: Poging['oordeel'] = 'goed'): Poging => ({ id: `o-${id}`, sessieId: 'oud', leeritemId: id, bronversie: 1, antwoord: 'x', oordeel, hulp: 'vrij opgehaald', antwoordZelfToegevoegd: false, tijdstip: '2026-09-01T10:00:00.000Z', regelversie: 1 })
+  const items = [w('a'), w('b'), w('c'), w('d'), w('e')]
+  const start = () => startSessie('s', items, items.map((i) => oud(i.id, i.id === 'a' ? 'fout' : 'goed')), {}, 2)
+
+  it('stelt de toetsvragen als typvraag zonder hulp, ook na een eerdere fout', () => {
+    const t = start()
+    expect(inToetsronde(t)).toBe(true)
+    expect(t.vorm).toBe('typen')
+    expect(vraagHulp(t, 'met hint')).toBe(t)
+  })
+
+  it('geeft geen nieuwe kans en markeert de poging als toetsvorm', () => {
+    const { toestand, poging } = beantwoord(start(), { pogingId: 'p1', antwoord: 'a-nk', tijdstip: T })
+    expect(poging).toMatchObject({ oordeel: 'fout', toetsvorm: true })
+    expect(toestand.afgesloten).toBe(true)
+  })
+
+  it('toont na de ronde de uitslag en zet wat mis ging verderop terug', () => {
+    let t = start()
+    t = volgende(beantwoord(t, { pogingId: 'p1', antwoord: null, tijdstip: T }).toestand)
+    expect(toetsUitslagNodig(t)).toBe(false)
+    t = volgende(beantwoord(t, { pogingId: 'p2', antwoord: 'b-nl', tijdstip: T }).toestand)
+    expect(inToetsronde(t)).toBe(false)
+    expect(toetsUitslagNodig(t)).toBe(true)
+    expect(isKlaar(t)).toBe(false)
+    expect(toetsUitslag(t).map((p) => p.oordeel)).toEqual(['niet geweten', 'goed'])
+    // a kwam niet goed: het komt terug na de toetsronde, met een paar andere vragen ertussen.
+    expect(t.leeritems.map((i) => i.id).slice(2)).toEqual(['c', 'd', 'e', 'a'])
+    t = uitslagGezien(t)
+    expect(toetsUitslagNodig(t)).toBe(false)
+    expect(huidigLeeritem(t)!.id).toBe('c')
+    expect(t.vorm).toBe('typen')
+  })
+
+  it('is pas klaar na de uitslag als de sessie alleen uit de toetsronde bestaat', () => {
+    let t = startSessie('s', [w('a')], [oud('a')], {}, 1)
+    t = volgende(beantwoord(t, { pogingId: 'p1', antwoord: 'a-nl', tijdstip: T }).toestand)
+    expect(isKlaar(t)).toBe(false)
+    expect(isKlaar(uitslagGezien(t))).toBe(true)
   })
 })

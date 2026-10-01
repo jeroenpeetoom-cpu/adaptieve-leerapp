@@ -18,6 +18,8 @@ export type Vorm = 'typen' | 'meerkeuze'
  *   daarna de voorkennischeck als typvraag, die gewoon telt. Fout gegokt of geen idee: de leerling
  *   kende het nog niet, dat wordt "niet geweten" en het leermoment volgt.
  *   Bij aanwijzen is de eerste tik op de kaart zelf al de raadvraag.
+ * - Een sessie kan beginnen met een toetsronde: leeritems in schoolvorm, zonder hulp, zonder nieuwe kans
+ *   en zonder tussentijdse feedback. Na de ronde volgt de uitslag; wat niet goed ging komt daarna terug.
  */
 export interface SessieToestand {
   sessieId: string
@@ -41,6 +43,10 @@ export interface SessieToestand {
   aantalGepland?: number
   /** Per nieuw leeritem of de raadvraag goed gegokt was. */
   geraden?: Record<string, boolean>
+  /** Aantal leeritems aan het begin van de wachtrij dat in toetsvorm gesteld wordt. */
+  toetsronde?: number
+  /** De leerling heeft de uitslag van de toetsronde gezien. */
+  toetsUitslagGezien?: boolean
 }
 
 export interface Antwoord {
@@ -66,7 +72,7 @@ function vormVoor(toestand: Pick<SessieToestand, 'pogingen' | 'laatsteOordeelVoo
 }
 
 function opPositie(toestand: SessieToestand, positie: number): SessieToestand {
-  const vorm = vormVoor(toestand, toestand.leeritems[positie])
+  const vorm = positie < (toestand.toetsronde ?? 0) ? 'typen' : vormVoor(toestand, toestand.leeritems[positie])
   return {
     ...toestand,
     huidige: positie,
@@ -82,6 +88,8 @@ export function startSessie(
   leeritems: Leeritem[],
   eerderePogingen: Poging[] = [],
   strategiePerItem: Record<string, Strategie> = {},
+  /** Zoveel leeritems aan het begin van de wachtrij vormen de toetsronde. */
+  toetsronde = 0,
 ): SessieToestand {
   const laatsteOordeelVooraf: Record<string, Oordeel> = {}
   for (const p of [...eerderePogingen].sort((a, b) => a.tijdstip.localeCompare(b.tijdstip))) {
@@ -100,6 +108,7 @@ export function startSessie(
     laatsteOordeelVooraf,
     strategiePerItem,
     aantalGepland: leeritems.length,
+    toetsronde: Math.min(toetsronde, leeritems.length),
   }
   return opPositie(leeg, 0)
 }
@@ -109,7 +118,26 @@ export function huidigLeeritem(toestand: SessieToestand): Leeritem | undefined {
 }
 
 export function isKlaar(toestand: SessieToestand): boolean {
-  return toestand.huidige >= toestand.leeritems.length
+  return toestand.huidige >= toestand.leeritems.length && !toetsUitslagNodig(toestand)
+}
+
+/** Het huidige leeritem hoort bij de toetsronde. */
+export function inToetsronde(toestand: SessieToestand): boolean {
+  return toestand.huidige < (toestand.toetsronde ?? 0)
+}
+
+/** De toetsronde is voorbij en de leerling moet de uitslag nog zien. */
+export function toetsUitslagNodig(toestand: SessieToestand): boolean {
+  return (toestand.toetsronde ?? 0) > 0 && toestand.huidige >= toestand.toetsronde! && !toestand.toetsUitslagGezien
+}
+
+/** De pogingen van de toetsronde, in volgorde. */
+export function toetsUitslag(toestand: SessieToestand): Poging[] {
+  return toestand.pogingen.filter((p) => p.toetsvorm)
+}
+
+export function uitslagGezien(toestand: SessieToestand): SessieToestand {
+  return { ...toestand, toetsUitslagGezien: true }
 }
 
 /** Het leeritem op de huidige positie is afgesloten en de leerling moet eerst "volgende" kiezen. */
@@ -168,7 +196,7 @@ export function laatstePogingHier(toestand: SessieToestand): Poging | undefined 
 
 /** De leerling vraagt om hulp: een hint, kiezen uit opties, of een voorbeeld. */
 export function vraagHulp(toestand: SessieToestand, soort: Exclude<Hulp, 'vrij opgehaald'>): SessieToestand {
-  if (toestand.afgesloten || isKlaar(toestand)) return toestand
+  if (toestand.afgesloten || isKlaar(toestand) || inToetsronde(toestand)) return toestand
   return {
     ...toestand,
     hulp: zwaarsteHulp(toestand.hulp, soort),
@@ -196,11 +224,13 @@ export function beantwoord(
     antwoordZelfToegevoegd: false,
     strategie: toestand.strategiePerItem[item.id] ?? null,
     ingesproken: invoer.ingesproken ?? false,
+    ...(inToetsronde(toestand) ? { toetsvorm: true } : {}),
     tijdstip: invoer.tijdstip,
     regelversie: REGELVERSIE,
   }
   const voorkennischeck = isNieuwLeeritem(toestand, item.id) && !toestand.pogingen.some((p) => p.leeritemId === item.id)
   const nieuweKans =
+    !inToetsronde(toestand) &&
     (oordeel === 'bijna' || (oordeel === 'fout' && !voorkennischeck)) &&
     toestand.vorm === 'typen' &&
     toestand.pogingenBijHuidige === 0 &&
@@ -282,16 +312,28 @@ export function volgende(toestand: SessieToestand): SessieToestand {
   if (!toestand.afgesloten) return toestand
   const item = huidigLeeritem(toestand)!
   const laatste = toestand.pogingen.at(-1)!
-  const terugzetten = laatste.oordeel !== 'goed' && !toestand.teruggezet.includes(item.id)
+  const toets = inToetsronde(toestand)
+  const terugzetten = !toets && laatste.oordeel !== 'goed' && !toestand.teruggezet.includes(item.id)
   let leeritems = toestand.leeritems
+  let teruggezet = toestand.teruggezet
   if (terugzetten) {
     const plek = terugPlek(leeritems, toestand.huidige, item)
     leeritems = [...leeritems.slice(0, plek), item, ...leeritems.slice(plek)]
+    teruggezet = [...teruggezet, item.id]
   }
-  return opPositie(
-    { ...toestand, leeritems, teruggezet: terugzetten ? [...toestand.teruggezet, item.id] : toestand.teruggezet },
-    toestand.huidige + 1,
-  )
+  // Einde van de toetsronde: wat niet goed ging, komt verderop in de sessie terug, verspreid.
+  if (toets && toestand.huidige + 1 === toestand.toetsronde) {
+    const mis = toetsUitslag(toestand)
+      .filter((p) => p.oordeel !== 'goed')
+      .map((p) => leeritems.slice(0, toestand.toetsronde).find((i) => i.id === p.leeritemId)!)
+      .filter(Boolean)
+    mis.forEach((m, k) => {
+      const plek = terugPlek(leeritems, toestand.huidige + k * 2, m)
+      leeritems = [...leeritems.slice(0, plek), m, ...leeritems.slice(plek)]
+    })
+    teruggezet = [...teruggezet, ...mis.map((m) => m.id)]
+  }
+  return opPositie({ ...toestand, leeritems, teruggezet }, toestand.huidige + 1)
 }
 
 /**

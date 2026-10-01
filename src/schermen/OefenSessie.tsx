@@ -24,6 +24,10 @@ import {
   leermomentNodig,
   nogTeGaan,
   optiesVoor,
+  inToetsronde,
+  toetsUitslag,
+  toetsUitslagNodig,
+  uitslagGezien,
   raad,
   raadvraagNodig,
   voegAntwoordToe,
@@ -129,6 +133,75 @@ function Gemarkeerd({ tekens, soort }: { tekens: Teken[]; soort: 'fout' | 'mist'
   )
 }
 
+/** Boven elke vraag van de toetsronde: waar je bent en wat de regels zijn. */
+function Toetsbanner({ toestand }: { toestand: SessieToestand }) {
+  return (
+    <p className="toetsbanner" role="note">
+      📝 <strong>Toetsronde</strong> · vraag {toestand.huidige + 1} van {toestand.toetsronde}
+      <br />
+      <span className="gedempt">Zoals op school: zonder hulp. De uitslag krijg je aan het eind.</span>
+    </p>
+  )
+}
+
+/** Na de toetsronde: per vraag goed of niet, met het eigen en het goede antwoord. */
+function ToetsUitslag({ toestand, bezig, storing, onVerder }: { toestand: SessieToestand; bezig: boolean; storing: string | null; onVerder: () => void }) {
+  const pogingen = toetsUitslag(toestand)
+  const goed = pogingen.filter((p) => p.oordeel === 'goed').length
+  const itemVan = (id: string) => toestand.leeritems.find((i) => i.id === id)!
+  const verder = toestand.huidige < toestand.leeritems.length
+  return (
+    <section className="sessie">
+      <h2>📝 Uitslag toetsronde</h2>
+      <p className="vraag">
+        {goed} van de {pogingen.length} goed{goed === pogingen.length ? ' 🎉' : ''}
+      </p>
+      <p className="gedempt">
+        {goed === pogingen.length
+          ? 'Alles goed, zonder hulp. Zo zou het op de toets ook gaan.'
+          : 'Wat niet goed ging, komt zo nog een keer terug. Dan oefen je het met hulp.'}
+      </p>
+      <ul className="uitslag">
+        {pogingen.map((p) => {
+          const item = itemVan(p.leeritemId)
+          const naam = item.plek?.richting === 'aanwijzen' ? `Waar ligt ${item.vraag}?` : item.plek ? 'Plek op de kaart' : item.vraag
+          const goedAntwoord = item.plek?.richting === 'aanwijzen' ? item.vraag : item.toegestaneAntwoorden[0]
+          const mis = p.oordeel !== 'goed'
+          const vergelijk = mis && p.antwoord && item.plek?.richting !== 'aanwijzen' ? markeerVerschil(p.antwoord, dichtstbijzijnde(p.antwoord, item.toegestaneAntwoorden)) : null
+          return (
+            <li key={p.id} className={mis ? 'uitslag-mis' : 'uitslag-goed'}>
+              <span>{mis ? '✗' : '✓'}</span>{' '}
+              <span lang={item.oefenrichting.van}>{naam}</span>
+              {item.plek?.richting !== 'aanwijzen' && (
+                <>
+                  {' → '}
+                  <strong lang={item.oefenrichting.naar}>{goedAntwoord}</strong>
+                </>
+              )}
+              {mis && p.antwoord === null && <span className="gedempt"> · niet geweten</span>}
+              {mis && item.plek?.richting === 'aanwijzen' && p.antwoord !== null && <span className="gedempt"> · niet op de goede plek</span>}
+              {vergelijk && (
+                <span className="vergelijk-klein">
+                  {' · jij: '}
+                  <Gemarkeerd tekens={vergelijk.gegeven} soort="fout" />
+                </span>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+      {storing && (
+        <p className="feedback feedback-storing" role="alert">
+          {storing}
+        </p>
+      )}
+      <button className="knop" disabled={bezig} onClick={onVerder} autoFocus>
+        {verder ? 'Verder oefenen' : 'Klaar'}
+      </button>
+    </section>
+  )
+}
+
 export function OefenSessie({
   db,
   begintoestand,
@@ -174,7 +247,29 @@ export function OefenSessie({
   // Vast id per volgende poging in deze sessie: dubbel tikken geeft hetzelfde id en telt dus niet dubbel.
   const pogingId = `${toestand.sessieId}-${toestand.pogingen.length + 1}`
 
+  if (toetsUitslagNodig(toestand)) {
+    return (
+      <ToetsUitslag
+        toestand={toestand}
+        bezig={bezig}
+        storing={storing}
+        onVerder={async () => {
+          const nieuw = uitslagGezien(toestand)
+          setBezig(true)
+          try {
+            await db.slaSessieOp(nieuw, isKlaar(nieuw), nu())
+          } finally {
+            setBezig(false)
+          }
+          if (isKlaar(nieuw)) return onKlaar(nieuw)
+          setToestand(nieuw)
+        }}
+      />
+    )
+  }
+
   const item = huidigLeeritem(toestand)!
+  const toets = inToetsronde(toestand)
   const benoemen = item.plek?.richting === 'benoemen'
   const benoemKaart = item.plek ? kaarten[item.plek.kaartId] : undefined
   const laatste = laatstePogingHier(toestand)
@@ -206,9 +301,16 @@ export function OefenSessie({
     const uitkomst = beantwoord(basis, { pogingId, antwoord: tekst, tijdstip, ingesproken, oordeel: vooraf })
     if (!uitkomst.poging) return
     if (await bewaar(uitkomst.toestand, uitkomst.poging, tijdstip)) {
-      setToestand(uitkomst.toestand)
       setAntwoord('')
       setHulpOpen(false)
+      // In de toetsronde geen feedback tussendoor: meteen door naar de volgende vraag.
+      if (inToetsronde(basis) && uitkomst.toestand.afgesloten) {
+        const verder = volgende(uitkomst.toestand)
+        if (await bewaar(verder, null, tijdstip)) {
+          if (isKlaar(verder)) return onKlaar(verder)
+          setToestand(verder)
+        } else setToestand(uitkomst.toestand)
+      } else setToestand(uitkomst.toestand)
     }
     invoerRef.current?.focus({ preventScroll: true })
   }
@@ -360,6 +462,7 @@ export function OefenSessie({
           sprong={vondCodewoord}
         />
         <p className="voortgang">{nogTeGaan(toestand) === 1 ? 'Laatste plek' : `Nog ${nogTeGaan(toestand)} te gaan`}</p>
+        {toets && <Toetsbanner toestand={toestand} />}
         {vondCodewoord && <CodewoordMelding />}
         {storing && (
           <p className="feedback feedback-storing" role="alert">
@@ -381,6 +484,7 @@ export function OefenSessie({
             bezig={bezig}
             andereOpties={bronItems.filter((i) => i.id !== item.id && i.plek?.kaartId === item.plek!.kaartId && i.plek?.richting === 'aanwijzen' && i.plek?.soort === item.plek!.soort).concat(bronItems.filter((i) => i.id !== item.id && i.plek?.kaartId === item.plek!.kaartId && i.plek?.richting === 'aanwijzen' && i.plek?.soort !== item.plek!.soort))}
             zaad={pogingId}
+            toets={toets}
             nieuw={isNieuwLeeritem(toestand, item.id) && !toestand.pogingen.some((p) => p.leeritemId === item.id)}
             hint={[ankerhint(ankers), geheugenbeelden[item.id] ? `Denk aan je beeld: "${geheugenbeelden[item.id]}".` : null].filter(Boolean).join(' ') || null}
             onAntwoord={(antwoord, oordeel) => void verstuur(antwoord, false, oordeel)}
@@ -412,6 +516,7 @@ export function OefenSessie({
       ) : (
         <p className="voortgang">{nogTeGaan(toestand) === 1 ? 'Laatste woord' : `Nog ${nogTeGaan(toestand)} woorden`}</p>
       )}
+      {toets && <Toetsbanner toestand={toestand} />}
       {benoemen && benoemKaart ? (
         <>
           <p className="vraag vraag-kaart">{leermoment ? 'Nieuwe plek' : 'Wat ligt hier?'}</p>
@@ -584,7 +689,7 @@ export function OefenSessie({
             <button className="knop knop-rustig" type="button" disabled={bezig} onClick={() => void verstuur(null)}>
               Weet ik niet
             </button>
-            <button
+            {!toets && <button
               className="knop knop-rustig"
               type="button"
               aria-expanded={hulpOpen}
@@ -592,9 +697,9 @@ export function OefenSessie({
               onClick={() => setHulpOpen(!hulpOpen)}
             >
               Hulp
-            </button>
+            </button>}
           </div>
-          {hulpOpen && (
+          {hulpOpen && !toets && (
             <div className="hulpmenu" role="group" aria-label="Kies hulp">
               <button type="button" className="knop knop-rustig" onClick={() => hulp('met hint')} disabled={toestand.hulp !== 'vrij opgehaald'}>
                 Geef een hint
