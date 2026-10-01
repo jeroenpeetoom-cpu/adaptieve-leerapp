@@ -8,6 +8,7 @@ import {
   bepaalAntwoordwijze,
   berekenVoortgang,
   kalenderdag,
+  beoordeel,
   beschrijfVerschil,
   dichtstbijzijnde,
   hintVoor,
@@ -23,6 +24,8 @@ import {
   leermomentNodig,
   nogTeGaan,
   optiesVoor,
+  raad,
+  raadvraagNodig,
   voegAntwoordToe,
   volgende,
   vraagHulp,
@@ -194,13 +197,13 @@ export function OefenSessie({
     }
   }
 
-  async function verstuur(tekst: string | null, ingesproken = false, vooraf?: Poging['oordeel']) {
+  async function verstuur(tekst: string | null, ingesproken = false, vooraf?: Poging['oordeel'], basis = toestand) {
     if (bezig) return
     if (insprekenTimer.current) clearTimeout(insprekenTimer.current)
     ingesprokenRef.current = false
     setTypMelding(false)
     const tijdstip = nu()
-    const uitkomst = beantwoord(toestand, { pogingId, antwoord: tekst, tijdstip, ingesproken, oordeel: vooraf })
+    const uitkomst = beantwoord(basis, { pogingId, antwoord: tekst, tijdstip, ingesproken, oordeel: vooraf })
     if (!uitkomst.poging) return
     if (await bewaar(uitkomst.toestand, uitkomst.poging, tijdstip)) {
       setToestand(uitkomst.toestand)
@@ -208,6 +211,16 @@ export function OefenSessie({
       setHulpOpen(false)
     }
     invoerRef.current?.focus({ preventScroll: true })
+  }
+
+  /** De gok op de raadvraag. Goed gegokt: nu zonder opties. Anders kende hij het nog niet: het leermoment volgt. */
+  async function gok(optie: string | null) {
+    const goedGegokt = optie !== null && beoordeel(optie, item.toegestaneAntwoorden, item.soort === 'plek') === 'goed'
+    const na = raad(toestand, goedGegokt)
+    if (goedGegokt) {
+      setToestand(na)
+      setTimeout(() => invoerRef.current?.focus({ preventScroll: true }))
+    } else await verstuur(null, false, undefined, na)
   }
 
   async function ookGoed() {
@@ -309,7 +322,15 @@ export function OefenSessie({
   const bekend = eerderePogingen.some(
     (p) => p.leeritemId === item.id && p.oordeel === 'goed' && p.hulp === 'vrij opgehaald' && !p.antwoordZelfToegevoegd,
   )
-  const feedback = laatste ? feedbackVoor(laatste, toestand.afgesloten, goedAntwoord, item, bekend, beeld) : null
+  const foutGegokt = toestand.geraden?.[item.id] === false && laatste?.oordeel === 'niet geweten'
+  const feedback = !laatste
+    ? null
+    : foutGegokt
+      ? { kort: `Nu weet je het! Het is "${goedAntwoord}".`, uitleg: null }
+      : feedbackVoor(laatste, toestand.afgesloten, goedAntwoord, item, bekend, beeld)
+  const raadOpties = optiesVoor(item, bronItems, `raad-${item.id}`)
+  const raden = raadvraagNodig(toestand) && raadOpties.length >= 2
+  const goedGegokt = toestand.geraden?.[item.id] === true && !laatste && !toestand.afgesloten
   const leermoment = leermomentNodig(toestand)
 
   async function leermomentKlaar(nieuwBeeld: Omit<Geheugenbeeld, 'id' | 'aangemaakt'> | null) {
@@ -360,6 +381,7 @@ export function OefenSessie({
             bezig={bezig}
             andereOpties={bronItems.filter((i) => i.id !== item.id && i.plek?.kaartId === item.plek!.kaartId && i.plek?.richting === 'aanwijzen' && i.plek?.soort === item.plek!.soort).concat(bronItems.filter((i) => i.id !== item.id && i.plek?.kaartId === item.plek!.kaartId && i.plek?.richting === 'aanwijzen' && i.plek?.soort !== item.plek!.soort))}
             zaad={pogingId}
+            nieuw={isNieuwLeeritem(toestand, item.id) && !toestand.pogingen.some((p) => p.leeritemId === item.id)}
             hint={[ankerhint(ankers), geheugenbeelden[item.id] ? `Denk aan je beeld: "${geheugenbeelden[item.id]}".` : null].filter(Boolean).join(' ') || null}
             onAntwoord={(antwoord, oordeel) => void verstuur(antwoord, false, oordeel)}
             onHulp={hulp}
@@ -403,8 +425,16 @@ export function OefenSessie({
           {TAALNAAM[item.oefenrichting.van]} → {taal}
         </p>
       )}
-      {isNieuwLeeritem(toestand, item.id) && !laatste && !toestand.pogingen.some((p) => p.leeritemId === item.id) && (
-        <p className="nieuw-label">✨ {benoemen ? 'Nieuwe plek' : 'Nieuw woord'}. Weet je het al? Anders tik je op "Weet ik niet".</p>
+      {raden ? (
+        <p className="nieuw-label">✨ {benoemen ? 'Nieuwe plek' : 'Nieuw woord'}. Raad maar! Fout gokken is niet erg.</p>
+      ) : goedGegokt ? (
+        <p className="nieuw-label">🎯 Goed gegokt! Weet je het ook zonder opties?</p>
+      ) : (
+        isNieuwLeeritem(toestand, item.id) &&
+        !laatste &&
+        !toestand.pogingen.some((p) => p.leeritemId === item.id) && (
+          <p className="nieuw-label">✨ {benoemen ? 'Nieuwe plek' : 'Nieuw woord'}. Weet je het al? Anders tik je op "Weet ik niet".</p>
+        )
       )}
       {!benoemen && (
         <p className="vraag" lang={item.oefenrichting.van}>
@@ -482,6 +512,20 @@ export function OefenSessie({
           })()}
           onKlaar={(b) => void leermomentKlaar(b)}
         />
+      ) : raden ? (
+        <>
+          <p className="label">{benoemen ? 'Welke plek denk je dat dit is?' : `Wat denk je dat het in het ${taal} is?`}</p>
+          <div className="opties">
+            {raadOpties.map((optie) => (
+              <button key={optie} className="knop knop-rustig optie" disabled={bezig} onClick={() => void gok(optie)} lang={item.oefenrichting.naar}>
+                {optie}
+              </button>
+            ))}
+          </div>
+          <button className="link" disabled={bezig} onClick={() => void gok(null)}>
+            Geen idee
+          </button>
+        </>
       ) : toestand.afgesloten ? (
         <button className="knop" onClick={() => void naarVolgende()} autoFocus>
           Volgende

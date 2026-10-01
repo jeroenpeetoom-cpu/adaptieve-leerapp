@@ -6,6 +6,8 @@ import {
   koppelStrategie,
   mengVolgorde,
   leermomentNodig,
+  raad,
+  raadvraagNodig,
   kanAntwoordToevoegen,
   nogTeGaan,
   startSessie,
@@ -261,5 +263,49 @@ describe('volgorde van een sessie', () => {
   it('doet het zo goed als het kan als er te weinig verschillende items zijn', () => {
     const twee = [{ id: 'a1', woordpaarId: 'a' }, { id: 'a2', woordpaarId: 'a' }]
     expect(mengVolgorde(twee, 'z')).toHaveLength(2)
+  })
+})
+
+describe('raadvraag bij een nieuw leeritem', () => {
+  const nieuwItem = (id: string): Leeritem => ({
+    id,
+    soort: 'woordpaar',
+    bronId: 'b',
+    woordpaarId: `wp-${id}`,
+    bronversie: 1,
+    oefenrichting: { van: 'en', naar: 'nl' },
+    vraag: id,
+    toegestaneAntwoorden: [`${id}-nl`],
+  })
+  const T = '2026-10-01T10:00:00.000Z'
+
+  it('begint een nieuw leeritem met een raadvraag', () => {
+    expect(raadvraagNodig(startSessie('s', [nieuwItem('a')]))).toBe(true)
+  })
+
+  it('stelt geen raadvraag bij een leeritem dat al eerder geoefend is', () => {
+    const eerder: Poging = { id: 'p0', sessieId: 'oud', leeritemId: 'a', bronversie: 1, antwoord: 'x', oordeel: 'fout', hulp: 'vrij opgehaald', antwoordZelfToegevoegd: false, tijdstip: T, regelversie: 1 }
+    expect(raadvraagNodig(startSessie('s', [nieuwItem('a')], [eerder]))).toBe(false)
+  })
+
+  it('stelt geen raadvraag bij aanwijzen: de eerste tik is de gok', () => {
+    const plek: Leeritem = { ...nieuwItem('a'), soort: 'plek', plek: { kaartId: 'k', x: 0, y: 0, soort: 'stad', richting: 'aanwijzen' } }
+    expect(raadvraagNodig(startSessie('s', [plek]))).toBe(false)
+  })
+
+  it('goed gegokt: geen poging, daarna de typvraag die gewoon telt', () => {
+    const t = raad(startSessie('s', [nieuwItem('a')]), true)
+    expect(t.pogingen).toEqual([])
+    expect(raadvraagNodig(t)).toBe(false)
+    const { toestand, poging } = beantwoord(t, { pogingId: 'p1', antwoord: 'a-nl', tijdstip: T })
+    expect(poging).toMatchObject({ oordeel: 'goed', hulp: 'vrij opgehaald' })
+    expect(leermomentNodig(toestand)).toBe(false)
+  })
+
+  it('fout gegokt: niet geweten, en dan het leermoment', () => {
+    const t = raad(startSessie('s', [nieuwItem('a')]), false)
+    const { toestand, poging } = beantwoord(t, { pogingId: 'p1', antwoord: null, tijdstip: T })
+    expect(poging).toMatchObject({ oordeel: 'niet geweten', antwoord: null })
+    expect(leermomentNodig(toestand)).toBe(true)
   })
 })

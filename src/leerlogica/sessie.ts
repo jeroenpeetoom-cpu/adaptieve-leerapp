@@ -14,6 +14,10 @@ export type Vorm = 'typen' | 'meerkeuze'
  * - Een leeritem dat niet goed ging, komt een paar vragen later één keer terug.
  * - Was de laatste poging op een leeritem fout of niet geweten, dan komt het als meerkeuze
  *   (hulp "herkend"); na een goede meerkeuze is het weer een typvraag.
+ * - Een nieuw leeritem begint met een raadvraag (meerkeuze). De gok zelf is geen poging. Goed gegokt:
+ *   daarna de voorkennischeck als typvraag, die gewoon telt. Fout gegokt of geen idee: de leerling
+ *   kende het nog niet, dat wordt "niet geweten" en het leermoment volgt.
+ *   Bij aanwijzen is de eerste tik op de kaart zelf al de raadvraag.
  */
 export interface SessieToestand {
   sessieId: string
@@ -35,6 +39,8 @@ export interface SessieToestand {
   strategiePerItem: Record<string, Strategie>
   /** Aantal leeritems waarmee de sessie begon; daarna volgen de teruggezette leeritems. */
   aantalGepland?: number
+  /** Per nieuw leeritem of de raadvraag goed gegokt was. */
+  geraden?: Record<string, boolean>
 }
 
 export interface Antwoord {
@@ -128,6 +134,26 @@ export function leermomentNodig(toestand: SessieToestand): boolean {
   if (!item || !laatste || !toestand.afgesloten || laatste.oordeel === 'goed') return false
   const eerdereHier = toestand.pogingen.slice(0, -toestand.pogingenBijHuidige).some((p) => p.leeritemId === item.id)
   return isNieuwLeeritem(toestand, item.id) && !eerdereHier
+}
+
+/** Het huidige leeritem is nieuw en de leerling heeft nog niet geraden: eerst de raadvraag. */
+export function raadvraagNodig(toestand: SessieToestand): boolean {
+  const item = huidigLeeritem(toestand)
+  if (!item || toestand.afgesloten || toestand.pogingenBijHuidige > 0 || toestand.vorm !== 'typen') return false
+  if (item.plek?.richting === 'aanwijzen') return false
+  if (toestand.hulp !== 'vrij opgehaald') return false
+  return (
+    isNieuwLeeritem(toestand, item.id) &&
+    !toestand.pogingen.some((p) => p.leeritemId === item.id) &&
+    !(item.id in (toestand.geraden ?? {}))
+  )
+}
+
+/** Legt de gok op de raadvraag vast. Na een foute gok volgt "niet geweten" (via beantwoord met null). */
+export function raad(toestand: SessieToestand, goedGegokt: boolean): SessieToestand {
+  const item = huidigLeeritem(toestand)
+  if (!item || !raadvraagNodig(toestand)) return toestand
+  return { ...toestand, geraden: { ...toestand.geraden, [item.id]: goedGegokt } }
 }
 
 /** Legt vast met welke strategie een leeritem geleerd wordt. */

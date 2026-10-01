@@ -36,13 +36,15 @@ interface Props {
   zaad: string
   /** Hint met een anker en/of het eigen geheugenbeeld; zonder anker de ligging op de kaart. */
   hint: string | null
+  /** Het leeritem is nieuw: de eerste tik is een gok. */
+  nieuw: boolean
   onAntwoord: (antwoord: string | null, oordeel: Oordeel) => void
   onHulp: (soort: 'met hint' | 'herkend' | 'na voorbeeld') => void
   onVolgende: () => void
 }
 
 /** Aanwijzen: "Waar ligt …?" De leerling tikt op de blinde kaart. */
-export function Aanwijzen({ item, kaart, vorm, hulp, afgesloten, laatste, leermoment, bezig, andereOpties, zaad, hint, onAntwoord, onHulp, onVolgende }: Props) {
+export function Aanwijzen({ item, kaart, vorm, hulp, afgesloten, laatste, leermoment, bezig, andereOpties, zaad, hint, nieuw, onAntwoord, onHulp, onVolgende }: Props) {
   const [zoom, setZoom] = useState(1)
   const vensterRef = useRef<HTMLDivElement>(null)
   /** Het midden van wat de leerling zag, zodat in- en uitzoomen daar blijft. */
@@ -106,6 +108,7 @@ export function Aanwijzen({ item, kaart, vorm, hulp, afgesloten, laatste, leermo
       <p className="vraag vraag-kaart">
         Waar ligt {item.vraag}? <Voorleesknop tekst={`Waar ligt ${item.vraag}?`} taal="nl" />
       </p>
+      {nieuw && !laatste && !afgesloten && <p className="nieuw-label">✨ Nieuwe plek. Raad maar waar het ligt! Fout tikken is niet erg.</p>}
       <p className="richting">
         {SOORTEN[plek.soort].emoji} {SOORTEN[plek.soort].naam}
         {vorm === 'meerkeuze' && !afgesloten ? ' · tik op de goede letter' : ' · tik op de kaart'}
