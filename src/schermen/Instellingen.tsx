@@ -6,6 +6,7 @@ import { STANDAARD_INSTELLINGEN } from '../leerlogica'
 import { echteDb } from '../opslag/database'
 import { isGeluidUit, zetGeluidUit } from '../weergave/voorlezen'
 import { ProfielFormulier } from './Profiel'
+import { leesContrast, leesWeergave, zetContrast, zetWeergave, type Contrast, type Weergave } from '../weergave/weergave'
 
 const WISWOORD = 'WISSEN'
 
@@ -21,6 +22,8 @@ export function Instellingen({ onTerug, onGewist }: { onTerug: () => void; onGew
   const [wissen, setWissen] = useState(false)
   const [wisTekst, setWisTekst] = useState('')
   const [geluidUit, setGeluidUit] = useState(isGeluidUit)
+  const [weergave, setWeergave] = useState<Weergave>(leesWeergave)
+  const [contrast, setContrast] = useState<Contrast>(leesContrast)
   const [sessieMinuten, setSessieMinuten] = useState(STANDAARD_INSTELLINGEN.sessieMinuten)
   const importRef = useRef<HTMLInputElement>(null)
 
@@ -128,6 +131,44 @@ export function Instellingen({ onTerug, onGewist }: { onTerug: () => void; onGew
           De app vult die tijd eerst met herhalingen en daarna met nieuwe woorden, en past zich aan je eigen tempo aan. Voor
           een toets kan het wat langer duren, maar nooit meer dan 15 minuten.
         </p>
+      </section>
+
+      <section className="kaart">
+        <h2>Weergave</h2>
+        <fieldset className="keuzes">
+          <legend className="label">Hoe ziet het oefenen eruit?</legend>
+          <label className="keuze">
+            <input
+              type="radio"
+              name="weergave"
+              checked={weergave === 'speels'}
+              onChange={() => (zetWeergave('speels'), setWeergave('speels'))}
+            />
+            🚀 Speels: met de ruimtemissie, raket en sterren
+          </label>
+          <label className="keuze">
+            <input
+              type="radio"
+              name="weergave"
+              checked={weergave === 'rustig'}
+              onChange={() => (zetWeergave('rustig'), setWeergave('rustig'))}
+            />
+            📘 Rustig: alleen de leerstof en je voortgang
+          </label>
+        </fieldset>
+        <label className="keuze">
+          <input
+            type="checkbox"
+            checked={contrast === 'hoog'}
+            onChange={(e) => {
+              const c: Contrast = e.target.checked ? 'hoog' : 'normaal'
+              zetContrast(c)
+              setContrast(c)
+            }}
+          />
+          Extra duidelijk contrast
+        </label>
+        <p className="gedempt">Licht of donker volgt de instelling van je telefoon. Wat je leert en hoe het telt, blijft hetzelfde.</p>
       </section>
 
       <section className="kaart">

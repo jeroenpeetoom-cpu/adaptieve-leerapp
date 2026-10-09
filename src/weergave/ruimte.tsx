@@ -4,25 +4,28 @@
 export const MISSIE = (aantal: number) =>
   `🎯 Missie: haal ${aantal} ${aantal === 1 ? 'vraag' : 'vragen'} zelf terug en vind codewoorden.`
 
-/** Eén smalle regel bovenaan tijdens het antwoorden: hoe ver je bent, en pauzeren. Beweegt niet. */
+/**
+ * Eén smalle regel bovenaan tijdens het antwoorden: geprobeerd en zelf onthouden apart, en pauzeren.
+ * Beweegt niet, zodat de aandacht bij de vraag blijft (spec layout, beslissingen 2 en 7).
+ */
 export function Voortgangsregel({ gedaan, totaal, codewoorden, onPauzeer }: { gedaan: number; totaal: number; codewoorden: number; onPauzeer?: () => void }) {
   const fractie = totaal === 0 ? 0 : Math.min(1, gedaan / totaal)
   return (
     <div className="voortgangsregel">
-      <span className="gedempt" aria-label={`Vraag ${Math.min(gedaan + 1, totaal)} van ${totaal}`}>
-        {Math.min(gedaan + 1, totaal)}/{totaal}
-      </span>
+      <div className="voortgangstekst">
+        <span aria-label={`${gedaan} van ${totaal} geprobeerd`}>
+          {gedaan}/{totaal} geprobeerd
+        </span>
+        <span aria-label={`${codewoorden} zelf onthouden`}>⭐ {codewoorden} zelf</span>
+        {onPauzeer && (
+          <button className="pauzeknop" aria-label="Pauzeren" onClick={onPauzeer}>
+            ⏸
+          </button>
+        )}
+      </div>
       <span className="voortgangsbalk" aria-hidden="true">
         <span style={{ width: `${fractie * 100}%` }} />
       </span>
-      <span className="gedempt" aria-label={`${codewoorden} codewoorden`}>
-        ⭐ {codewoorden}
-      </span>
-      {onPauzeer && (
-        <button className="pauzeknop" aria-label="Pauzeren" onClick={onPauzeer}>
-          ⏸
-        </button>
-      )}
     </div>
   )
 }

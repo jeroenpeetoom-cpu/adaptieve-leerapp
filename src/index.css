@@ -1,12 +1,69 @@
 :root {
-  --achtergrond: #0b1026;
-  --tekst: #f2f4ff;
-  --gedempt: #b7bfe0;
-  --accent: #f5b942;
-  --vlak: #18204a;
-  color-scheme: dark;
+  /* Kleurrollen (spec layout, beslissing 4). Voorlopige kleurcodes, gecontroleerd op minimaal 4,5:1. */
+  --achtergrond: #f5f6fa;
+  --vlak: #ffffff;
+  --tekst: #1b1f2e;
+  --gedempt: #545b73;
+  --rand: #e3e6ef;
+  --rand-sterk: #b9bfd1;
+  --zacht: #eef0f6;
+  /* Actie: alleen voor wat je kunt aantikken. */
+  --actie: #2f5bea;
+  --actie-zacht: #e4eafd;
+  --focus: #2f5bea;
+  /* Tekst op een gekleurd vlak (actie of status). */
+  --op-kleur: #ffffff;
+  /* Status: altijd samen met tekst of icoon. */
+  --succes: #1e7b45;
+  --succes-zacht: #e2f3e8;
+  --aandacht: #8a5a00;
+  --aandacht-zacht: #fdf1d6;
+  --herstel: #b42318;
+  --herstel-zacht: #fde5e2;
+  /* Leerhint: alleen in uitleg en steuntjes, nooit bij zelfstandig ophalen. */
+  --hint: #7a3fe0;
+  --hint-zacht: #efe6fd;
+  color-scheme: light dark;
   font-family: system-ui, sans-serif;
   line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --achtergrond: #0e1220;
+    --vlak: #181d30;
+    --tekst: #eef0f7;
+    --gedempt: #a9b0c6;
+    --rand: #2a3150;
+    --rand-sterk: #4a5275;
+    --zacht: #1f2540;
+    --actie: #8aa8ff;
+    --actie-zacht: #23305c;
+    --focus: #8aa8ff;
+    --op-kleur: #0e1220;
+    --succes: #5bd08a;
+    --succes-zacht: #173527;
+    --aandacht: #f2c14e;
+    --aandacht-zacht: #3a2f12;
+    --herstel: #ff8a80;
+    --herstel-zacht: #3d1c1c;
+    --hint: #c9a8ff;
+    --hint-zacht: #2c2148;
+  }
+}
+
+/* Verhoogd contrast: in Instellingen, of als de telefoon erom vraagt. */
+:root[data-contrast='hoog'] {
+  --gedempt: var(--tekst);
+  --rand: var(--rand-sterk);
+  --rand-sterk: var(--tekst);
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --gedempt: var(--tekst);
+    --rand-sterk: var(--tekst);
+  }
 }
 
 * {
@@ -33,7 +90,7 @@ h1 {
 
 .melding {
   background: var(--vlak);
-  border-left: 4px solid var(--accent);
+  border-left: 4px solid var(--rand-sterk);
   border-radius: 8px;
   padding: 0.75rem 1rem;
   color: var(--gedempt);
@@ -82,7 +139,7 @@ h2 {
 }
 
 .invoer:focus {
-  outline: 3px solid var(--accent);
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -100,8 +157,8 @@ h2 {
   font-weight: 600;
   border: none;
   border-radius: 10px;
-  background: var(--accent);
-  color: #1a1300;
+  background: var(--actie);
+  color: var(--op-kleur);
   cursor: pointer;
 }
 
@@ -130,24 +187,24 @@ h2 {
   border-left: 4px solid var(--gedempt);
   padding: 0.5rem 0.75rem;
   margin: 0 0 1rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--zacht);
   border-radius: 6px;
 }
 
 .feedback-goed {
-  border-color: #6fd08c;
+  border-color: var(--succes);
 }
 
 .feedback-bijna {
-  border-color: var(--accent);
+  border-color: var(--aandacht);
 }
 
 .feedback-storing {
-  border-color: #ff8a8a;
+  border-color: var(--herstel);
 }
 
 .aanpak {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--zacht);
   border-radius: 8px;
   padding: 0.5rem 0.75rem;
 }
@@ -158,7 +215,7 @@ h2 {
 }
 
 .afrondkaart {
-  border: 2px solid var(--accent);
+  border: 2px solid var(--actie);
 }
 
 .opties-lijst {
@@ -173,7 +230,7 @@ h2 {
 }
 
 .toetsbanner {
-  border: 2px dashed var(--accent);
+  border: 2px dashed var(--rand-sterk);
   border-radius: 8px;
   padding: 0.5rem 0.75rem;
   margin: 0 0 1rem;
@@ -187,15 +244,15 @@ h2 {
 
 .uitslag li {
   padding: 0.4rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--rand);
 }
 
 .uitslag-goed > span:first-child {
-  color: #6fd08c;
+  color: var(--succes);
 }
 
 .uitslag-mis > span:first-child {
-  color: #ff8a8a;
+  color: var(--herstel);
 }
 
 .vergelijk {
@@ -211,21 +268,21 @@ h2 {
 .gemarkeerd mark {
   border-radius: 3px;
   padding: 0 1px;
-  color: var(--achtergrond);
+  color: var(--op-kleur);
 }
 
 .letter-fout {
-  background: #ff8a8a;
+  background: var(--herstel);
   text-decoration: line-through;
 }
 
 .letter-mist {
-  background: #6fd08c;
+  background: var(--succes);
 }
 
 .testbanner {
-  background: repeating-linear-gradient(45deg, #3a2a00, #3a2a00 10px, #4a3600 10px, #4a3600 20px);
-  color: #ffe7a8;
+  background: repeating-linear-gradient(45deg, var(--aandacht-zacht), var(--aandacht-zacht) 10px, var(--vlak) 10px, var(--vlak) 20px);
+  color: var(--tekst);
   padding: 0.5rem 0.75rem;
   border-radius: 8px;
   margin: 0 0 1rem;
@@ -241,7 +298,7 @@ h2 {
 .tabel td {
   text-align: left;
   padding: 0.4rem 0.25rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid var(--rand);
 }
 
 .gedempt {
@@ -256,7 +313,7 @@ h2 {
 }
 
 .terugblik li {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid var(--rand);
   padding: 0.5rem 0;
 }
 
@@ -280,11 +337,11 @@ h2 {
 }
 
 .status-1 {
-  border-color: var(--accent);
+  border-color: var(--succes);
 }
 
 .status-2 {
-  border-color: #6fd08c;
+  border-color: var(--succes);
 }
 
 .feedback p {
@@ -359,12 +416,12 @@ label.knop {
 .paginas > li,
 .controle > li,
 .woordenlijst > li {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid var(--rand);
   padding: 0.6rem 0;
 }
 
 .controle > li.met-twijfel {
-  border-left: 4px solid var(--accent);
+  border-left: 4px solid var(--aandacht);
   padding-left: 0.6rem;
 }
 
@@ -393,13 +450,13 @@ label.knop {
 }
 
 .twijfel-klein {
-  background: #6b5210;
-  color: #ffe7a8;
+  background: var(--aandacht-zacht);
+  color: var(--tekst);
 }
 
 .twijfel-groot {
-  background: #7f1d1d;
-  color: #ffd6d6;
+  background: var(--aandacht);
+  color: var(--op-kleur);
 }
 
 .bronnen > li {
@@ -416,7 +473,7 @@ label.knop {
   font: inherit;
   color: var(--tekst);
   background: var(--achtergrond);
-  border: 2px solid rgba(255, 255, 255, 0.15);
+  border: 2px solid var(--rand-sterk);
   border-radius: 10px;
   padding: 0.75rem 1rem;
   cursor: pointer;
@@ -449,12 +506,12 @@ select.invoer {
 }
 
 .knop-gevaar {
-  background: #ff8a8a;
-  color: #2a0000;
+  background: var(--herstel);
+  color: var(--op-kleur);
 }
 
 .leermoment {
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-top: 1px solid var(--rand);
   margin-top: 1rem;
   padding-top: 1rem;
 }
@@ -483,14 +540,14 @@ select.invoer {
   font: inherit;
   color: var(--tekst);
   background: var(--achtergrond);
-  border: 2px solid var(--accent);
+  border: 2px solid var(--actie);
   border-radius: 12px;
   padding: 0.9rem 1rem;
   cursor: pointer;
 }
 
 .strategie:disabled {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: var(--rand);
   opacity: 0.6;
   cursor: default;
 }
@@ -517,7 +574,7 @@ select.invoer {
 }
 
 .nieuw-label {
-  color: var(--accent);
+  color: var(--gedempt);
   margin: 0.5rem 0 0;
 }
 
@@ -555,7 +612,7 @@ select.invoer {
 }
 
 .reflectie {
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-top: 1px solid var(--rand);
   margin-top: 1rem;
   padding-top: 0.75rem;
 }
@@ -567,7 +624,7 @@ select.invoer {
 }
 
 .inzicht-bron {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid var(--rand);
   padding: 0.5rem 0;
 }
 
@@ -605,6 +662,9 @@ select.invoer {
 
 .baan {
   position: relative;
+  padding: 0 0.4rem;
+  border-radius: 10px;
+  background-color: #0e1220;
   display: flex;
   align-items: center;
   gap: 0.25rem;
@@ -632,7 +692,7 @@ select.invoer {
 .spoor-gevuld {
   display: block;
   height: 100%;
-  background: var(--accent);
+  background: #f5b942;
   transition: width 0.6s ease;
 }
 
@@ -667,7 +727,7 @@ select.invoer {
 }
 
 .codewoord-melding {
-  color: var(--accent);
+  color: var(--succes);
   font-weight: 700;
   margin: 0 0 0.5rem;
 }
@@ -687,8 +747,8 @@ select.invoer {
 }
 
 .steuntje {
-  background: rgba(245, 185, 66, 0.1);
-  border-left: 4px solid var(--accent);
+  background: var(--hint-zacht);
+  border-left: 4px solid var(--hint);
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
   margin-top: 0.75rem;
@@ -721,7 +781,7 @@ select.invoer {
   min-height: 2.5rem;
   font-size: 1.1rem;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid var(--rand-sterk);
   background: var(--achtergrond);
   color: var(--tekst);
   cursor: pointer;
@@ -764,14 +824,14 @@ select.invoer {
   font: inherit;
   padding: 0.35rem 0.6rem;
   border-radius: 999px;
-  border: 1px solid var(--accent);
+  border: 1px solid var(--actie);
   background: var(--achtergrond);
   color: var(--tekst);
   cursor: pointer;
 }
 
 .splits-woord.vast {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: var(--rand);
   color: var(--gedempt);
   cursor: default;
 }
@@ -780,11 +840,11 @@ select.invoer {
   margin: 0 0 0.5rem;
   padding: 0.4rem 0.6rem;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--zacht);
 }
 
 .wijze-typen {
-  border-left: 4px solid var(--accent);
+  border-left: 4px solid var(--rand-sterk);
 }
 
 .bronkeuze {
@@ -800,7 +860,7 @@ select.invoer {
   overflow: auto;
   max-height: 70vh;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--rand);
   margin: 0.5rem 0;
   touch-action: pan-x pan-y pinch-zoom;
 }
@@ -832,21 +892,21 @@ select.invoer {
   height: 1.6rem;
   border-radius: 999px;
   border: 2px solid #fff;
-  background: #2f6fd6;
-  color: #fff;
+  background: var(--actie);
+  color: var(--op-kleur);
   font: 700 0.8rem system-ui, sans-serif;
   padding: 0 0.3rem;
   cursor: pointer;
 }
 
 .kaartstip.twijfel {
-  background: #b7791f;
+  background: var(--aandacht);
 }
 
 .kaartstip.gekozen {
-  background: var(--accent);
-  color: #1a1300;
-  outline: 3px solid #fff;
+  background: var(--tekst);
+  color: var(--vlak);
+  outline: 3px solid var(--actie);
 }
 
 .afdekstip {
@@ -867,17 +927,17 @@ select.invoer {
 }
 
 .plekkenlijst > li {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid var(--rand);
   padding: 0.5rem 0;
 }
 
 .plekkenlijst > li.met-twijfel {
-  border-left: 4px solid var(--accent);
+  border-left: 4px solid var(--aandacht);
   padding-left: 0.5rem;
 }
 
 .plekkenlijst > li.gekozen {
-  background: rgba(245, 185, 66, 0.12);
+  background: var(--actie-zacht);
 }
 
 .plek-regel {
@@ -899,8 +959,8 @@ select.invoer {
   width: 1.8rem;
   height: 1.8rem;
   border-radius: 999px;
-  background: #2f6fd6;
-  color: #fff;
+  background: var(--actie);
+  color: var(--op-kleur);
   font-weight: 700;
   font-size: 0.85rem;
 }
@@ -935,21 +995,21 @@ select.invoer {
   height: 1rem;
   transform: translate(-50%, -50%);
   border-radius: 999px;
-  background: #ff8a8a;
+  background: var(--herstel);
   border: 2px solid #fff;
   pointer-events: none;
 }
 
 .tikpunt.goed {
-  background: #6fd08c;
+  background: var(--succes);
 }
 
 .doelpunt {
   position: absolute;
   transform: translate(-50%, -50%);
   border-radius: 999px;
-  border: 3px solid #6fd08c;
-  background: rgba(111, 208, 140, 0.25);
+  border: 3px solid var(--succes);
+  background: var(--succes-zacht);
   pointer-events: none;
   animation: doel 1.2s ease-in-out infinite alternate;
 }
@@ -966,10 +1026,10 @@ select.invoer {
 
 @keyframes doel {
   from {
-    box-shadow: 0 0 0 0 rgba(111, 208, 140, 0.6);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--succes) 60%, transparent);
   }
   to {
-    box-shadow: 0 0 0 10px rgba(111, 208, 140, 0);
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--succes) 0%, transparent);
   }
 }
 
@@ -980,8 +1040,8 @@ select.invoer {
 }
 
 .optie-stip {
-  background: var(--accent);
-  color: #1a1300;
+  background: var(--actie);
+  color: var(--op-kleur);
   min-width: 2rem;
   height: 2rem;
   font-size: 0.95rem;
@@ -1006,7 +1066,7 @@ select.invoer {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  border-color: var(--accent);
+  border-color: var(--actie);
 }
 
 .bron-knop-hoofd {
@@ -1033,7 +1093,7 @@ select.invoer {
   width: 100%;
   border-radius: 10px;
   background-repeat: no-repeat;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--rand);
   margin: 0.5rem 0 0.75rem;
   overflow: hidden;
 }
@@ -1068,8 +1128,8 @@ select.invoer {
 }
 
 .voorstel {
-  background: rgba(111, 208, 140, 0.1);
-  border-left: 4px solid #6fd08c;
+  background: var(--hint-zacht);
+  border-left: 4px solid var(--hint);
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
   margin-top: 0.75rem;
@@ -1095,18 +1155,18 @@ select.invoer {
 .balk {
   height: 8px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--rand);
   overflow: hidden;
 }
 
 .balk-vulling {
   height: 100%;
-  background: var(--accent);
+  background: var(--succes);
   transition: width 0.6s ease;
 }
 
 .punten-erbij {
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-top: 1px solid var(--rand);
   margin-top: 0.75rem;
   padding-top: 0.75rem;
 }
@@ -1118,7 +1178,7 @@ select.invoer {
 .nieuwe-rang {
   font-size: 1.15rem;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--succes);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1128,7 +1188,7 @@ select.invoer {
 }
 
 .bron-knop.klaar {
-  border-color: rgba(111, 208, 140, 0.5);
+  border-color: var(--succes);
 }
 
 /* Compacter bovenin tijdens een sessie, zodat vraag en invulveld boven het toetsenbord passen. */
@@ -1157,14 +1217,14 @@ select.invoer {
   min-width: 2.8rem;
   min-height: 2.8rem;
   border-radius: 10px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  border: 2px solid var(--rand-sterk);
   background: var(--achtergrond);
   cursor: pointer;
 }
 
 .emoji-keuze.gekozen {
-  border-color: var(--accent);
-  background: rgba(245, 185, 66, 0.15);
+  border-color: var(--actie);
+  background: var(--actie-zacht);
 }
 
 /* Blijft bovenaan staan tijdens aantikken of afdekken, zodat Klaar altijd in beeld is. */
@@ -1173,7 +1233,7 @@ select.invoer {
   top: 0;
   z-index: 5;
   background: var(--vlak);
-  border: 2px solid var(--accent);
+  border: 2px solid var(--rand-sterk);
   border-radius: 10px;
   padding: 0.5rem 0.75rem;
   margin: 0.5rem 0;
@@ -1219,18 +1279,27 @@ select.invoer {
 }
 
 .voortgangsregel {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
   font-size: 0.9rem;
+  color: var(--gedempt);
   margin-bottom: 0.75rem;
 }
 
+.voortgangstekst {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  white-space: nowrap;
+}
+
+.voortgangstekst .pauzeknop {
+  margin-left: auto;
+}
+
 .voortgangsbalk {
-  flex: 1;
+  display: block;
   height: 6px;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--rand);
   overflow: hidden;
 }
 
@@ -1277,7 +1346,7 @@ select.invoer {
 .chip {
   padding: 0.05rem 0.55rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--zacht);
   color: var(--tekst);
 }
 
@@ -1328,4 +1397,19 @@ select.invoer {
   .voortgangsbalk > span {
     transition: none;
   }
+}
+
+/* Rustige weergave: dezelfde kleurrollen en leerlogica, zonder de ruimteaankleding (beslissing 6). */
+:root[data-weergave='rustig'] .sterrenkaart,
+:root[data-weergave='rustig'] .codewoord-melding {
+  display: none;
+}
+
+.afsluiten {
+  margin-top: 1rem;
+}
+
+.afsluiten .gedempt {
+  text-align: center;
+  font-size: 0.9rem;
 }

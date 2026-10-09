@@ -176,7 +176,10 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
   const extraVoor = (bronId: string | null) =>
     stelExtraSamen(bronId === null ? leeritems : leeritems.filter((i) => i.bronId === bronId), pogingen, bronnen, instellingen)
 
-  function startNieuweSessie(bronId: string | null = gekozenBron): boolean {
+  /** Een kleine vrijwillige stap na een sessie: zoveel vragen, zonder toetsronde (spec layout, beslissing 7). */
+  const NOG_EVEN = 3
+
+  function startNieuweSessie(bronId: string | null = gekozenBron, maximaal?: number): boolean {
     const gekozen = samenstellingVoor(bronId)
     let items = [...gekozen.repetitie, ...gekozen.herhalingen, ...gekozen.nieuw]
     // Niets meer aan de beurt: dan een extra ronde met wat het minst goed zit.
@@ -188,9 +191,9 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     // Door elkaar, en twee richtingen van hetzelfde nooit vlak na elkaar.
     const sessieId = crypto.randomUUID()
     // Eerst de toetsronde (schoolvorm), dan de rest; elk deel door elkaar.
-    const inToets = new Set(gekozen.toetsvorm)
+    const inToets = new Set(maximaal ? [] : gekozen.toetsvorm)
     const toetsItems = mengVolgorde(items.filter((i) => inToets.has(i.id)), sessieId)
-    items = [...toetsItems, ...mengVolgorde(items.filter((i) => !inToets.has(i.id)), sessieId)]
+    items = [...toetsItems, ...mengVolgorde(items.filter((i) => !inToets.has(i.id)), sessieId)].slice(0, maximaal)
     const strategiePerItem = Object.fromEntries(
       beelden.map((b) => [b.leeritemId, b.routeId ? ('geheugenroute' as const) : ('beelden koppelen' as const)]),
     )
@@ -299,22 +302,23 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
         {weergave.erbij && <PuntenErbij erbij={weergave.erbij} totaal={weergave.totaal} />}
         <ReflectieVraag key={weergave.toestand.sessieId} onKies={(tekst) => void bewaarReflectie(weergave.toestand.sessieId, tekst)} />
         {melding && <p className="feedback">{melding}</p>}
-        <div className="knoppen">
-          <button
-            className="knop"
-            onClick={() => {
-              if (startNieuweSessie()) return
-              setMelding(
-                'Er is niets meer om te oefenen in deze lijst. Morgen komen er weer woorden terug.',
-              )
-            }}
-          >
-            Nog een rondje
-          </button>
-          <button className="knop knop-rustig" onClick={() => setWeergave({ soort: 'overzicht' })}>
-            Klaar voor vandaag
-          </button>
-        </div>
+        {(() => {
+          const s = samenstellingVoor(gekozenBron)
+          const beschikbaar = Math.min(NOG_EVEN, totaal(s) > 0 ? totaal(s) : extraVoor(gekozenBron).length)
+          return (
+            <div className="afsluiten">
+              {beschikbaar > 0 && (
+                <button className="knop knop-breed" onClick={() => void startNieuweSessie(gekozenBron, NOG_EVEN)}>
+                  Nog {beschikbaar} {beschikbaar === 1 ? 'vraag' : 'vragen'}?
+                </button>
+              )}
+              <button className="knop knop-rustig knop-breed" onClick={() => setWeergave({ soort: 'overzicht' })}>
+                ✓ Klaar voor nu
+              </button>
+              <p className="gedempt">Stoppen is ook goed: wat je vandaag oefende, komt vanzelf terug op het goede moment.</p>
+            </div>
+          )
+        })()}
       </Terugblik>
     )
   }
