@@ -672,6 +672,39 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
       )}
 
       <section className="kaart">
+        <h2>Toets en afronden</h2>
+        <label className="label" htmlFor="topotoets">
+          Toetsdatum
+        </label>
+        <input
+          id="topotoets"
+          className="invoer"
+          type="date"
+          value={bron.toetsdag ?? ''}
+          onChange={(e) => {
+            const toetsdag = e.target.value || null
+            setBron({ ...bron, toetsdag })
+            void echteDb.bronnen.update(bronId, { toetsdag })
+          }}
+        />
+        <div className="knoppen">
+          <button
+            className="knop knop-rustig"
+            onClick={() => {
+              if (!bron.afgerond && !window.confirm('Wil je deze bron afronden? De plekken komen dan niet meer terug; je voortgang blijft bewaard.')) return
+              const wijziging = { afgerond: !bron.afgerond, onderhoud: false }
+              setBron({ ...bron, ...wijziging })
+              void echteDb.bronnen.update(bronId, wijziging)
+            }}
+          >
+            {bron.afgerond ? 'Weer laten herhalen' : 'Bron afronden'}
+          </button>
+        </div>
+        {bron.afgerond && <p className="gedempt">Deze bron is afgerond: de plekken komen niet meer terug. Je voortgang is bewaard.</p>}
+        {bron.onderhoud && !bron.afgerond && <p className="gedempt">🧠 Blijven onthouden: af en toe komt er een plek uit deze bron langs.</p>}
+      </section>
+
+      <section className="kaart">
         <h2>Bron verwijderen</h2>
         <p className="gedempt">Verwijdert deze bron met alle woorden of plekken, de kaart, je beelden en je voortgang. Dit kan niet ongedaan worden gemaakt.</p>
         <button

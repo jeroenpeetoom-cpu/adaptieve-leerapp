@@ -118,7 +118,7 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
   const totaal = (s: typeof samenstelling) => s.repetitie.length + s.herhalingen.length + s.nieuw.length
   const aantal = totaal(samenstelling)
   const perBron = [...new Set(leeritems.map((i) => i.bronId))]
-    .filter((bronId) => !bronnen.find((b) => b.bronId === bronId)?.afgerond)
+    .filter((bronId) => { const b = bronnen.find((x) => x.bronId === bronId); return !b?.afgerond && !b?.wachtOpReflectie })
     .map((bronId) => ({ bronId, s: samenstellingVoor(bronId) }))
 
   /** De bronnen in een sessie; een gepauzeerde sessie hoort bij één lijst of bij "alles samen". */

@@ -9,6 +9,8 @@ import {
   kalenderdag,
   STANDAARD_INSTELLINGEN,
   toetsvormStand,
+  beschrijfReflectie,
+  type ToetsReflectie,
   MINIMUM_PER_GROEP,
   vergelijkBeelden,
   type GeleerdMet,
@@ -42,6 +44,7 @@ export function Inzichten({ onTerug }: { onTerug: () => void }) {
     paren: Woordpaar[]
     paginas: Bronpagina[]
     pogingen: Poging[]
+    reflecties: ToetsReflectie[]
     beelden: Geheugenbeeld[]
     keuzes: Strategiekeuze[]
     plekken: Plek[]
@@ -53,6 +56,7 @@ export function Inzichten({ onTerug }: { onTerug: () => void }) {
       paren: await echteDb.woordparen.toArray(),
       paginas: await echteDb.bronpaginas.toArray(),
       pogingen: await echteDb.pogingen.toArray(),
+      reflecties: await echteDb.leesMeta<ToetsReflectie[]>('toetsreflecties', []),
       beelden: await echteDb.geheugenbeelden.toArray(),
       keuzes: await leesStrategieKeuzes(echteDb),
       plekken: await echteDb.plekken.toArray(),
@@ -64,7 +68,7 @@ export function Inzichten({ onTerug }: { onTerug: () => void }) {
   }, [laad])
 
   if (!gegevens) return null
-  const { bronnen, paren, paginas, pogingen, beelden, keuzes, plekken } = gegevens
+  const { bronnen, paren, paginas, pogingen, beelden, keuzes, plekken, reflecties } = gegevens
   const vandaag = kalenderdag(new Date().toISOString(), instellingen.tijdzone)
   const items = bronnen.flatMap((b) => leeritemsVanBron(b, paren, plekken))
   const statusVan = new Map(items.map((i) => [i.id, berekenVoortgang(i, pogingen, instellingen).status]))
@@ -129,6 +133,30 @@ export function Inzichten({ onTerug }: { onTerug: () => void }) {
           )
         })}
       </section>
+
+      {reflecties.length > 0 && (
+        <section className="kaart">
+          <h2>Na de toets</h2>
+          {[...reflecties].reverse().map((r) => (
+            <div key={`${r.bronId}-${r.tijdstip}`} className="inzicht-bron">
+              <h3>
+                🏁 {bronnen.find((b) => b.id === r.bronId)?.naam ?? 'Verwijderde bron'}{' '}
+                <span className="gedempt">
+                  · {new Date(`${r.toetsdag}T12:00:00Z`).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' })} ·{' '}
+                  {r.keuze === 'klaar' ? 'afgerond' : 'blijft onthouden'}
+                </span>
+              </h3>
+              <ul className="reflectie-antwoorden">
+                {beschrijfReflectie(r).map((regel) => (
+                  <li key={regel.vraag}>
+                    <span className="gedempt">{regel.vraag}</span> {regel.antwoord}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </section>
+      )}
 
       <section className="kaart">
         <h2>Hoe je leert</h2>

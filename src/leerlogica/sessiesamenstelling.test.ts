@@ -222,3 +222,26 @@ describe('toetsvorm in de samenstelling', () => {
     expect(samen([item('a')], [geoefend('a', 1)], [bron()], '2026-10-10').toetsvorm).toEqual([])
   })
 })
+
+describe('na de toets', () => {
+  it('laat een bron die op de reflectie wacht niet meedoen', () => {
+    const s = samen([item('a'), item('n')], [geoefend('a', 1)], [bron({ wachtOpReflectie: true })], '2026-10-10')
+    expect(s.herhalingen).toEqual([])
+    expect(s.nieuw).toEqual([])
+  })
+
+  it('neemt uit een bron in onderhoud alleen een paar herhalingen, na de rest, en niets nieuws', () => {
+    const onderhoud = reeks(6, 'o', 'b2')
+    const gewoon = reeks(2, 'g')
+    const pogingen = [...onderhoud, ...gewoon].map((i) => geoefend(i.id, 1))
+    const s = samen(
+      [...onderhoud, ...gewoon, item('nieuw-o', 'b2')],
+      pogingen,
+      [bron(), { bronId: 'b2', toetsdag: '2026-10-05', afgerond: false, onderhoud: true }],
+      '2026-10-10',
+    )
+    expect(ids(s.herhalingen).slice(0, 2).sort()).toEqual(['g0', 'g1'])
+    expect(s.herhalingen.filter((i) => i.bronId === 'b2')).toHaveLength(3)
+    expect(ids(s.nieuw)).not.toContain('nieuw-o')
+  })
+})

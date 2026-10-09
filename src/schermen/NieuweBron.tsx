@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import type { Bron } from '../bronnen/model'
-import type { Oefenrichting } from '../leerlogica'
+import { VOORNEMEN, type Oefenrichting, type ToetsReflectie } from '../leerlogica'
 import { echteDb } from '../opslag/database'
 import { PLEKRICHTINGEN } from './TopoBronScherm'
 
@@ -16,6 +16,14 @@ export function NieuweBron({ onKlaar, onAnnuleer }: { onKlaar: (bronId: string, 
   const [richting, setRichting] = useState(0)
   const [soort, setSoort] = useState<'woordenlijst' | 'topo'>('woordenlijst')
   const [plekrichting, setPlekrichting] = useState(0)
+  const [voornemen, setVoornemen] = useState<string | null>(null)
+
+  useEffect(() => {
+    void echteDb.leesMeta<ToetsReflectie[]>('toetsreflecties', []).then((r) => {
+      const laatste = r.at(-1)?.antwoorden.vooruit
+      setVoornemen(laatste ? (VOORNEMEN[laatste] ?? null) : null)
+    })
+  }, [])
 
   async function bewaar(e: FormEvent) {
     e.preventDefault()
@@ -38,6 +46,11 @@ export function NieuweBron({ onKlaar, onAnnuleer }: { onKlaar: (bronId: string, 
     <form className="kaart" onSubmit={(e) => void bewaar(e)}>
       <h2>Nieuwe bron</h2>
       <p className="gedempt">Eén bron is de leerstof voor één toets of hoofdstuk. Je kunt er later pagina's bij doen.</p>
+      {voornemen && (
+        <p className="feedback" role="note">
+          📌 Na je vorige toets nam je je voor: <strong>{voornemen}</strong>. Denk daar nu aan!
+        </p>
+      )}
 
       <fieldset className="keuzes">
         <legend className="label">Wat voor huiswerk is het?</legend>

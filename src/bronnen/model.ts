@@ -16,6 +16,10 @@ export interface Bron {
   toetsdag: string | null
   oefenrichtingen: Oefenrichting[]
   afgerond: boolean
+  /** Na de toets gekozen om te blijven onthouden. */
+  onderhoud?: boolean
+  /** De toetsdag waarover de leerling al gereflecteerd heeft. */
+  toetsGereflecteerd?: string
   aangemaakt: string
 }
 

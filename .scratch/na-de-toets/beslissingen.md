@@ -1,0 +1,11 @@
+# Na de toets: reflectie en wat er met de bron gebeurt
+
+Aanleiding: na een gehaalde toets bleef de bron in de opdracht van de dag staan. De leerling moet na de toetsdatum eerst een paar korte reflectievragen beantwoorden voordat hij verder kan.
+
+## Beslissingen
+
+1. **De leerling beslist aan het eind van de reflectie wat er met de bron gebeurt.** De laatste vraag is of hij de stof wil blijven onthouden of dat hij klaar is. Klaar: de bron wordt afgerond (terug te draaien) en verdwijnt uit de opdrachten. Blijven onthouden: de bron gaat in onderhoud; er komt af en toe een vraag langs, met de laagste voorrang en nooit vóór stof van een volgende toets. Een korte zin helpt kiezen: "Komt dit later nog terug op school? Dan is onthouden slim." Zo blijft de regel "alleen de leerling rondt af, nooit automatisch" staan.
+2. **Drie korte tikvragen, met variatie.** Er zijn drie vaste onderdelen: kennis ("Hoe ging de toets?" met emoji, een cijfer mag erbij, daarna de eigen cijfers uit de toetsronde ter vergelijking), strategie ("Wat hielp jou het meest?", alleen aanpakken die hij echt gebruikte) en vooruitkijken ("Wat doe je de volgende keer?", terug te zien bij de volgende nieuwe bron). Per onderdeel kiest de app uit een paar verschillende formuleringen en vraagvormen, en nooit dezelfde als de vorige keer, zodat het niet gaat irriteren. Daarna volgt de keuze uit beslissing 1.
+2b. **Geen cijfer.** De leerling krijgt geen cijfer, dus de app vraagt er niet naar. Het kennisdeel vraagt hoe hij vindt dat het ging ("Heb je het goed gedaan?"), afgewisseld met de vraag of hij vindt dat hij zijn best heeft gedaan, en zo niet, waar nog ruimte lag. Daarna volgen ter vergelijking de eigen cijfers uit de toetsronde.
+3. **Eerst: is de toets geweest?** Na de toetsdatum begint het met die vraag. Nee: de leerling vult een nieuwe datum in en kan gewoon verder. Ja: de reflectievragen volgen, en daarna de keuze onthouden of klaar.
+4. **Een afrondkaart onder "Vandaag".** Na de toetsdatum verandert de rij van die bron onder "Vandaag" in een afrondkaart ("🏁 Topo België: toets geweest? Rond af"). Een tik start de route: toets geweest? → drie vragen → onthouden of klaar. Alleen die bron staat vast tot de route klaar is; andere bronnen oefenen en een nieuwe bron toevoegen blijven mogelijk. Afronden zonder toets blijft in het bronscherm, nu ook bij topo-bronnen.

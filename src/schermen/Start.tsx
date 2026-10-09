@@ -2,12 +2,13 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Leerling } from '../bronnen/leerling'
 import { bronInfo, leeritemsVanBron } from '../bronnen/leeritems'
 import type { Bron, Plek, Woordpaar } from '../bronnen/model'
-import { STANDAARD_INSTELLINGEN } from '../leerlogica'
+import { kalenderdag, STANDAARD_INSTELLINGEN } from '../leerlogica'
 import { echteDb } from '../opslag/database'
 import { verwijderBron } from '../opslag/verwijderen'
 import { leesPunten } from '../opslag/punten'
 import { PuntenBalk } from './Punten'
 import { Oefenroute } from './Oefenroute'
+import { ToetsReflectie } from './ToetsReflectie'
 
 const nu = () => new Date().toISOString()
 
@@ -31,6 +32,8 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
   const [laatsteBackup, setLaatsteBackup] = useState<string | null>(null)
   const [sessieMinuten, setSessieMinuten] = useState(STANDAARD_INSTELLINGEN.sessieMinuten)
   const [punten, setPunten] = useState<number | null>(null)
+  /** De bron waarvoor de leerling nu de reflectie na de toets doet. */
+  const [reflectieVoor, setReflectieVoor] = useState<string | null>(null)
 
   const laad = useCallback(async () => {
     setBronnen((await echteDb.bronnen.toArray()).sort((a, b) => b.aangemaakt.localeCompare(a.aangemaakt)))
@@ -46,7 +49,25 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
   }, [laad])
 
   if (bronnen === null) return null
+  const vandaag = kalenderdag(nu(), STANDAARD_INSTELLINGEN.tijdzone)
   const leeritems = bronnen.flatMap((b) => leeritemsVanBron(b, paren, plekken))
+  const info = bronnen.map((b) => bronInfo(b, vandaag))
+  const wachtend = bronnen.filter((b) => info.find((i) => i.bronId === b.id)?.wachtOpReflectie)
+
+  const reflectieBron = bronnen.find((b) => b.id === reflectieVoor)
+  if (reflectieBron) {
+    return (
+      <ToetsReflectie
+        bron={reflectieBron}
+        leeritems={leeritems.filter((i) => i.bronId === reflectieBron.id)}
+        onKlaar={() => {
+          setReflectieVoor(null)
+          void laad()
+        }}
+        onTerug={() => setReflectieVoor(null)}
+      />
+    )
+  }
   const plekkenVan = (bronId: string) => plekken.filter((p) => p.bronId === bronId)
   const backupNodig =
     leeritems.length > 0 &&
@@ -60,7 +81,21 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
         db={echteDb}
         bronnamen={Object.fromEntries(bronnen.map((b) => [b.id, b.naam]))}
         leeritems={leeritems}
-        bronnen={bronnen.map(bronInfo)}
+        bronnen={info}
+        boven={
+          wachtend.length > 0 ? (
+            <section className="kaart afrondkaarten">
+              {wachtend.map((b) => (
+                <button key={b.id} className="bron-knop afrondkaart" onClick={() => setReflectieVoor(b.id)}>
+                  <strong>
+                    🏁 {b.naam}: toets geweest?
+                  </strong>
+                  <span className="gedempt">Drie korte vragen, en dan kies je: blijven onthouden of klaar.</span>
+                </button>
+              ))}
+            </section>
+          ) : undefined
+        }
         nu={nu}
         instellingen={{ ...STANDAARD_INSTELLINGEN, sessieMinuten }}
         onBezig={setBezig}

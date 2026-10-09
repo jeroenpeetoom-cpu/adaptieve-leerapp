@@ -1,4 +1,4 @@
-import type { BronInfo, Leeritem } from '../leerlogica'
+import { reflectieNodig, type BronInfo, type Leeritem } from '../leerlogica'
 import type { Bron, Plek, Woordpaar } from './model'
 
 /** Leeritems van een bron: één per bevestigd woordpaar en oefenrichting. */
@@ -20,8 +20,15 @@ export function leeritemsVan(bron: Bron, woordparen: Woordpaar[]): Leeritem[] {
     )
 }
 
-export function bronInfo(bron: Bron): BronInfo {
-  return { bronId: bron.id, toetsdag: bron.toetsdag, afgerond: bron.afgerond }
+export function bronInfo(bron: Bron, vandaag: string): BronInfo {
+  return {
+    bronId: bron.id,
+    toetsdag: bron.toetsdag,
+    afgerond: bron.afgerond,
+    // Een nieuwe toetsdatum in de toekomst haalt de bron weer uit onderhoud.
+    onderhoud: bron.onderhoud === true && !(bron.toetsdag !== null && bron.toetsdag >= vandaag),
+    wachtOpReflectie: reflectieNodig(bron, vandaag),
+  }
 }
 
 /** Moet de leerling nog iets bekijken voordat hij kan bevestigen? */

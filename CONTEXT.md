@@ -16,6 +16,14 @@ _Avoid_: huiswerk, huiswerkbron, import, les, woordenlijst
 Een bron waarvan de leeritems niet meer herhaald worden, maar die zijn voortgang en geschiedenis houdt. Alleen de leerling rondt af, nooit automatisch, en het is terug te draaien.
 _Avoid_: gearchiveerd, klaar, verlopen
 
+**Bron in onderhoud**:
+Een bron waarvan de leerling na de toets koos om de stof te blijven onthouden: af en toe komt er een herhaling langs, na al het andere, en er komt niets nieuws bij.
+_Avoid_: slapende bron, archief
+
+**Toetsreflectie**:
+De korte terugblik na de toetsdatum, voordat de bron weer meedoet: is de toets geweest, hoe ging het, wat hielp, wat doet de leerling de volgende keer, en dan blijven onthouden of klaar. De vragen wisselen per keer.
+_Avoid_: evaluatie, nabespreking
+
 **Bronpagina**:
 Eén gefotografeerde pagina van een bron, met zowel het originele paginanummer als de plek in de bron.
 _Avoid_: foto, upload, scan

@@ -11,7 +11,16 @@ export interface BronInfo {
   /** Lokale kalenderdag van de toets, als die bekend is. */
   toetsdag: string | null
   afgerond: boolean
+  /** Na de toets gekozen om te blijven onthouden: af en toe een herhaling, nooit iets nieuws. */
+  onderhoud?: boolean
+  /** De toets is voorbij en de reflectie moet nog: de bron doet tijdelijk niet mee. */
+  wachtOpReflectie?: boolean
 }
+
+/** Zoveel herhalingen uit bronnen in onderhoud komen hooguit in één sessie, na al het andere. */
+export const ONDERHOUD_PER_SESSIE = 3
+
+const doetNietMee = (bron: BronInfo | undefined) => bron?.afgerond === true || bron?.wachtOpReflectie === true
 
 export interface Samenstelling {
   /** Generale repetitie: leeritems van een bron met een toets over 1 of 2 dagen. */
@@ -52,7 +61,8 @@ export function stelSessieSamen(
   tempo: Tempo = berekenTempo(pogingen, instellingen),
 ): Samenstelling {
   const bronPerId = new Map(bronnen.map((b) => [b.bronId, b]))
-  const actief = leeritems.filter((i) => !bronPerId.get(i.bronId)?.afgerond)
+  const actief = leeritems.filter((i) => !doetNietMee(bronPerId.get(i.bronId)))
+  const inOnderhoud = (i: Leeritem) => bronPerId.get(i.bronId)?.onderhoud === true
   const planning = new Map(actief.map((i) => [i.id, berekenPlanning(i.id, pogingen, instellingen, i.bronversie)]))
   const laatstGeoefend = (item: Leeritem) =>
     pogingen
@@ -117,11 +127,15 @@ export function stelSessieSamen(
         Number(b.toetsstof ?? false) - Number(a.toetsstof ?? false) ||
         planning.get(a.id)!.volgendeDag!.localeCompare(planning.get(b.id)!.volgendeDag!),
     )
-  for (const item of aanDeBeurt) {
+  // Bronnen in onderhoud komen pas na al het andere, en met een paar per keer.
+  let onderhoud = 0
+  for (const item of [...aanDeBeurt.filter((i) => !inOnderhoud(i)), ...aanDeBeurt.filter(inOnderhoud)]) {
     if (gebruikt + tempo.herhalingSec > budget) break
+    if (inOnderhoud(item) && onderhoud >= ONDERHOUD_PER_SESSIE) break
     if (neem(item)) {
       herhalingen.push(item)
       gebruikt += tempo.herhalingSec
+      if (inOnderhoud(item)) onderhoud++
     }
   }
 
@@ -131,7 +145,7 @@ export function stelSessieSamen(
     return d !== null && d >= 0 && d - instellingen.toetsKlaarDagenVooraf <= 1
   }
   const nogNieuw = actief
-    .filter((i) => planning.get(i.id)!.volgendeDag === null)
+    .filter((i) => planning.get(i.id)!.volgendeDag === null && !inOnderhoud(i))
     .filter((i) => !isMoeilijkeRichting(i) || krap(i.bronId) || makkelijkeKantOpgehaald(i, actief, pogingen))
   const nieuw: Leeritem[] = []
   const voegNieuwToe = (item: Leeritem, grens: number) => {
@@ -214,7 +228,7 @@ export function stelExtraSamen(
   instellingen: Instellingen,
   tempo: Tempo = berekenTempo(pogingen, instellingen),
 ): Leeritem[] {
-  const afgerond = new Set(bronnen.filter((b) => b.afgerond).map((b) => b.bronId))
+  const afgerond = new Set(bronnen.filter(doetNietMee).map((b) => b.bronId))
   const rang = { 'nog aan het leren': 0, 'zelf teruggehaald': 1, 'later nog geweten': 2 } as const
   const laatst = (item: Leeritem) =>
     pogingen.filter((p) => p.leeritemId === item.id).reduce((l, p) => (p.tijdstip > l ? p.tijdstip : l), '')

@@ -355,7 +355,7 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
   async function wisselAfronden() {
     if (!bron) return
     if (!bron.afgerond && !window.confirm('Engelse woorden heb je later vaak nog nodig. Wil je deze bron toch afronden? De woorden komen dan niet meer terug; je voortgang blijft bewaard.')) return
-    await wijzigBron({ afgerond: !bron.afgerond })
+    await wijzigBron({ afgerond: !bron.afgerond, onderhoud: false })
   }
 
   if (!bron) return null
@@ -699,6 +699,7 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
           </button>
         </div>
         {bron.afgerond && <p className="gedempt">Deze bron is afgerond: de woorden komen niet meer terug. Je voortgang is bewaard.</p>}
+        {bron.onderhoud && !bron.afgerond && <p className="gedempt">🧠 Blijven onthouden: af en toe komt er een woord uit deze bron langs.</p>}
       </section>
 
       <section className="kaart">
