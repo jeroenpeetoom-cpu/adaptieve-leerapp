@@ -181,7 +181,7 @@ export function Leermoment({
         <h3>Nieuwe plek</h3>
         {inhoud}
         <p className="feedback">Je beeld bij deze plek: {topo.bestaandBeeld}</p>
-        <button className="knop" onClick={() => onKlaar(null)} autoFocus>
+        <button className="knop knop-breed" onClick={() => onKlaar(null)} autoFocus>
           Volgende
         </button>
       </div>
@@ -228,7 +228,7 @@ export function Leermoment({
         <h3>{topo ? 'Nieuwe plek' : 'Nieuw woord'}</h3>
         {inhoud}
         <p className="gedempt">{topo ? 'Kijk goed waar het ligt. Straks komt het terug.' : 'Lees het goed. Straks komt het terug.'}</p>
-        <button className="knop" onClick={() => onKlaar(null)} autoFocus>
+        <button className="knop knop-breed" onClick={() => onKlaar(null)} autoFocus>
           Volgende
         </button>
       </div>
@@ -322,7 +322,7 @@ export function Leermoment({
           })}
         </ol>
         <p>Zie je elke plek voor je, met het woord dat er ligt?</p>
-        <button className="knop" autoFocus onClick={() => onKlaar(doorlopen)}>
+        <button className="knop knop-breed" autoFocus onClick={() => onKlaar(doorlopen)}>
           Verder
         </button>
       </div>

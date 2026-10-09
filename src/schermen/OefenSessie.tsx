@@ -42,7 +42,7 @@ import {
 import type { Geheugenbeeld, Kaart } from '../bronnen/model'
 import type { RouteStand } from '../bronnen/routes'
 import type { Database } from '../opslag/database'
-import { CodewoordMelding, MISSIE, Sterrenkaart } from '../weergave/ruimte'
+import { CodewoordMelding, MISSIE, Sterrenkaart, Voortgangsregel } from '../weergave/ruimte'
 import { Voorleesknop } from '../weergave/voorlezen'
 import { Aanwijzen } from './Aanwijzen'
 import { KaartUitsnede } from './KaartUitsnede'
@@ -59,6 +59,8 @@ interface Props {
   nu: () => string
   onAntwoordToegevoegd: (leeritemId: string, antwoord: string) => Promise<void>
   onKlaar: (toestand: SessieToestand) => void
+  /** Pauzeren: terug naar het overzicht; de sessie blijft bewaard. */
+  onPauzeer?: () => void
   /** Beschrijving van het eigen geheugenbeeld per leeritem, voor de hint. */
   geheugenbeelden: Record<string, string>
   strategiePerBron: Record<string, Strategie | 'geen'>
@@ -209,6 +211,7 @@ export function OefenSessie({
   nu,
   onAntwoordToegevoegd,
   onKlaar,
+  onPauzeer,
   geheugenbeelden,
   strategiePerBron,
   voorgedaan,
@@ -318,6 +321,7 @@ export function OefenSessie({
   /** De gok op de raadvraag. Goed gegokt: nu zonder opties. Anders kende hij het nog niet: het leermoment volgt. */
   async function gok(optie: string | null) {
     const goedGegokt = optie !== null && beoordeel(optie, item.toegestaneAntwoorden, item.soort === 'plek') === 'goed'
+
     const na = raad(toestand, goedGegokt)
     if (goedGegokt) {
       setToestand(na)
@@ -433,6 +437,21 @@ export function OefenSessie({
   const raadOpties = optiesVoor(item, bronItems, `raad-${item.id}`)
   const raden = raadvraagNodig(toestand) && raadOpties.length >= 2
   const goedGegokt = toestand.geraden?.[item.id] === true && !laatste && !toestand.afgesloten
+  // Tijdens het antwoorden één smalle regel; de sterrenkaart komt pas na het antwoord (spec layout, beslissing 2).
+  const bovenregel = (
+    <>
+      <Voortgangsregel
+        gedaan={toestand.huidige}
+        totaal={toestand.leeritems.length}
+        codewoorden={codewoorden}
+        onPauzeer={onPauzeer}
+      />
+      {toestand.huidige === 0 && toestand.pogingen.length === 0 && !toets && <p className="missie">{MISSIE(nogTeGaan(toestand))}</p>}
+    </>
+  )
+  const sterrenNaAntwoord = toestand.afgesloten && (
+    <Sterrenkaart totaal={toestand.leeritems.length} gedaan={toestand.huidige + 1} codewoorden={codewoorden} sprong={vondCodewoord} />
+  )
   const leermoment = leermomentNodig(toestand)
 
   async function leermomentKlaar(nieuwBeeld: Omit<Geheugenbeeld, 'id' | 'aangemaakt'> | null) {
@@ -455,13 +474,7 @@ export function OefenSessie({
     const kaart = kaarten[item.plek.kaartId]
     return (
       <section className="kaart sessie" ref={sessieRef}>
-        <Sterrenkaart
-          totaal={toestand.leeritems.length}
-          gedaan={toestand.huidige + (toestand.afgesloten ? 1 : 0)}
-          codewoorden={codewoorden}
-          sprong={vondCodewoord}
-        />
-        <p className="voortgang">{nogTeGaan(toestand) === 1 ? 'Laatste plek' : `Nog ${nogTeGaan(toestand)} te gaan`}</p>
+        {bovenregel}
         {toets && <Toetsbanner toestand={toestand} />}
         {vondCodewoord && <CodewoordMelding />}
         {storing && (
@@ -499,56 +512,42 @@ export function OefenSessie({
             </button>
           </>
         )}
+        {!leermoment && sterrenNaAntwoord}
       </section>
     )
   }
 
   return (
     <section className="kaart sessie" ref={sessieRef}>
-      <Sterrenkaart
-        totaal={toestand.leeritems.length}
-        gedaan={toestand.huidige + (toestand.afgesloten ? 1 : 0)}
-        codewoorden={codewoorden}
-        sprong={vondCodewoord}
-      />
-      {toestand.huidige === 0 && toestand.pogingen.length === 0 ? (
-        <p className="voortgang">{MISSIE(nogTeGaan(toestand))}</p>
-      ) : (
-        <p className="voortgang">{nogTeGaan(toestand) === 1 ? 'Laatste woord' : `Nog ${nogTeGaan(toestand)} woorden`}</p>
-      )}
+      {bovenregel}
       {toets && <Toetsbanner toestand={toestand} />}
+      {!(leermoment && !benoemen) && <p className="vraaglabel">
+        {raden ? (
+          <span className="chip">✨ nieuw · raad maar!</span>
+        ) : goedGegokt ? (
+          <span className="chip">🎯 goed gegokt! nu zonder opties</span>
+        ) : (
+          isNieuwLeeritem(toestand, item.id) &&
+          !laatste &&
+          !toestand.pogingen.some((p) => p.leeritemId === item.id) && <span className="chip">✨ nieuw</span>
+        )}
+        <span>
+          {benoemen ? `${SOORTEN[item.plek!.soort].emoji} ${SOORTEN[item.plek!.soort].naam}` : `${TAALNAAM[item.oefenrichting.van]} → ${taal}`}
+        </span>
+      </p>}
       {benoemen && benoemKaart ? (
         <>
           <p className="vraag vraag-kaart">{leermoment ? 'Nieuwe plek' : 'Wat ligt hier?'}</p>
-          <p className="richting">
-            {SOORTEN[item.plek!.soort].emoji} {SOORTEN[item.plek!.soort].naam}
-          </p>
           <KaartUitsnede kaart={benoemKaart} plek={item.plek!} naam={leermoment || toestand.afgesloten ? goedAntwoord : undefined} />
         </>
-      ) : (
-        <p className="richting">
-          {TAALNAAM[item.oefenrichting.van]} → {taal}
-        </p>
-      )}
-      {raden ? (
-        <p className="nieuw-label">✨ {benoemen ? 'Nieuwe plek' : 'Nieuw woord'}. Raad maar! Fout gokken is niet erg.</p>
-      ) : goedGegokt ? (
-        <p className="nieuw-label">🎯 Goed gegokt! Weet je het ook zonder opties?</p>
-      ) : (
-        isNieuwLeeritem(toestand, item.id) &&
-        !laatste &&
-        !toestand.pogingen.some((p) => p.leeritemId === item.id) && (
-          <p className="nieuw-label">✨ {benoemen ? 'Nieuwe plek' : 'Nieuw woord'}. Weet je het al? Anders tik je op "Weet ik niet".</p>
-        )
-      )}
-      {!benoemen && (
-        <p className="vraag" lang={item.oefenrichting.van}>
+      ) : leermoment ? null : (
+        <p className="vraag vraag-groot" lang={item.oefenrichting.van}>
           {item.vraag} <Voorleesknop tekst={item.vraag} taal={item.oefenrichting.van} />
         </p>
       )}
 
       {vondCodewoord && <CodewoordMelding />}
-      {feedback && (
+      {feedback && !leermoment && (
         <div className={`feedback feedback-${laatste!.oordeel.replace(' ', '-')}`} role="status">
           <p>
             {feedback.kort}
@@ -587,7 +586,7 @@ export function OefenSessie({
         </p>
       )}
 
-      {kanAntwoordToevoegen(toestand) && (
+      {kanAntwoordToevoegen(toestand) && !leermoment && (
         <button className="link" disabled={bezig} onClick={() => void ookGoed()}>
           Mijn antwoord "{laatste!.antwoord}" was ook goed
         </button>
@@ -632,9 +631,12 @@ export function OefenSessie({
           </button>
         </>
       ) : toestand.afgesloten ? (
-        <button className="knop" onClick={() => void naarVolgende()} autoFocus>
-          Volgende
-        </button>
+        <>
+          {sterrenNaAntwoord}
+          <button className="knop knop-breed" onClick={() => void naarVolgende()} autoFocus>
+            Volgende
+          </button>
+        </>
       ) : toestand.vorm === 'meerkeuze' ? (
         <>
           <p className="label">{benoemen ? 'Welke plek is dit?' : `Welk ${taal}e woord hoort erbij?`}</p>
@@ -651,54 +653,58 @@ export function OefenSessie({
         </>
       ) : (
         <form onSubmit={controleer}>
-          <p className={`wijze wijze-${wijze}`}>
-            {wijze === 'zeggen' ? (
-              <>
-                <strong>🎤 Zeg of typ het.</strong> Tik op de microfoon van je toetsenbord en zeg het woord.
-              </>
-            ) : (
-              <>
-                <strong>✍️ Typ het, letter voor letter.</strong> Zo oefen je ook de spelling.
-              </>
-            )}
-          </p>
           {typMelding && (
             <p className="feedback" role="status">
               Deze keer typen, letter voor letter ✍️
             </p>
           )}
-          <label className="label" htmlFor="antwoord">
+          <label className="sr-only" htmlFor="antwoord">
             {benoemen ? 'Hoe heet deze plek?' : `Wat is het in het ${taal}?`}
           </label>
-          <input
-            id="antwoord"
-            ref={invoerRef}
-            className="invoer"
-            value={antwoord}
-            onChange={(e) => opInvoer(e.target.value)}
-            autoComplete="off"
-            autoCapitalize="off"
-            autoCorrect="off"
-            spellCheck={false}
-            lang={item.oefenrichting.naar}
-          />
-          <div className="knoppen">
-            <button className="knop" type="submit" disabled={bezig || antwoord.trim() === ''}>
-              Controleer
-            </button>
-            <button className="knop knop-rustig" type="button" disabled={bezig} onClick={() => void verstuur(null)}>
+          <div className="invoer-rij">
+            <input
+              id="antwoord"
+              ref={invoerRef}
+              className="invoer"
+              value={antwoord}
+              onChange={(e) => opInvoer(e.target.value)}
+              placeholder={wijze === 'zeggen' ? 'Zeg of typ het' : 'Typ het, letter voor letter'}
+              autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              lang={item.oefenrichting.naar}
+            />
+            <span
+              className="wijze-icoon"
+              title={wijze === 'zeggen' ? 'Je mag het zeggen: tik op de microfoon van je toetsenbord' : 'Typ het, zo oefen je ook de spelling'}
+              aria-hidden="true"
+            >
+              {wijze === 'zeggen' ? '🎤' : '✍️'}
+            </span>
+          </div>
+          <button className="knop knop-breed" type="submit" disabled={bezig || antwoord.trim() === ''}>
+            Controleer
+          </button>
+          <p className="tekstlinks">
+            <button className="link" type="button" disabled={bezig} onClick={() => void verstuur(null)}>
               Weet ik niet
             </button>
-            {!toets && <button
-              className="knop knop-rustig"
-              type="button"
-              aria-expanded={hulpOpen}
-              disabled={bezig || toestand.hulp === 'na voorbeeld'}
-              onClick={() => setHulpOpen(!hulpOpen)}
-            >
-              Hulp
-            </button>}
-          </div>
+            {!toets && (
+              <>
+                <span aria-hidden="true">·</span>
+                <button
+                  className="link"
+                  type="button"
+                  aria-expanded={hulpOpen}
+                  disabled={bezig || toestand.hulp === 'na voorbeeld'}
+                  onClick={() => setHulpOpen(!hulpOpen)}
+                >
+                  Hulp
+                </button>
+              </>
+            )}
+          </p>
           {hulpOpen && !toets && (
             <div className="hulpmenu" role="group" aria-label="Kies hulp">
               <button type="button" className="knop knop-rustig" onClick={() => hulp('met hint')} disabled={toestand.hulp !== 'vrij opgehaald'}>

@@ -110,10 +110,12 @@ export function Aanwijzen({ item, kaart, vorm, hulp, afgesloten, laatste, leermo
       <p className="vraag vraag-kaart">
         Waar ligt {item.vraag}? <Voorleesknop tekst={`Waar ligt ${item.vraag}?`} taal="nl" />
       </p>
-      {nieuw && !laatste && !afgesloten && <p className="nieuw-label">✨ Nieuwe plek. Raad maar waar het ligt! Fout tikken is niet erg.</p>}
-      <p className="richting">
-        {SOORTEN[plek.soort].emoji} {SOORTEN[plek.soort].naam}
-        {vorm === 'meerkeuze' && !afgesloten ? ' · tik op de goede letter' : ' · tik op de kaart'}
+      <p className="vraaglabel">
+        {nieuw && !laatste && !afgesloten && <span className="chip">✨ nieuw · raad maar, fout tikken is niet erg</span>}
+        <span>
+          {SOORTEN[plek.soort].emoji} {SOORTEN[plek.soort].naam}
+          {vorm === 'meerkeuze' && !afgesloten ? ' · tik op de goede letter' : ' · tik op de kaart'}
+        </span>
       </p>
 
       {feedback && (
@@ -123,20 +125,23 @@ export function Aanwijzen({ item, kaart, vorm, hulp, afgesloten, laatste, leermo
       )}
 
       {afgesloten || leermoment ? (
-        <button className="knop" onClick={onVolgende} autoFocus>
+        <button className="knop knop-breed" onClick={onVolgende} autoFocus>
           Volgende
         </button>
       ) : (
-        <div className="knoppen">
-          <button className="knop knop-rustig" disabled={bezig} onClick={() => onAntwoord(null, 'niet geweten')}>
+        <p className="tekstlinks">
+          <button className="link" disabled={bezig} onClick={() => onAntwoord(null, 'niet geweten')}>
             Weet ik niet
           </button>
           {!toets && (
-            <button className="knop knop-rustig" aria-expanded={hulpOpen} disabled={bezig || hulp === 'na voorbeeld'} onClick={() => setHulpOpen(!hulpOpen)}>
-              Hulp
-            </button>
+            <>
+              <span aria-hidden="true">·</span>
+              <button className="link" aria-expanded={hulpOpen} disabled={bezig || hulp === 'na voorbeeld'} onClick={() => setHulpOpen(!hulpOpen)}>
+                Hulp
+              </button>
+            </>
           )}
-        </div>
+        </p>
       )}
       {hulpOpen && !afgesloten && !leermoment && (
         <div className="hulpmenu" role="group" aria-label="Kies hulp">

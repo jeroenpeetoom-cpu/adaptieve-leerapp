@@ -246,6 +246,7 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
           bronItems={leeritems}
           nu={nu}
           onAntwoordToegevoegd={antwoordToegevoegd}
+          onPauzeer={() => void laad().then(() => setWeergave({ soort: 'overzicht' }))}
           onKlaar={(toestand) =>
             void laad()
               .then(() => leesPunten(db, instellingen))
@@ -281,9 +282,6 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
           onVoorgedaan={markeerVoorgedaan}
           onGeheugenbeeld={bewaarBeeld}
         />
-        <button className="link" onClick={() => void laad().then(() => setWeergave({ soort: 'overzicht' }))}>
-          ← Pauzeren
-        </button>
       </>
     )
   }

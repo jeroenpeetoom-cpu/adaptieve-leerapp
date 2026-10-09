@@ -1207,3 +1207,125 @@ select.invoer {
   width: 100%;
   height: 100%;
 }
+
+/* Rustig antwoordscherm (spec layout, beslissing 2): één hoofdactie, de rest gedempt. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.voortgangsregel {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.voortgangsbalk {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.voortgangsbalk > span {
+  display: block;
+  height: 100%;
+  background: var(--gedempt);
+  transition: width 0.3s ease;
+}
+
+.pauzeknop {
+  background: none;
+  border: none;
+  color: var(--gedempt);
+  font: inherit;
+  font-size: 1.1rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  cursor: pointer;
+}
+
+.sessie .label {
+  text-align: center;
+}
+
+.missie {
+  color: var(--gedempt);
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+  text-align: center;
+}
+
+.vraaglabel {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+  color: var(--gedempt);
+  font-size: 0.9rem;
+  margin: 0.25rem 0 0;
+  text-align: center;
+}
+
+.chip {
+  padding: 0.05rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--tekst);
+}
+
+.sessie .vraag-groot {
+  text-align: center;
+  font-size: 2.6rem;
+  margin: 1.25rem 0 1.5rem;
+}
+
+.invoer-rij {
+  position: relative;
+}
+
+.invoer-rij .invoer {
+  padding-right: 2.75rem;
+}
+
+.wijze-icoon {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.2rem;
+  opacity: 0.8;
+}
+
+.knop-breed {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  font-size: 1.1rem;
+}
+
+.tekstlinks {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.25rem 0 0;
+  color: var(--gedempt);
+}
+
+.tekstlinks .link {
+  padding: 0.6rem 0.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voortgangsbalk > span {
+    transition: none;
+  }
+}

@@ -2,7 +2,30 @@
 // leest alleen hoe ver de sessie is en of de laatste poging vrij opgehaald goed was.
 
 export const MISSIE = (aantal: number) =>
-  `Missie: het ruimteschip heeft codewoorden nodig om naar de volgende planeet te springen. Nog ${aantal} ${aantal === 1 ? 'woord' : 'woorden'} te gaan.`
+  `🎯 Missie: haal ${aantal} ${aantal === 1 ? 'vraag' : 'vragen'} zelf terug en vind codewoorden.`
+
+/** Eén smalle regel bovenaan tijdens het antwoorden: hoe ver je bent, en pauzeren. Beweegt niet. */
+export function Voortgangsregel({ gedaan, totaal, codewoorden, onPauzeer }: { gedaan: number; totaal: number; codewoorden: number; onPauzeer?: () => void }) {
+  const fractie = totaal === 0 ? 0 : Math.min(1, gedaan / totaal)
+  return (
+    <div className="voortgangsregel">
+      <span className="gedempt" aria-label={`Vraag ${Math.min(gedaan + 1, totaal)} van ${totaal}`}>
+        {Math.min(gedaan + 1, totaal)}/{totaal}
+      </span>
+      <span className="voortgangsbalk" aria-hidden="true">
+        <span style={{ width: `${fractie * 100}%` }} />
+      </span>
+      <span className="gedempt" aria-label={`${codewoorden} codewoorden`}>
+        ⭐ {codewoorden}
+      </span>
+      {onPauzeer && (
+        <button className="pauzeknop" aria-label="Pauzeren" onClick={onPauzeer}>
+          ⏸
+        </button>
+      )}
+    </div>
+  )
+}
 
 interface Props {
   /** Aantal leeritems in de sessie (groeit als er een terugkomt). */
