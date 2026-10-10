@@ -24,6 +24,8 @@ import {
   leermomentNodig,
   nogTeGaan,
   optiesVoor,
+  afrondenNodig,
+  rondAf,
   inToetsronde,
   toetsUitslag,
   toetsUitslagNodig,
@@ -295,6 +297,12 @@ export function OefenSessie({
     }
   }
 
+  /** Naar de volgende vraag; is de tijd bijna om, dan nog maar een paar (spec layout, beslissing 9). */
+  function verderMet(t: SessieToestand): SessieToestand {
+    const v = volgende(t)
+    return afrondenNodig(v, nu(), instellingen.pauzeGrensSec) ? rondAf(v) : v
+  }
+
   async function verstuur(tekst: string | null, ingesproken = false, vooraf?: Poging['oordeel'], basis = toestand) {
     if (bezig) return
     if (insprekenTimer.current) clearTimeout(insprekenTimer.current)
@@ -308,7 +316,7 @@ export function OefenSessie({
       setHulpOpen(false)
       // In de toetsronde geen feedback tussendoor: meteen door naar de volgende vraag.
       if (inToetsronde(basis) && uitkomst.toestand.afgesloten) {
-        const verder = volgende(uitkomst.toestand)
+        const verder = verderMet(uitkomst.toestand)
         if (await bewaar(verder, null, tijdstip)) {
           if (isKlaar(verder)) return onKlaar(verder)
           setToestand(verder)
@@ -344,7 +352,7 @@ export function OefenSessie({
   }
 
   async function naarVolgende() {
-    const nieuw = volgende(toestand)
+    const nieuw = verderMet(toestand)
     await bewaar(nieuw, null, nu())
     if (isKlaar(nieuw)) return onKlaar(nieuw)
     setToestand(nieuw)
@@ -441,6 +449,11 @@ export function OefenSessie({
   // Tijdens het antwoorden één smalle regel; de sterrenkaart komt pas na het antwoord (spec layout, beslissing 2).
   const bovenregel = (
     <>
+      {toestand.afronding && (
+        <p className="afrondmelding" role="status">
+          ⏱ Bijna klaar: nog {nogTeGaan(toestand)} {nogTeGaan(toestand) === 1 ? 'vraag' : 'vragen'}, dan zit je missie erop.
+        </p>
+      )}
       <Voortgangsregel
         gedaan={toestand.huidige}
         totaal={toestand.leeritems.length}
@@ -462,7 +475,7 @@ export function OefenSessie({
       volgendeToestand = koppelStrategie(toestand, item.id, nieuwBeeld.routeId ? 'geheugenroute' : 'beelden koppelen')
     }
     setToestand(volgendeToestand)
-    const nieuw = volgende(volgendeToestand)
+    const nieuw = verderMet(volgendeToestand)
     await bewaar(nieuw, null, nu())
     if (isKlaar(nieuw)) return onKlaar(nieuw)
     setToestand(nieuw)

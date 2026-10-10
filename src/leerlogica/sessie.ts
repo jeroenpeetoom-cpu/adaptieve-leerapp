@@ -47,7 +47,18 @@ export interface SessieToestand {
   toetsronde?: number
   /** De leerling heeft de uitslag van de toetsronde gezien. */
   toetsUitslagGezien?: boolean
+  /** Wanneer de sessie begon, om de actieve oefentijd te meten. */
+  gestart?: Tijdstip
+  /** Hoeveel seconden de sessie mag duren; ontbreekt bij een vrijwillige extra. */
+  budgetSec?: number
+  /** De tijd is bijna om: de wachtrij is ingekort tot de laatste paar vragen. */
+  afronding?: boolean
 }
+
+/** Zoveel seconden voor het einde begint het afronden. */
+export const AFRONDEN_VOOR_EINDE_SEC = 60
+/** Na het afronden komen naast de huidige vraag nog zoveel vragen. */
+export const VRAGEN_NA_AFRONDEN = 2
 
 export interface Antwoord {
   /** Vast per poging, zodat dubbel verzenden geen dubbele poging geeft. */
@@ -90,6 +101,7 @@ export function startSessie(
   strategiePerItem: Record<string, Strategie> = {},
   /** Zoveel leeritems aan het begin van de wachtrij vormen de toetsronde. */
   toetsronde = 0,
+  tijd?: { gestart: Tijdstip; budgetSec?: number },
 ): SessieToestand {
   const laatsteOordeelVooraf: Record<string, Oordeel> = {}
   for (const p of [...eerderePogingen].sort((a, b) => a.tijdstip.localeCompare(b.tijdstip))) {
@@ -109,6 +121,8 @@ export function startSessie(
     strategiePerItem,
     aantalGepland: leeritems.length,
     toetsronde: Math.min(toetsronde, leeritems.length),
+    gestart: tijd?.gestart,
+    budgetSec: tijd?.budgetSec,
   }
   return opPositie(leeg, 0)
 }
@@ -129,6 +143,48 @@ export function inToetsronde(toestand: SessieToestand): boolean {
 /** De toetsronde is voorbij en de leerling moet de uitslag nog zien. */
 export function toetsUitslagNodig(toestand: SessieToestand): boolean {
   return (toestand.toetsronde ?? 0) > 0 && toestand.huidige >= toestand.toetsronde! && !toestand.toetsUitslagGezien
+}
+
+/**
+ * De actieve oefentijd in seconden: de tijd tussen het begin, de pogingen en nu, behalve openingen
+ * langer dan de pauzegrens (dan stond de sessie op pauze of lag de telefoon weg).
+ */
+export function actieveTijdSec(toestand: SessieToestand, nu: Tijdstip, pauzeGrensSec: number): number {
+  if (!toestand.gestart) return 0
+  const momenten = [toestand.gestart, ...toestand.pogingen.map((p) => p.tijdstip), nu]
+    .map((t) => new Date(t).getTime())
+    .sort((a, b) => a - b)
+  let totaal = 0
+  for (let i = 1; i < momenten.length; i++) {
+    const sec = (momenten[i] - momenten[i - 1]) / 1000
+    if (sec > 0 && sec <= pauzeGrensSec) totaal += sec
+  }
+  return totaal
+}
+
+/**
+ * Is de tijd bijna om? Dan kort rondAf de wachtrij in. Nooit tijdens de toetsronde, en niet bij een
+ * vrijwillige extra zonder budget.
+ */
+export function afrondenNodig(toestand: SessieToestand, nu: Tijdstip, pauzeGrensSec: number): boolean {
+  if (toestand.afronding || toestand.budgetSec === undefined || inToetsronde(toestand) || isKlaar(toestand)) return false
+  return actieveTijdSec(toestand, nu, pauzeGrensSec) >= toestand.budgetSec - AFRONDEN_VOOR_EINDE_SEC
+}
+
+/**
+ * Kort de wachtrij in tot de huidige vraag en nog een paar. Leeritems die in deze sessie al fout
+ * gingen en terugkomen, gaan voor; niet-gestarte nieuwe leeritems blijven voor een volgende keer.
+ */
+export function rondAf(toestand: SessieToestand): SessieToestand {
+  if (toestand.afronding || inToetsronde(toestand)) return toestand
+  const klaar = toestand.leeritems.slice(0, toestand.huidige + 1)
+  const rest = toestand.leeritems.slice(toestand.huidige + 1).map((item, i) => ({ item, i }))
+  const terug = new Set(toestand.teruggezet)
+  const gekozen = [...rest.filter((r) => terug.has(r.item.id)), ...rest.filter((r) => !terug.has(r.item.id))]
+    .slice(0, VRAGEN_NA_AFRONDEN)
+    .sort((a, b) => a.i - b.i)
+    .map((r) => r.item)
+  return { ...toestand, leeritems: [...klaar, ...gekozen], afronding: true }
 }
 
 /** De pogingen van de toetsronde, in volgorde. */
@@ -317,7 +373,8 @@ export function volgende(toestand: SessieToestand): SessieToestand {
   const item = huidigLeeritem(toestand)!
   const laatste = toestand.pogingen.at(-1)!
   const toets = inToetsronde(toestand)
-  const terugzetten = !toets && laatste.oordeel !== 'goed' && !toestand.teruggezet.includes(item.id)
+  // Tijdens het afronden komt er niets meer bij: de sessie eindigt na de laatste paar vragen.
+  const terugzetten = !toets && !toestand.afronding && laatste.oordeel !== 'goed' && !toestand.teruggezet.includes(item.id)
   let leeritems = toestand.leeritems
   let teruggezet = toestand.teruggezet
   if (terugzetten) {

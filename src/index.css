@@ -1413,3 +1413,13 @@ select.invoer {
   text-align: center;
   font-size: 0.9rem;
 }
+
+.afrondmelding {
+  text-align: center;
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  background: var(--zacht);
+  color: var(--tekst);
+}

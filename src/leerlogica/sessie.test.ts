@@ -7,6 +7,9 @@ import {
   mengVolgorde,
   leermomentNodig,
   raad,
+  actieveTijdSec,
+  afrondenNodig,
+  rondAf,
   inToetsronde,
   toetsUitslag,
   toetsUitslagNodig,
@@ -365,5 +368,40 @@ describe('toetsronde', () => {
     t = volgende(beantwoord(t, { pogingId: 'p1', antwoord: 'a-nl', tijdstip: T }).toestand)
     expect(isKlaar(t)).toBe(false)
     expect(isKlaar(uitslagGezien(t))).toBe(true)
+  })
+})
+
+describe('tijd bijhouden en afronden', () => {
+  const w = (id: string): Leeritem => ({ id, soort: 'woordpaar', bronId: 'b', woordpaarId: `wp-${id}`, bronversie: 1, oefenrichting: { van: 'en', naar: 'nl' }, vraag: id, toegestaneAntwoorden: [`${id}-nl`] })
+  const op = (sec: number) => new Date(Date.UTC(2026, 9, 10, 10, 0, sec)).toISOString()
+  const start = (budgetSec?: number) => startSessie('s', ['a', 'b', 'c', 'd', 'e', 'f'].map(w), [], {}, 0, { gestart: op(0), budgetSec })
+
+  it('telt de actieve tijd, zonder pauzes', () => {
+    let t = start(480)
+    t = beantwoord(t, { pogingId: 'p1', antwoord: null, tijdstip: op(30) }).toestand
+    expect(actieveTijdSec(t, op(60), 180)).toBe(60)
+    // Een opening van tien minuten is een pauze en telt niet.
+    expect(actieveTijdSec(t, op(630), 180)).toBe(30)
+  })
+
+  it('rondt pas af een minuut voor het einde, en niet zonder budget', () => {
+    expect(afrondenNodig(start(480), op(400), 180)).toBe(false)
+    const lang = { ...start(480), pogingen: [0, 1, 2, 3, 4, 5, 6].map((m) => ({ id: `x${m}`, sessieId: 's', leeritemId: 'z', bronversie: 1, antwoord: null, oordeel: 'goed' as const, hulp: 'vrij opgehaald' as const, antwoordZelfToegevoegd: false, tijdstip: op(m * 60 + 60), regelversie: 1 })) }
+    expect(afrondenNodig(lang, op(430), 180)).toBe(true)
+    expect(afrondenNodig({ ...lang, budgetSec: undefined }, op(430), 180)).toBe(false)
+  })
+
+  it('houdt de huidige vraag en nog twee, met voorrang voor wat fout ging', () => {
+    const t = { ...start(480), huidige: 1, teruggezet: ['e'] }
+    const af = rondAf(t)
+    expect(af.leeritems.map((i) => i.id)).toEqual(['a', 'b', 'c', 'e'])
+    expect(af.afronding).toBe(true)
+  })
+
+  it('zet tijdens het afronden niets meer terug', () => {
+    let t = rondAf(start(480))
+    t = beantwoord(t, { pogingId: 'p1', antwoord: 'fout', tijdstip: op(10) }).toestand
+    t = volgende(t)
+    expect(t.leeritems.map((i) => i.id)).toEqual(['a', 'b', 'c'])
   })
 })

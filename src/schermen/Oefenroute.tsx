@@ -197,7 +197,15 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     const strategiePerItem = Object.fromEntries(
       beelden.map((b) => [b.leeritemId, b.routeId ? ('geheugenroute' as const) : ('beelden koppelen' as const)]),
     )
-    setWeergave({ soort: 'sessie', toestand: startSessie(sessieId, items, pogingen, strategiePerItem, toetsItems.length) })
+    setWeergave({ soort: 'sessie', toestand: startSessie(sessieId, items, pogingen, strategiePerItem, toetsItems.length, {
+          gestart: nu(),
+          // Een vrijwillige extra heeft geen tijdslimiet; anders de ingestelde tijd, of langer als een toets dat vraagt.
+          budgetSec: maximaal
+            ? undefined
+            : gekozen.langer
+              ? Math.min(gekozen.minuten, instellingen.maxSessieMinuten) * 60
+              : Math.min(instellingen.sessieMinuten, instellingen.maxSessieMinuten) * 60,
+        }) })
     return true
   }
 
