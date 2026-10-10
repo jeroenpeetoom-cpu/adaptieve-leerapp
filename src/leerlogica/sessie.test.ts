@@ -297,12 +297,12 @@ describe('raadvraag bij een nieuw leeritem', () => {
     expect(raadvraagNodig(startSessie('s', [plek]))).toBe(false)
   })
 
-  it('goed gegokt: geen poging, daarna de typvraag die gewoon telt', () => {
+  it('goed gegokt: telt als herkend, zonder typvraag en zonder leermoment', () => {
     const t = raad(startSessie('s', [nieuwItem('a')]), true)
-    expect(t.pogingen).toEqual([])
     expect(raadvraagNodig(t)).toBe(false)
     const { toestand, poging } = beantwoord(t, { pogingId: 'p1', antwoord: 'a-nl', tijdstip: T })
-    expect(poging).toMatchObject({ oordeel: 'goed', hulp: 'vrij opgehaald' })
+    expect(poging).toMatchObject({ oordeel: 'goed', hulp: 'herkend' })
+    expect(toestand.afgesloten).toBe(true)
     expect(leermomentNodig(toestand)).toBe(false)
   })
 

@@ -14,9 +14,9 @@ export type Vorm = 'typen' | 'meerkeuze'
  * - Een leeritem dat niet goed ging, komt een paar vragen later één keer terug.
  * - Was de laatste poging op een leeritem fout of niet geweten, dan komt het als meerkeuze
  *   (hulp "herkend"); na een goede meerkeuze is het weer een typvraag.
- * - Een nieuw leeritem begint met een raadvraag (meerkeuze). De gok zelf is geen poging. Goed gegokt:
- *   daarna de voorkennischeck als typvraag, die gewoon telt. Fout gegokt of geen idee: de leerling
- *   kende het nog niet, dat wordt "niet geweten" en het leermoment volgt.
+ * - Een nieuw leeritem begint met een raadvraag (meerkeuze). Goed gegokt telt als goed met hulp
+ *   "herkend"; de volgende herhaling is een typvraag. Fout gegokt of geen idee: de leerling kende het
+ *   nog niet, dat wordt "niet geweten" en het leermoment volgt.
  *   Bij aanwijzen is de eerste tik op de kaart zelf al de raadvraag.
  * - Een sessie kan beginnen met een toetsronde: leeritems in schoolvorm, zonder hulp, zonder nieuwe kans
  *   en zonder tussentijdse feedback. Na de ronde volgt de uitslag; wat niet goed ging komt daarna terug.
@@ -177,11 +177,15 @@ export function raadvraagNodig(toestand: SessieToestand): boolean {
   )
 }
 
-/** Legt de gok op de raadvraag vast. Na een foute gok volgt "niet geweten" (via beantwoord met null). */
+/**
+ * Legt de gok op de raadvraag vast; daarna volgt de poging via beantwoord: de gekozen optie (goed, hulp
+ * "herkend") of null ("niet geweten").
+ */
 export function raad(toestand: SessieToestand, goedGegokt: boolean): SessieToestand {
   const item = huidigLeeritem(toestand)
   if (!item || !raadvraagNodig(toestand)) return toestand
-  return { ...toestand, geraden: { ...toestand.geraden, [item.id]: goedGegokt } }
+  const geraden = { ...toestand.geraden, [item.id]: goedGegokt }
+  return goedGegokt ? { ...toestand, geraden, vorm: 'meerkeuze', hulp: 'herkend' } : { ...toestand, geraden }
 }
 
 /** Legt vast met welke strategie een leeritem geleerd wordt. */

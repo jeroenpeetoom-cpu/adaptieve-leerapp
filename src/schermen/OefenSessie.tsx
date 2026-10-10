@@ -322,11 +322,9 @@ export function OefenSessie({
   async function gok(optie: string | null) {
     const goedGegokt = optie !== null && beoordeel(optie, item.toegestaneAntwoorden, item.soort === 'plek') === 'goed'
 
+    // Goed gegokt telt als herkend; morgen komt het als typvraag (beslissing 3c).
     const na = raad(toestand, goedGegokt)
-    if (goedGegokt) {
-      setToestand(na)
-      setTimeout(() => invoerRef.current?.focus({ preventScroll: true }))
-    } else await verstuur(null, false, undefined, na)
+    await verstuur(goedGegokt ? optie : null, false, undefined, na)
   }
 
   async function ookGoed() {
@@ -429,11 +427,14 @@ export function OefenSessie({
     (p) => p.leeritemId === item.id && p.oordeel === 'goed' && p.hulp === 'vrij opgehaald' && !p.antwoordZelfToegevoegd,
   )
   const foutGegokt = toestand.geraden?.[item.id] === false && laatste?.oordeel === 'niet geweten'
+  const goedGegoktNu = toestand.geraden?.[item.id] === true && laatste?.oordeel === 'goed'
   const feedback = !laatste
     ? null
     : foutGegokt
       ? { kort: `Nu weet je het! Het is "${goedAntwoord}".`, uitleg: null }
-      : feedbackVoor(laatste, toestand.afgesloten, goedAntwoord, item, bekend, beeld)
+      : goedGegoktNu
+        ? { kort: '🎯 Goed gegokt! Een volgende keer vraag ik het zonder opties.', uitleg: null }
+        : feedbackVoor(laatste, toestand.afgesloten, goedAntwoord, item, bekend, beeld)
   const raadOpties = optiesVoor(item, bronItems, `raad-${item.id}`)
   const raden = raadvraagNodig(toestand) && raadOpties.length >= 2
   const goedGegokt = toestand.geraden?.[item.id] === true && !laatste && !toestand.afgesloten

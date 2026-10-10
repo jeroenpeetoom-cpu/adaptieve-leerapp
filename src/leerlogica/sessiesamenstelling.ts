@@ -1,7 +1,7 @@
 import { normaliseer } from './antwoordcontrole'
 import { berekenPlanning, isAanDeBeurt } from './herhaalplanning'
 import type { Instellingen } from './instellingen'
-import { berekenTempo, type Tempo } from './tempo'
+import { berekenTempo, duurHerhaling, duurNieuw, type Tempo } from './tempo'
 import { dagenTussen, kalenderdag, telDagenOp } from './tijd'
 import type { Leeritem, Poging } from './types'
 import { berekenVoortgang } from './voortgang'
@@ -106,13 +106,14 @@ export function stelSessieSamen(
       .sort((a, b) => Number(b.toetsstof ?? false) - Number(a.toetsstof ?? false) || (laatstGeoefend(a) ?? '').localeCompare(laatstGeoefend(b) ?? ''))
     const quotum = Math.ceil(nodig.length / d)
     for (const item of nodig.slice(0, quotum)) {
-      if (gebruikt + tempo.herhalingSec > maximum) {
+      const duur = duurHerhaling(tempo, item.toegestaneAntwoorden[0])
+      if (gebruikt + duur > maximum) {
         tekort = true
         break
       }
       if (neem(item)) {
         repetitie.push(item)
-        gebruikt += tempo.herhalingSec
+        gebruikt += duur
       }
     }
   }
@@ -130,11 +131,12 @@ export function stelSessieSamen(
   // Bronnen in onderhoud komen pas na al het andere, en met een paar per keer.
   let onderhoud = 0
   for (const item of [...aanDeBeurt.filter((i) => !inOnderhoud(i)), ...aanDeBeurt.filter(inOnderhoud)]) {
-    if (gebruikt + tempo.herhalingSec > budget) break
+    const duur = duurHerhaling(tempo, item.toegestaneAntwoorden[0])
+    if (gebruikt + duur > budget) break
     if (inOnderhoud(item) && onderhoud >= ONDERHOUD_PER_SESSIE) break
     if (neem(item)) {
       herhalingen.push(item)
-      gebruikt += tempo.herhalingSec
+      gebruikt += duur
       if (inOnderhoud(item)) onderhoud++
     }
   }
@@ -149,10 +151,11 @@ export function stelSessieSamen(
     .filter((i) => !isMoeilijkeRichting(i) || krap(i.bronId) || makkelijkeKantOpgehaald(i, actief, pogingen))
   const nieuw: Leeritem[] = []
   const voegNieuwToe = (item: Leeritem, grens: number) => {
-    if (nieuw.length >= instellingen.maxNieuwPerSessie || gebruikt + tempo.nieuwSec > grens) return false
+    const duur = duurNieuw(tempo, item.toegestaneAntwoorden[0])
+    if (nieuw.length >= instellingen.maxNieuwPerSessie || gebruikt + duur > grens) return false
     if (neem(item)) {
       nieuw.push(item)
-      gebruikt += tempo.nieuwSec
+      gebruikt += duur
     }
     return true
   }
@@ -236,6 +239,14 @@ export function stelExtraSamen(
     .filter((i) => !afgerond.has(i.bronId) && pogingen.some((p) => p.leeritemId === i.id && p.bronversie === i.bronversie))
     .map((i) => ({ i, r: rang[berekenVoortgang(i, pogingen, instellingen).status], l: laatst(i) }))
     .sort((a, b) => a.r - b.r || a.l.localeCompare(b.l))
-  const aantal = Math.max(1, Math.floor((Math.min(instellingen.sessieMinuten, instellingen.maxSessieMinuten) * 60) / tempo.herhalingSec))
-  return geoefend.slice(0, aantal).map((x) => x.i)
+  const budget = Math.min(instellingen.sessieMinuten, instellingen.maxSessieMinuten) * 60
+  const gekozen: Leeritem[] = []
+  let gebruikt = 0
+  for (const { i } of geoefend) {
+    const duur = duurHerhaling(tempo, i.toegestaneAntwoorden[0])
+    if (gekozen.length > 0 && gebruikt + duur > budget) break
+    gekozen.push(i)
+    gebruikt += duur
+  }
+  return gekozen
 }
