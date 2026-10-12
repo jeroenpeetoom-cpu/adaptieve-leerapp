@@ -307,6 +307,12 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
     }
     await echteDb.woordparen.add(wp)
     setParen((p) => [...p, wp])
+    // Breng het nieuwe, lege woordpaar in beeld en zet de cursor erin.
+    setTimeout(() => {
+      const regel = document.getElementById(`woordpaar-${wp.id}`)
+      regel?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      regel?.querySelector('input')?.focus({ preventScroll: true })
+    }, 50)
   }
 
   async function bevestig() {
@@ -644,6 +650,10 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
               />
             ))}
           </ul>
+          <button className="knop knop-rustig" onClick={() => void voegToe()}>
+            + Woord toevoegen dat je vergeten was
+          </button>
+          <p className="gedempt">Je vult het in bij "Controleer de woorden" en bevestigt het daar. Het komt dan als nieuw woord mee in het oefenen.</p>
         </section>
       )}
 
