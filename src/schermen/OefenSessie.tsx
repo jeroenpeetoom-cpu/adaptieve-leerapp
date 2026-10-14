@@ -85,9 +85,6 @@ interface Props {
   kaarten: Record<string, Kaart>
 }
 
-/** Na zoveel milliseconden stilte wordt een ingesproken antwoord vanzelf gecontroleerd. */
-const WACHT_NA_INSPREKEN = 700
-
 /**
  * Korte feedback (één of twee zinnen), optioneel een langere uitleg, en na de laatste poging het eigen
  * antwoord naast het goede met het verschil gemarkeerd. Bij een nieuw woord zegt de feedback wat klopt
@@ -236,7 +233,6 @@ export function OefenSessie({
   const [bezig, setBezig] = useState(false)
   const [hulpOpen, setHulpOpen] = useState(false)
   const invoerRef = useRef<HTMLInputElement>(null)
-  const insprekenTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sessieRef = useRef<HTMLElement>(null)
 
   // Bij elk nieuw leeritem naar de bovenkant van de vraag, en pas daarna het invulveld selecteren zonder
@@ -305,7 +301,6 @@ export function OefenSessie({
 
   async function verstuur(tekst: string | null, ingesproken = false, vooraf?: Poging['oordeel'], basis = toestand) {
     if (bezig) return
-    if (insprekenTimer.current) clearTimeout(insprekenTimer.current)
     ingesprokenRef.current = false
     setTypMelding(false)
     const tijdstip = nu()
@@ -411,17 +406,17 @@ export function OefenSessie({
   /** Een woord dat in één keer binnenkomt (en niet letter voor letter) is ingesproken of geplakt. */
   function opInvoer(nieuw: string) {
     const ingesproken = nieuw.trim().length - antwoord.trim().length >= 2
-    if (insprekenTimer.current) clearTimeout(insprekenTimer.current)
     if (ingesproken && wijze === 'typen') {
       setAntwoord('')
       setTypMelding(true)
       return
     }
     setAntwoord(nieuw)
+    // Ingesproken tekst wordt niet vanzelf gecontroleerd: het toetsenbord verstaat niet altijd alles goed,
+    // dus de leerling kijkt eerst en tikt zelf op Controleer of Enter.
     if (ingesproken) {
       ingesprokenRef.current = true
       setTypMelding(false)
-      insprekenTimer.current = setTimeout(() => void verstuur(nieuw, true), WACHT_NA_INSPREKEN)
     }
   }
 

@@ -24,7 +24,7 @@ Nu werkt inspreken via de microfoon van het toetsenbord in elk tekstvak; bij het
 ## Gebouwd
 
 - [x] Bij elke typvraag staat "🎤 Zeg of typ het" of "✍️ Typ het, letter voor letter", volgens de opbouw per woord
-- [x] Een woord dat in één keer binnenkomt, geldt als ingesproken; bij een zeg-vraag wordt het na 0,7 seconde stilte vanzelf gecontroleerd
+- [x] Een woord dat in één keer binnenkomt, geldt als ingesproken. (Herzien 14 oktober: het wordt niet meer vanzelf gecontroleerd. Het toetsenbord verstaat niet altijd alles goed, dus de leerling kijkt eerst en tikt zelf op Controleer of Enter, net als bij typen.)
 - [x] Bij een typvraag wordt een ingesproken antwoord geweigerd met de vraag om te typen
 - [x] Elke poging legt vast of hij ingesproken is
 - [x] Leerlogicatests dekken de opbouw per woord
