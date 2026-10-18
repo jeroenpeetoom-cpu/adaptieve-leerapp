@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent (gebouwd; wacht op controle op de S22)
 
-- [x] Voorlezen start alleen op verzoek, nooit vanzelf
+- [x] Voorlezen start alleen op verzoek, nooit vanzelf. (Herzien 18 oktober, op verzoek: Engels wordt vanzelf voorgelezen om de uitspraak te leren. Een Engelse vraag meteen; een Engels antwoord pas na de poging, nooit ervoor. Met geluid uit nooit.)
 - [x] Het juiste antwoord wordt pas voorgelezen na de poging
 - [x] De knop verdwijnt als er voor die taal geen stem beschikbaar is
 - [x] Voorlezen verandert geen oordeel, hulp of voortgang

@@ -39,24 +39,27 @@ function useStem(taal: Taal): SpeechSynthesisVoice | null {
   return stem
 }
 
-/** Een 🔊-knop die alleen verschijnt als er een stem voor de taal is; leest nooit vanzelf voor. */
-export function Voorleesknop({ tekst, taal }: { tekst: string; taal: Taal }) {
+function spreek(tekst: string, stem: SpeechSynthesisVoice) {
+  speechSynthesis.cancel()
+  const uiting = new SpeechSynthesisUtterance(tekst)
+  uiting.voice = stem
+  uiting.lang = stem.lang
+  uiting.rate = 0.9
+  speechSynthesis.speak(uiting)
+}
+
+/**
+ * Een 🔊-knop die alleen verschijnt als er een stem voor de taal is. Met `vanzelf` leest hij de tekst één
+ * keer voor zodra hij verschijnt, zodat de leerling de uitspraak meteen hoort; nooit als geluid uit staat.
+ */
+export function Voorleesknop({ tekst, taal, vanzelf = false }: { tekst: string; taal: Taal; vanzelf?: boolean }) {
   const stem = useStem(taal)
+  useEffect(() => {
+    if (vanzelf && stem) spreek(tekst, stem)
+  }, [vanzelf, stem, tekst])
   if (!stem) return null
   return (
-    <button
-      type="button"
-      className="voorlees"
-      aria-label={`Lees "${tekst}" voor`}
-      onClick={() => {
-        speechSynthesis.cancel()
-        const uiting = new SpeechSynthesisUtterance(tekst)
-        uiting.voice = stem
-        uiting.lang = stem.lang
-        uiting.rate = 0.9
-        speechSynthesis.speak(uiting)
-      }}
-    >
+    <button type="button" className="voorlees" aria-label={`Lees "${tekst}" voor`} onClick={() => spreek(tekst, stem)}>
       🔊
     </button>
   )

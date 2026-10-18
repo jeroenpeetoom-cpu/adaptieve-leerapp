@@ -184,7 +184,7 @@ export function Instellingen({ onTerug, onGewist }: { onTerug: () => void; onGew
           />
           Voorlezen met 🔊 aan
         </label>
-        <p className="gedempt">De app leest nooit vanzelf voor, alleen als je op 🔊 tikt.</p>
+        <p className="gedempt">Engelse woorden leest de app vanzelf voor, zodat je de uitspraak leert: een Engelse vraag meteen, en een Engels antwoord nadat je hebt geantwoord. Met 🔊 hoor je het nog een keer.</p>
       </section>
 
       <section className="kaart">

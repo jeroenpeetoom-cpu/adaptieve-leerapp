@@ -551,7 +551,9 @@ export function OefenSessie({
         </>
       ) : leermoment ? null : (
         <p className="vraag vraag-groot" lang={item.oefenrichting.van}>
-          {item.vraag} <Voorleesknop tekst={item.vraag} taal={item.oefenrichting.van} />
+          {item.vraag}{' '}
+          {/* Een Engelse vraag meteen voorlezen: zo hoort de leerling de uitspraak (geeft het antwoord niet weg). */}
+          <Voorleesknop tekst={item.vraag} taal={item.oefenrichting.van} vanzelf={item.oefenrichting.van === 'en'} />
         </p>
       )}
 
@@ -560,7 +562,10 @@ export function OefenSessie({
         <div className={`feedback feedback-${laatste!.oordeel.replace(' ', '-')}`} role="status">
           <p>
             {feedback.kort}
-            {toestand.afgesloten && <Voorleesknop tekst={goedAntwoord} taal={item.oefenrichting.naar} />}
+            {toestand.afgesloten && (
+              // Een Engels antwoord pas na de poging voorlezen, nooit ervoor.
+              <Voorleesknop tekst={goedAntwoord} taal={item.oefenrichting.naar} vanzelf={item.oefenrichting.naar === 'en'} />
+            )}
           </p>
           {'vergelijk' in feedback && feedback.vergelijk && (
             <p className="vergelijk">
