@@ -1458,3 +1458,32 @@ select.invoer {
 .voorspelling-uitkomst p {
   margin: 0.25rem 0;
 }
+
+/* Gereedschapskist (spec leren-leren, S2). */
+.strategiekaart {
+  border: 1px solid var(--rand);
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  margin: 0.5rem 0;
+  background: var(--vlak);
+}
+
+.strategiekaart summary {
+  cursor: pointer;
+  padding: 0.25rem 0;
+}
+
+.strategiekaart ol {
+  margin: 0.25rem 0 0.5rem;
+  padding-left: 1.25rem;
+}
+
+.gereedschapskist-klein {
+  margin-top: 0.75rem;
+}
+
+.gereedschapskist-klein > summary {
+  color: var(--gedempt);
+  cursor: pointer;
+  padding: 0.5rem 0;
+}

@@ -15,7 +15,6 @@ import {
   vergelijkBeelden,
   type GeleerdMet,
   type Poging,
-  type Strategie,
   type Strategiekeuze,
   type Strategiestap,
   type Voortgangsstatus,
@@ -23,13 +22,10 @@ import {
 import { echteDb } from '../opslag/database'
 import { leesStrategieKeuzes } from '../opslag/strategie'
 import { BeeldvergelijkingTekst, StatusLabel } from './Terugblik'
+import { GEREEDSCHAP, StrategieKaart } from '../weergave/strategiekaarten'
 
 const instellingen = STANDAARD_INSTELLINGEN
 const STATUSSEN: Voortgangsstatus[] = ['nog aan het leren', 'zelf teruggehaald', 'later nog geweten']
-const STRATEGIEEN: { strategie: Strategie; naam: string }[] = [
-  { strategie: 'beelden koppelen', naam: '🖼️ Beelden koppelen' },
-  { strategie: 'geheugenroute', naam: '🗺️ Geheugenroute' },
-]
 const STAPUITLEG: Record<Strategiestap, string> = {
   voorgedaan: 'Voorgedaan: je hebt het een keer met uitleg gedaan.',
   'met hulp gemaakt': 'Met hulp gemaakt: je maakte beelden met het steuntje van de app.',
@@ -171,17 +167,20 @@ export function Inzichten({ onTerug }: { onTerug: () => void }) {
             </p>
           )
         })()}
-        <ul className="inzicht-strategieen">
-          {STRATEGIEEN.map(({ strategie, naam }) => {
-            const stap = berekenStrategiestap(strategie, keuzes, geleerd, instellingen.drempelZelfGemaakt)
-            return (
-              <li key={strategie}>
-                <strong>{naam}</strong>
-                <p className="gedempt">{stap ? STAPUITLEG[stap] : 'Nog niet gebruikt.'}</p>
-              </li>
-            )
-          })}
-        </ul>
+        <h3>🧰 Je gereedschapskist</h3>
+        <p className="gedempt">Vier aanpakken die je kunt kiezen. Tik op een aanpak om te zien hoe hij werkt.</p>
+        {GEREEDSCHAP.map((g) => {
+          const status =
+            g === 'ophalen'
+              ? `Dit doe je bij elke vraag. ${items.filter((i) => statusVan.get(i.id) !== 'nog aan het leren').length} woorden en plekken haalde je al zelf terug.`
+              : g === 'herhalen'
+                ? `De app plant dit voor je. Je oefende op ${new Set(pogingen.map((p) => kalenderdag(p.tijdstip, instellingen.tijdzone))).size} verschillende dagen.`
+                : (() => {
+                    const stap = berekenStrategiestap(g, keuzes, geleerd, instellingen.drempelZelfGemaakt)
+                    return stap ? STAPUITLEG[stap] : 'Nog niet gebruikt.'
+                  })()
+          return <StrategieKaart key={g} id={g} status={status} />
+        })}
       </section>
 
       <section className="kaart">

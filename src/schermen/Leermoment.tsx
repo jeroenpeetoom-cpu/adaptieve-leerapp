@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Leeritem, PlekGegevens, Strategie } from '../leerlogica'
 import type { Geheugenbeeld, Kaart } from '../bronnen/model'
 import { MAX_PLEKKEN, MIN_PLEKKEN, type RouteStand } from '../bronnen/routes'
+import { GEREEDSCHAP, STRATEGIEKAARTEN, StrategieKaart } from '../weergave/strategiekaarten'
 import { Voorleesknop } from '../weergave/voorlezen'
 import { KaartUitsnede } from './KaartUitsnede'
 import { emojiVoor, voorstelVoorPlek, voorstelVoorWoord, type Beeldvoorstel, type EmojiRegister } from '../beelden/voorstel'
@@ -205,19 +206,27 @@ export function Leermoment({
             <span>
               {topo
                 ? 'Je bedenkt bij elke naam een grappig plaatje in je hoofd, bijvoorbeeld een luik in de grond bij Luik.'
-                : 'Je bedenkt bij elk woord een grappig plaatje in je hoofd. Dat werkt goed voor woorden en hun betekenis.'}
+                : `${STRATEGIEKAARTEN['beelden koppelen'].wat} Past ${STRATEGIEKAARTEN['beelden koppelen'].wanneer.toLowerCase()}`}
             </span>
           </button>
           {!topo && (
             <button className="strategie" onClick={() => onKiesStrategie('geheugenroute')}>
               <strong>🗺️ Geheugenroute</strong>
-              <span>Je legt woorden op plekken in je huis en loopt er in gedachten langs. Handig als je een rijtje woorden tegelijk leert.</span>
+              <span>
+                {STRATEGIEKAARTEN.geheugenroute.wat} Past {STRATEGIEKAARTEN.geheugenroute.wanneer.toLowerCase()}
+              </span>
             </button>
           )}
         </div>
         <button className="link" onClick={() => onKiesStrategie('geen')}>
           Liever zonder, gewoon herhalen
         </button>
+        <details className="gereedschapskist-klein">
+          <summary>🧰 Hoe werken deze aanpakken?</summary>
+          {GEREEDSCHAP.filter((g) => !(topo && g === 'geheugenroute')).map((g) => (
+            <StrategieKaart key={g} id={g} />
+          ))}
+        </details>
       </div>
     )
   }
@@ -235,7 +244,15 @@ export function Leermoment({
     )
   }
 
-  const stappen = topo && strategie === 'beelden koppelen' ? VOORDOEN_TOPO : VOORDOEN[strategie]
+  const basis = topo && strategie === 'beelden koppelen' ? VOORDOEN_TOPO : VOORDOEN[strategie]
+  // Kort hardop voordoen waarom de aanpak past, en vóór "Nu jij" hoe je controleert of hij werkt (S2).
+  const kaart = STRATEGIEKAARTEN[strategie]
+  const stappen = [
+    { titel: 'Ik denk even hardop', tekst: kaart.hardop },
+    ...basis.slice(0, -1),
+    { titel: 'Zo controleer je het', tekst: kaart.controle },
+    ...basis.slice(-1),
+  ]
   if (!voorgedaan.includes(strategie) && stap < stappen.length) {
     return (
       <div className="leermoment">
