@@ -2,6 +2,7 @@ import { beoordeel } from './antwoordcontrole'
 import { zwaarsteHulp } from './hulp'
 import type { Hulp, Leeritem, Oordeel, Poging, Strategie, Tijdstip } from './types'
 import { REGELVERSIE } from './versie'
+import type { Voorspelling } from './voorspelling'
 
 export type Vorm = 'typen' | 'meerkeuze'
 
@@ -53,6 +54,8 @@ export interface SessieToestand {
   budgetSec?: number
   /** De tijd is bijna om: de wachtrij is ingekort tot de laatste paar vragen. */
   afronding?: boolean
+  /** De voorspelling aan het begin; null als de leerling hem oversloeg. */
+  voorspelling?: Voorspelling | null
 }
 
 /** Zoveel seconden voor het einde begint het afronden. */

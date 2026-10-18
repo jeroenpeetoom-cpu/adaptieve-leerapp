@@ -37,7 +37,7 @@ describe('aanpak benoemen', () => {
       ],
     }
     expect(beschrijfAanpak(s)).toBe(
-      'Je haalde 2 vragen eerst zelf op uit je geheugen, voordat je het antwoord zag. Bij 1 nieuwe vraag raadde je eerst. Bij 1 hielp je eigen geheugenbeeld. 1 vraag deed je in toetsvorm, zonder hulp.',
+      'Je probeerde 2 vragen eerst zelf uit je geheugen te halen, voordat je het antwoord zag. Bij 1 nieuwe vraag raadde je eerst. Bij 1 hielp je eigen geheugenbeeld. 1 vraag deed je in toetsvorm, zonder hulp.',
     )
   })
 })

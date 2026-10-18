@@ -1423,3 +1423,38 @@ select.invoer {
   background: var(--zacht);
   color: var(--tekst);
 }
+
+/* Voorspellen (spec leren-leren, S1). */
+.voorspellen-vraag {
+  text-align: center;
+  font-size: 1.4rem;
+  margin: 1rem 0;
+}
+
+.voorspellen-vorige {
+  text-align: center;
+  margin: 0.5rem 0 0;
+}
+
+.getallen {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(3.25rem, 1fr));
+  gap: 0.5rem;
+}
+
+.getal {
+  min-height: 3.25rem;
+  padding: 0.5rem;
+  font-size: 1.2rem;
+}
+
+.voorspelling-uitkomst {
+  background: var(--zacht);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.voorspelling-uitkomst p {
+  margin: 0.25rem 0;
+}

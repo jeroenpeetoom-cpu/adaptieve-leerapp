@@ -20,7 +20,7 @@ export function beschrijfAanpak(sessie: SessieToestand): string {
   const geraden = Object.keys(sessie.geraden ?? {}).length
 
   const delen: string[] = []
-  if (zelf > 0) delen.push(`Je haalde ${zelf === 1 ? '1 vraag' : `${zelf} vragen`} eerst zelf op uit je geheugen, voordat je het antwoord zag.`)
+  if (zelf > 0) delen.push(`Je probeerde ${zelf === 1 ? '1 vraag' : `${zelf} vragen`} eerst zelf uit je geheugen te halen, voordat je het antwoord zag.`)
   if (geraden > 0) delen.push(`Bij ${geraden === 1 ? '1 nieuwe vraag' : `${geraden} nieuwe vragen`} raadde je eerst.`)
   if (metBeeld > 0) delen.push(`Bij ${metBeeld} hielp je eigen geheugenbeeld.`)
   if (toets > 0) delen.push(`${toets === 1 ? '1 vraag' : `${toets} vragen`} deed je in toetsvorm, zonder hulp.`)

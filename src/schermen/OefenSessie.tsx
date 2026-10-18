@@ -24,6 +24,10 @@ import {
   leermomentNodig,
   nogTeGaan,
   optiesVoor,
+  voorspel,
+  voorspelbareItems,
+  voorspellingNodig,
+  volgendeVariant,
   afrondenNodig,
   rondAf,
   inToetsronde,
@@ -49,6 +53,7 @@ import { Voorleesknop } from '../weergave/voorlezen'
 import { Aanwijzen } from './Aanwijzen'
 import { KaartUitsnede } from './KaartUitsnede'
 import { Leermoment } from './Leermoment'
+import { Voorspellen } from './Voorspellen'
 
 const TAALNAAM = { en: 'Engels', nl: 'Nederlands' } as const
 
@@ -83,6 +88,8 @@ interface Props {
   instellingen: Instellingen
   /** De kaarten van topo-bronnen, voor aanwijzen. */
   kaarten: Record<string, Kaart>
+  /** De voorspelling van de vorige sessie, met wat er echt uitkwam. */
+  vorigeVoorspelling?: { voorspeld: number; uitkomst: number; van: number; variant: number } | null
 }
 
 /**
@@ -226,6 +233,7 @@ export function OefenSessie({
   eerderePogingen,
   instellingen,
   kaarten,
+  vorigeVoorspelling = null,
 }: Props) {
   const [toestand, setToestand] = useState(begintoestand)
   const [antwoord, setAntwoord] = useState('')
@@ -247,6 +255,37 @@ export function OefenSessie({
 
   // Vast id per volgende poging in deze sessie: dubbel tikken geeft hetzelfde id en telt dus niet dubbel.
   const pogingId = `${toestand.sessieId}-${toestand.pogingen.length + 1}`
+
+  // Vooraf voorspellen (spec leren-leren, S1): alleen aan het begin en als er herhalingen zijn.
+  if (voorspellingNodig(toestand)) {
+    const variant = volgendeVariant(vorigeVoorspelling?.variant ?? null)
+    return (
+      <section className="kaart sessie" ref={sessieRef}>
+        <Voorspellen
+          van={voorspelbareItems(toestand).length}
+          variant={variant}
+          vorige={vorigeVoorspelling}
+          bezig={bezig}
+          onKies={async (aantal) => {
+            const nieuw = voorspel(toestand, aantal, variant)
+            setBezig(true)
+            try {
+              await db.slaSessieOp(nieuw, false, nu())
+            } finally {
+              setBezig(false)
+            }
+            setToestand(nieuw)
+            setTimeout(() => invoerRef.current?.focus({ preventScroll: true }))
+          }}
+        />
+        {storing && (
+          <p className="feedback feedback-storing" role="alert">
+            {storing}
+          </p>
+        )}
+      </section>
+    )
+  }
 
   if (toetsUitslagNodig(toestand)) {
     return (

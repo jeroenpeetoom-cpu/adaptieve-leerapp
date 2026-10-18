@@ -7,6 +7,7 @@ import {
   startSessie,
   stelExtraSamen,
   stelSessieSamen,
+  uitkomstVoorspelling,
   type BronInfo,
   type Instellingen,
   type Leeritem,
@@ -65,6 +66,7 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
   const [routes, setRoutes] = useState<Route[]>([])
   const [kaarten, setKaarten] = useState<Record<string, Kaart>>({})
   const [laatsteReflectie, setLaatsteReflectie] = useState<Reflectie | null>(null)
+  const [vorigeVoorspelling, setVorigeVoorspelling] = useState<{ voorspeld: number; uitkomst: number; van: number; variant: number } | null>(null)
   /** De bron die de leerling koos om te oefenen; null is alles samen. "Nog een rondje" blijft daarbij. */
   const [gekozenBron, setGekozenBron] = useState<string | null>(null)
   /** De punten bij het begin van de sessie, om na afloop te laten zien wat erbij kwam. */
@@ -87,6 +89,13 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     setLaatsteReflectie(await db.leesMeta<Reflectie | null>('laatsteReflectie', null))
     setStrategiePerBron(await db.leesMeta<Record<string, Strategie | 'geen'>>('strategiePerBron', {}))
     setVoorgedaan(await db.leesMeta<Strategie[]>('voorgedaan', []))
+    // De laatste afgeronde sessie met een voorspelling, om er de volgende keer op terug te komen.
+    const klaar = (await db.sessies.filter((s) => s.klaar && !!s.toestand.voorspelling).toArray()).sort((a, b) =>
+      b.bijgewerkt.localeCompare(a.bijgewerkt),
+    )
+    const laatste = klaar[0]?.toestand
+    const uitkomst = laatste ? uitkomstVoorspelling(laatste) : null
+    setVorigeVoorspelling(uitkomst && laatste?.voorspelling ? { ...uitkomst, variant: laatste.voorspelling.variant } : null)
     const open = await db.openSessies()
     // Een gepauzeerde sessie uit een oudere versie van de app is niet te hervatten; die sluiten we af.
     for (const o of open.filter((o) => !('vorm' in o.toestand))) await db.slaSessieOp(o.toestand, true, o.bijgewerkt)
@@ -287,6 +296,7 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
           eerderePogingen={pogingen}
           instellingen={instellingen}
           kaarten={kaarten}
+          vorigeVoorspelling={vorigeVoorspelling}
           strategiePerBron={strategiePerBron}
           voorgedaan={voorgedaan}
           onKiesStrategie={kiesStrategie}

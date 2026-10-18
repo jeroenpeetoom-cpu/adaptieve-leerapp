@@ -11,6 +11,8 @@ import {
   type Beeldvergelijking,
   type SessieToestand,
   type Voortgangsstatus,
+  duidVoorspelling,
+  uitkomstVoorspelling,
   vergelijkBeelden,
 } from '../leerlogica'
 
@@ -93,6 +95,17 @@ export function Terugblik({ sessie, pogingen, vandaag, instellingen, alleItems, 
       <p>
         Zelf gelukt: <strong>{zelf.length}</strong> van de {items.length} {items.length === 1 ? 'woord' : 'woorden'}.
       </p>
+      {(() => {
+        const v = uitkomstVoorspelling(sessie)
+        return v ? (
+          <div className="voorspelling-uitkomst">
+            <p>
+              🔮 Je voorspelde <strong>{v.voorspeld}</strong> van de {v.van}. Zonder hulp wist je er <strong>{v.uitkomst}</strong>.
+            </p>
+            <p className="gedempt">{duidVoorspelling(v.voorspeld, v.uitkomst)}</p>
+          </div>
+        ) : null
+      })()}
       {aanpak && <p className="aanpak">🧭 {aanpak}</p>}
       {vergelijking?.genoeg && <BeeldvergelijkingTekst vergelijking={vergelijking} />}
       <ul className="terugblik">
