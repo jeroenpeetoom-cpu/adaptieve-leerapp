@@ -1,29 +1,40 @@
 import { useState } from 'react'
+import { VOLGENDE_STAPPEN, type Sessiereflectievraag } from '../leerlogica'
 
-export const REFLECTIE_KEUZES = ['Mijn eigen beelden', 'Mijn route', 'Gewoon vaak herhalen', 'De hints', 'Weet ik niet']
-
-/** Eén korte vraag over wat hielp; altijd over te slaan en nooit een bewijs voor voortgang. */
-export function ReflectieVraag({ onKies }: { onKies: (tekst: string) => void }) {
+/**
+ * Na de sessie één korte vraag met bewijs uit eigen werk (spec leren-leren, S4). Wisselt per keer; altijd
+ * over te slaan en nooit een bewijs voor voortgang.
+ */
+export function ReflectieVraag({ vraag, onKies }: { vraag: Sessiereflectievraag; onKies: (keuze: string) => void }) {
   const [gekozen, setGekozen] = useState<string | null>(null)
   const [overgeslagen, setOvergeslagen] = useState(false)
   if (overgeslagen) return null
-  if (gekozen) return <p className="gedempt">Bewaard. Bij je volgende nieuwe woorden kun je hieraan terugdenken.</p>
+  if (gekozen) {
+    const stap = VOLGENDE_STAPPEN.find((k) => k.id === gekozen)
+    return (
+      <p className="gedempt">
+        {vraag.variant === 'misging' && stap
+          ? `Afgesproken. Als dit woord terugkomt, kijken we of het gelukt is.`
+          : 'Bewaard. Bij je volgende nieuwe woorden kun je hieraan terugdenken.'}
+      </p>
+    )
+  }
   return (
     <div className="reflectie">
       <p>
-        <strong>Wat hielp je vandaag het meest?</strong>
+        <strong>{vraag.vraag}</strong>
       </p>
-      <div className="reflectie-keuzes">
-        {REFLECTIE_KEUZES.map((k) => (
+      <div className="opties-lijst">
+        {vraag.keuzes.map((k) => (
           <button
-            key={k}
-            className="knop knop-rustig"
+            key={k.id}
+            className="knop knop-rustig optie"
             onClick={() => {
-              setGekozen(k)
-              onKies(k)
+              setGekozen(k.id)
+              onKies(k.id)
             }}
           >
-            {k}
+            {k.tekst}
           </button>
         ))}
       </div>

@@ -7,6 +7,10 @@ import {
   startSessie,
   stelExtraSamen,
   stelSessieSamen,
+  kiesSessiereflectie,
+  type Reflectievariant,
+  type Sessiereflectievraag,
+  type Voornemen,
   uitkomstVoorspelling,
   type BronInfo,
   type Instellingen,
@@ -29,7 +33,7 @@ import { Terugblik } from './Terugblik'
 type Weergave =
   | { soort: 'overzicht' }
   | { soort: 'sessie'; toestand: SessieToestand }
-  | { soort: 'klaar'; toestand: SessieToestand; erbij: Puntentelling | null; totaal: number }
+  | { soort: 'klaar'; toestand: SessieToestand; erbij: Puntentelling | null; totaal: number; reflectievraag: Sessiereflectievraag }
 
 export interface OverzichtInfo {
   pogingen: Poging[]
@@ -66,6 +70,8 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
   const [routes, setRoutes] = useState<Route[]>([])
   const [kaarten, setKaarten] = useState<Record<string, Kaart>>({})
   const [laatsteReflectie, setLaatsteReflectie] = useState<Reflectie | null>(null)
+  const [reflectieVariant, setReflectieVariant] = useState<Reflectievariant | null>(null)
+  const [voornemen, setVoornemen] = useState<Voornemen | null>(null)
   const [vorigeVoorspelling, setVorigeVoorspelling] = useState<{ voorspeld: number; uitkomst: number; van: number; variant: number } | null>(null)
   /** De bron die de leerling koos om te oefenen; null is alles samen. "Nog een rondje" blijft daarbij. */
   const [gekozenBron, setGekozenBron] = useState<string | null>(null)
@@ -87,6 +93,8 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     setRoutes(await db.routes.toArray())
     setKaarten(Object.fromEntries((await db.kaarten.toArray()).map((k) => [k.id, k])))
     setLaatsteReflectie(await db.leesMeta<Reflectie | null>('laatsteReflectie', null))
+    setReflectieVariant(await db.leesMeta<Reflectievariant | null>('reflectieVariant', null))
+    setVoornemen(await db.leesMeta<Voornemen | null>('voornemen', null))
     setStrategiePerBron(await db.leesMeta<Record<string, Strategie | 'geen'>>('strategiePerBron', {}))
     setVoorgedaan(await db.leesMeta<Strategie[]>('voorgedaan', []))
     // De laatste afgeronde sessie met een voorspelling, om er de volgende keer op terug te komen.
@@ -229,11 +237,29 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     setStrategiePerBron({ ...strategiePerBron, [bronId]: strategie })
   }
 
-  async function bewaarReflectie(sessieId: string, tekst: string) {
-    const reflectie = { tekst, tijdstip: nu() }
-    await db.sessies.update(sessieId, { reflectie: tekst })
-    await db.schrijfMeta('laatsteReflectie', reflectie)
-    setLaatsteReflectie(reflectie)
+  /** Bewaart het antwoord op de reflectievraag (spec leren-leren, S4). */
+  async function bewaarReflectie(sessieId: string, vraag: Sessiereflectievraag, keuzeId: string) {
+    const tekst = vraag.keuzes.find((k) => k.id === keuzeId)?.tekst ?? keuzeId
+    // Zonder het icoon vooraan, zodat de tekst later in een zin past.
+    const kaal = tekst.replace(/^\P{L}+/u, '')
+    await db.sessies.update(sessieId, { reflectie: `${vraag.vraag} ${kaal}` })
+    await db.schrijfMeta('reflectieVariant', vraag.variant)
+    setReflectieVariant(vraag.variant)
+    if (vraag.variant === 'hielp') {
+      const reflectie = { tekst: kaal, tijdstip: nu() }
+      await db.schrijfMeta('laatsteReflectie', reflectie)
+      setLaatsteReflectie(reflectie)
+    }
+    if (vraag.variant === 'misging' && vraag.item) {
+      const nieuw: Voornemen = {
+        itemId: vraag.item.id,
+        woord: vraag.item.plek ? vraag.item.toegestaneAntwoorden[0] : vraag.item.vraag,
+        stap: kaal.charAt(0).toLowerCase() + kaal.slice(1),
+        tijdstip: nu(),
+      }
+      await db.schrijfMeta('voornemen', nieuw)
+      setVoornemen(nieuw)
+    }
   }
 
   async function markeerVoorgedaan(strategie: Strategie) {
@@ -271,7 +297,13 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
             void laad()
               .then(() => leesPunten(db, instellingen))
               .then((na) =>
-                setWeergave({ soort: 'klaar', toestand, erbij: puntenBijStart.current ? puntenErbij(puntenBijStart.current, na) : null, totaal: na.totaal }),
+                setWeergave({
+                  soort: 'klaar',
+                  toestand,
+                  erbij: puntenBijStart.current ? puntenErbij(puntenBijStart.current, na) : null,
+                  totaal: na.totaal,
+                  reflectievraag: kiesSessiereflectie(toestand, reflectieVariant, instellingen.tijdzone),
+                }),
               )
           }
           geheugenbeelden={Object.fromEntries(
@@ -297,6 +329,7 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
           instellingen={instellingen}
           kaarten={kaarten}
           vorigeVoorspelling={vorigeVoorspelling}
+          voornemen={voornemen}
           strategiePerBron={strategiePerBron}
           voorgedaan={voorgedaan}
           onKiesStrategie={kiesStrategie}
@@ -316,9 +349,14 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
         instellingen={instellingen}
         alleItems={leeritems}
         metBeeld={new Set(beelden.map((b) => b.leeritemId))}
+        voornemen={voornemen}
       >
         {weergave.erbij && <PuntenErbij erbij={weergave.erbij} totaal={weergave.totaal} />}
-        <ReflectieVraag key={weergave.toestand.sessieId} onKies={(tekst) => void bewaarReflectie(weergave.toestand.sessieId, tekst)} />
+        <ReflectieVraag
+          key={weergave.toestand.sessieId}
+          vraag={weergave.reflectievraag}
+          onKies={(keuze) => void bewaarReflectie(weergave.toestand.sessieId, weergave.reflectievraag, keuze)}
+        />
         {melding && <p className="feedback">{melding}</p>}
         {(() => {
           const s = samenstellingVoor(gekozenBron)

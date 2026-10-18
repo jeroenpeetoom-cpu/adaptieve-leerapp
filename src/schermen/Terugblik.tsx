@@ -12,6 +12,8 @@ import {
   type SessieToestand,
   type Voortgangsstatus,
   duidVoorspelling,
+  uitkomstVoornemen,
+  type Voornemen,
   uitkomstVoorspelling,
   vergelijkBeelden,
 } from '../leerlogica'
@@ -75,10 +77,12 @@ interface Props {
   /** Alle leeritems en welke een eigen geheugenbeeld hebben, voor de vergelijking met en zonder beeld. */
   alleItems?: Leeritem[]
   metBeeld?: Set<string>
+  /** Het voornemen uit de vorige reflectie, om te laten zien of het lukte. */
+  voornemen?: Voornemen | null
   children?: ReactNode
 }
 
-export function Terugblik({ sessie, pogingen, vandaag, instellingen, alleItems, metBeeld, children }: Props) {
+export function Terugblik({ sessie, pogingen, vandaag, instellingen, alleItems, metBeeld, voornemen = null, children }: Props) {
   const aanpak = beschrijfAanpak(sessie)
   const vergelijking = alleItems && metBeeld ? vergelijkBeelden(alleItems, pogingen, metBeeld, instellingen) : null
   const items = [...new Map(sessie.leeritems.map((i) => [i.id, i])).values()]
@@ -104,6 +108,15 @@ export function Terugblik({ sessie, pogingen, vandaag, instellingen, alleItems, 
             </p>
             <p className="gedempt">{duidVoorspelling(v.voorspeld, v.uitkomst)}</p>
           </div>
+        ) : null
+      })()}
+      {(() => {
+        const uitkomst = uitkomstVoornemen(voornemen, sessie)
+        return uitkomst && voornemen ? (
+          <p className="voorspelling-uitkomst">
+            📌 Je voornemen bij <strong>{voornemen.woord}</strong> was: {voornemen.stap}.{' '}
+            {uitkomst === 'gelukt' ? 'Het lukte nu zonder hulp. Dat werkte!' : 'Het lukte nog niet zonder hulp. Het komt snel terug; probeer eens een andere aanpak.'}
+          </p>
         ) : null
       })()}
       {aanpak && <p className="aanpak">🧭 {aanpak}</p>}

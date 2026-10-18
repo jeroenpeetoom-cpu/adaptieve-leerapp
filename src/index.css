@@ -1487,3 +1487,13 @@ select.invoer {
   cursor: pointer;
   padding: 0.5rem 0;
 }
+
+.voornemen {
+  text-align: center;
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 8px;
+  background: var(--hint-zacht);
+  color: var(--tekst);
+}

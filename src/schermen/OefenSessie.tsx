@@ -24,6 +24,7 @@ import {
   leermomentNodig,
   nogTeGaan,
   optiesVoor,
+  type Voornemen,
   voorspel,
   voorspelbareItems,
   voorspellingNodig,
@@ -90,6 +91,8 @@ interface Props {
   kaarten: Record<string, Kaart>
   /** De voorspelling van de vorige sessie, met wat er echt uitkwam. */
   vorigeVoorspelling?: { voorspeld: number; uitkomst: number; van: number; variant: number } | null
+  /** Een voornemen bij één leeritem uit een eerdere reflectie, om te laten zien als dat leeritem komt. */
+  voornemen?: Voornemen | null
 }
 
 /**
@@ -234,6 +237,7 @@ export function OefenSessie({
   instellingen,
   kaarten,
   vorigeVoorspelling = null,
+  voornemen = null,
 }: Props) {
   const [toestand, setToestand] = useState(begintoestand)
   const [antwoord, setAntwoord] = useState('')
@@ -495,6 +499,11 @@ export function OefenSessie({
         onPauzeer={onPauzeer}
       />
       {toestand.huidige === 0 && toestand.pogingen.length === 0 && !toets && <p className="missie">{MISSIE(nogTeGaan(toestand))}</p>}
+      {voornemen?.itemId === item.id && !toestand.afgesloten && (
+        <p className="voornemen" role="note">
+          📌 Je nam je voor: {voornemen.stap}.
+        </p>
+      )}
     </>
   )
   const sterrenNaAntwoord = toestand.afgesloten && (
