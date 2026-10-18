@@ -24,6 +24,7 @@ import {
   leermomentNodig,
   nogTeGaan,
   optiesVoor,
+  vergelijkStap,
   type Voornemen,
   voorspel,
   voorspelbareItems,
@@ -499,6 +500,37 @@ export function OefenSessie({
         onPauzeer={onPauzeer}
       />
       {toestand.huidige === 0 && toestand.pogingen.length === 0 && !toets && <p className="missie">{MISSIE(nogTeGaan(toestand))}</p>}
+      {(() => {
+        // Overeenkomsten en verschillen (spec leren-leren, S5).
+        const stap = vergelijkStap(toestand)
+        const v = toestand.vergelijking
+        if (!stap || !v) return null
+        const naam = (id: string) => {
+          const i = toestand.leeritems.find((x) => x.id === id)!
+          return i.plek ? i.toegestaneAntwoorden[0] : i.vraag
+        }
+        const [a, b] = [naam(v.a), naam(v.b)]
+        if (stap === 'b' && toestand.afgesloten) {
+          const regel = (id: string) => {
+            const i = toestand.leeritems.find((x) => x.id === id)!
+            return i.plek ? i.toegestaneAntwoorden[0] : `${i.vraag} = ${i.toegestaneAntwoorden[0]}`
+          }
+          return (
+            <p className="vergelijkmelding" role="note">
+              🔍 Naast elkaar: <strong>{regel(v.a)}</strong> en <strong>{regel(v.b)}</strong>. Zie je het verschil?
+            </p>
+          )
+        }
+        return (
+          <p className="vergelijkmelding" role="note">
+            {stap === 'a'
+              ? v.reden === 'verward'
+                ? `🔍 Je haalde "${a}" en "${b}" door elkaar. Let op het verschil: eerst "${a}", dan "${b}".`
+                : `🔍 "${a}" en "${b}" lijken op elkaar. Weet je ze allebei? Eerst "${a}".`
+              : `🔍 En nu "${b}". Wat is anders dan bij "${a}"?`}
+          </p>
+        )
+      })()}
       {voornemen?.itemId === item.id && !toestand.afgesloten && (
         <p className="voornemen" role="note">
           📌 Je nam je voor: {voornemen.stap}.

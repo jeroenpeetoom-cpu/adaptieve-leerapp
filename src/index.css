@@ -1494,6 +1494,15 @@ select.invoer {
   margin: 0 0 0.5rem;
   padding: 0.3rem 0.6rem;
   border-radius: 8px;
-  background: var(--hint-zacht);
+  background: var(--zacht);
+  color: var(--tekst);
+}
+
+.vergelijkmelding {
+  font-size: 0.95rem;
+  margin: 0 0 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  background: var(--zacht);
   color: var(--tekst);
 }

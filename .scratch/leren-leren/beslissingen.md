@@ -13,3 +13,4 @@ Bron: het document over leerstrategieën aanleren in de huiswerkapp (persoonlijk
 - Bewijs: hoeveel van die herhalingen hij bij de eerste poging goed en zonder hulp wist.
 - Na de sessie: de vergelijking ("Je dacht 4, het werden er 5"). Bij de volgende voorspelling komt de vorige terug ("Vorige keer dacht je 4 en het werden er 5").
 - De vraag wisselt van formulering. Overslaan kan, maar is klein.
+2. **S5 overeenkomsten en verschillen: eigen verwarring eerst, gelijkenis vult aan.** Haalt de leerling twee leeritems door elkaar (hij antwoordt met het antwoord van een ander woord, of tikt op een andere plek), dan komt dat paar later samen terug: "Je haalde fitter en healthier door elkaar. Let op het verschil." Hij beantwoordt beide direct na elkaar en ziet ze daarna naast elkaar. Zonder verwarring kiest de app af en toe een paar dat op elkaar lijkt (bijna dezelfde spelling, of plekken vlak bij elkaar). Hooguit één paar per sessie, vanwege de tijdsgrens.

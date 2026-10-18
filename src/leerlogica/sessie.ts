@@ -3,6 +3,7 @@ import { zwaarsteHulp } from './hulp'
 import type { Hulp, Leeritem, Oordeel, Poging, Strategie, Tijdstip } from './types'
 import { REGELVERSIE } from './versie'
 import type { Voorspelling } from './voorspelling'
+import type { Vergelijking } from './vergelijken'
 
 export type Vorm = 'typen' | 'meerkeuze'
 
@@ -56,6 +57,30 @@ export interface SessieToestand {
   afronding?: boolean
   /** De voorspelling aan het begin; null als de leerling hem oversloeg. */
   voorspelling?: Voorspelling | null
+  /** Een paar dat samen terugkomt om het verschil te zien; `start` is de plek van het eerste in de wachtrij. */
+  vergelijking?: Vergelijking & { start: number }
+}
+
+/** Zet een vergelijkpaar direct na elkaar aan het eind van de wachtrij (spec leren-leren, S5). */
+export function metVergelijking(toestand: SessieToestand, vergelijking: Vergelijking | null, alle: Leeritem[]): SessieToestand {
+  if (!vergelijking) return toestand
+  const a = alle.find((i) => i.id === vergelijking.a)
+  const b = alle.find((i) => i.id === vergelijking.b)
+  if (!a || !b) return toestand
+  const start = toestand.leeritems.length
+  return { ...toestand, leeritems: [...toestand.leeritems, a, b], vergelijking: { ...vergelijking, start } }
+}
+
+/** Staat de leerling nu bij het eerste of tweede leeritem van het vergelijkpaar? */
+export function vergelijkStap(toestand: SessieToestand): 'a' | 'b' | null {
+  const v = toestand.vergelijking
+  if (!v) return null
+  // Op buren controleren, niet op vaste plekken: een teruggezet leeritem kan de wachtrij verschuiven.
+  const i = toestand.huidige
+  const at = (n: number) => toestand.leeritems[n]?.id
+  if (i >= v.start && at(i) === v.a && at(i + 1) === v.b) return 'a'
+  if (i - 1 >= v.start && at(i - 1) === v.a && at(i) === v.b) return 'b'
+  return null
 }
 
 /** Zoveel seconden voor het einde begint het afronden. */
@@ -363,10 +388,12 @@ export const TERUG_NA = 3
  * De plek in de wachtrij waar een teruggezet leeritem komt: een paar vragen later, en niet vlak na of voor
  * een leeritem van hetzelfde woordpaar of dezelfde plek (zoals de andere richting).
  */
-function terugPlek(leeritems: Leeritem[], na: number, item: Leeritem): number {
+function terugPlek(leeritems: Leeritem[], na: number, item: Leeritem, paar?: Vergelijking): number {
   const buur = (i: number) => leeritems[i]?.woordpaarId === item.woordpaarId
+  // Nooit tussen de twee leeritems van een vergelijkpaar.
+  const tussenPaar = (i: number) => !!paar && leeritems[i - 1]?.id === paar.a && leeritems[i]?.id === paar.b
   for (let plek = Math.min(leeritems.length, na + 1 + TERUG_NA); plek <= leeritems.length; plek++) {
-    if (!buur(plek - 1) && !buur(plek)) return plek
+    if (!buur(plek - 1) && !buur(plek) && !tussenPaar(plek)) return plek
   }
   return leeritems.length
 }
@@ -381,7 +408,7 @@ export function volgende(toestand: SessieToestand): SessieToestand {
   let leeritems = toestand.leeritems
   let teruggezet = toestand.teruggezet
   if (terugzetten) {
-    const plek = terugPlek(leeritems, toestand.huidige, item)
+    const plek = terugPlek(leeritems, toestand.huidige, item, toestand.vergelijking)
     leeritems = [...leeritems.slice(0, plek), item, ...leeritems.slice(plek)]
     teruggezet = [...teruggezet, item.id]
   }
@@ -392,7 +419,7 @@ export function volgende(toestand: SessieToestand): SessieToestand {
       .map((p) => leeritems.slice(0, toestand.toetsronde).find((i) => i.id === p.leeritemId)!)
       .filter(Boolean)
     mis.forEach((m, k) => {
-      const plek = terugPlek(leeritems, toestand.huidige + k * 2, m)
+      const plek = terugPlek(leeritems, toestand.huidige + k * 2, m, toestand.vergelijking)
       leeritems = [...leeritems.slice(0, plek), m, ...leeritems.slice(plek)]
     })
     teruggezet = [...teruggezet, ...mis.map((m) => m.id)]

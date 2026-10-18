@@ -7,6 +7,8 @@ import {
   startSessie,
   stelExtraSamen,
   stelSessieSamen,
+  kiesVergelijking,
+  metVergelijking,
   kiesSessiereflectie,
   type Reflectievariant,
   type Sessiereflectievraag,
@@ -72,6 +74,7 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
   const [laatsteReflectie, setLaatsteReflectie] = useState<Reflectie | null>(null)
   const [reflectieVariant, setReflectieVariant] = useState<Reflectievariant | null>(null)
   const [voornemen, setVoornemen] = useState<Voornemen | null>(null)
+  const [vergelijkingen, setVergelijkingen] = useState<{ a: string; b: string; tijdstip: string }[]>([])
   const [vorigeVoorspelling, setVorigeVoorspelling] = useState<{ voorspeld: number; uitkomst: number; van: number; variant: number } | null>(null)
   /** De bron die de leerling koos om te oefenen; null is alles samen. "Nog een rondje" blijft daarbij. */
   const [gekozenBron, setGekozenBron] = useState<string | null>(null)
@@ -95,6 +98,7 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     setLaatsteReflectie(await db.leesMeta<Reflectie | null>('laatsteReflectie', null))
     setReflectieVariant(await db.leesMeta<Reflectievariant | null>('reflectieVariant', null))
     setVoornemen(await db.leesMeta<Voornemen | null>('voornemen', null))
+    setVergelijkingen(await db.leesMeta<{ a: string; b: string; tijdstip: string }[]>('vergelijkingen', []))
     setStrategiePerBron(await db.leesMeta<Record<string, Strategie | 'geen'>>('strategiePerBron', {}))
     setVoorgedaan(await db.leesMeta<Strategie[]>('voorgedaan', []))
     // De laatste afgeronde sessie met een voorspelling, om er de volgende keer op terug te komen.
@@ -214,7 +218,7 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     const strategiePerItem = Object.fromEntries(
       beelden.map((b) => [b.leeritemId, b.routeId ? ('geheugenroute' as const) : ('beelden koppelen' as const)]),
     )
-    setWeergave({ soort: 'sessie', toestand: startSessie(sessieId, items, pogingen, strategiePerItem, toetsItems.length, {
+    let toestand = startSessie(sessieId, items, pogingen, strategiePerItem, toetsItems.length, {
           gestart: nu(),
           // Een vrijwillige extra heeft geen tijdslimiet; anders de ingestelde tijd, of langer als een toets dat vraagt.
           budgetSec: maximaal
@@ -222,7 +226,22 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
             : gekozen.langer
               ? Math.min(gekozen.minuten, instellingen.maxSessieMinuten) * 60
               : Math.min(instellingen.sessieMinuten, instellingen.maxSessieMinuten) * 60,
-        }) })
+        })
+    // Hooguit één paar om te vergelijken, niet bij een vrijwillige extra (spec leren-leren, S5).
+    if (!maximaal) {
+      const bronItems = bronId === null ? leeritems : leeritems.filter((i) => i.bronId === bronId)
+      const paar = kiesVergelijking(bronItems, pogingen, vergelijkingen, nu(), (kaartId) => {
+        const k = kaarten[kaartId]
+        return k ? k.hoogte / k.breedte : 1
+      })
+      toestand = metVergelijking(toestand, paar, bronItems)
+      if (paar) {
+        const nieuw = [...vergelijkingen, { a: paar.a, b: paar.b, tijdstip: nu() }].slice(-50)
+        setVergelijkingen(nieuw)
+        void db.schrijfMeta('vergelijkingen', nieuw)
+      }
+    }
+    setWeergave({ soort: 'sessie', toestand })
     return true
   }
 

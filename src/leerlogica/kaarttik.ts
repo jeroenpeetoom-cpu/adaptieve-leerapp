@@ -18,7 +18,7 @@ const WINDRICHTINGEN = ['oosten', 'noordoosten', 'noorden', 'noordwesten', 'west
  * Afstand in kaartbreedtes. De posities zijn fracties van breedte en hoogte, dus de hoogte telt mee
  * met de verhouding hoogte/breedte van de kaart.
  */
-function afstand(a: Punt, b: Punt, verhouding: number): number {
+export function afstand(a: Punt, b: Punt, verhouding: number): number {
   return Math.hypot(b.x - a.x, (b.y - a.y) * verhouding)
 }
 

@@ -20,7 +20,7 @@ export function normaliseer(tekst: string): string {
 }
 
 /** Afstand in bewerkingen: vervangen, toevoegen, weglaten, of twee naast elkaar liggende letters omdraaien. */
-function bewerkingsafstand(a: string, b: string): number {
+export function bewerkingsafstand(a: string, b: string): number {
   const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) =>
     Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
   )
