@@ -72,7 +72,7 @@ interface Props {
   geheugenbeelden: Record<string, string>
   strategiePerBron: Record<string, Strategie | 'geen'>
   voorgedaan: Strategie[]
-  onKiesStrategie: (bronId: string, strategie: Strategie | 'geen') => Promise<void>
+  onKiesStrategie: (bronId: string, strategie: Strategie | 'geen', reden?: string) => Promise<void>
   onVoorgedaan: (strategie: Strategie) => Promise<void>
   onGeheugenbeeld: (beeld: Omit<Geheugenbeeld, 'id' | 'aangemaakt'>) => Promise<void>
   routeVoor: (bronId: string) => RouteStand | null
@@ -432,7 +432,7 @@ export function OefenSessie({
         route={null}
         routenaam=""
         itemTekst={() => ''}
-        onKiesStrategie={(s) => void onKiesStrategie(item.bronId, s)}
+        onKiesStrategie={(s, reden) => void onKiesStrategie(item.bronId, s, reden)}
         onVoorgedaan={(s) => void onVoorgedaan(s)}
         onMaakRoute={() => {}}
         laatsteReflectie={laatsteReflectie}
@@ -659,7 +659,7 @@ export function OefenSessie({
             const i = bronItems.find((x) => x.id === id)
             return i ? `${i.vraag} = ${i.toegestaneAntwoorden[0]}` : ''
           }}
-          onKiesStrategie={(s) => void onKiesStrategie(item.bronId, s)}
+          onKiesStrategie={(s, reden) => void onKiesStrategie(item.bronId, s, reden)}
           onVoorgedaan={(s) => void onVoorgedaan(s)}
           onMaakRoute={(naam, plekken) => void onMaakRoute(item.bronId, naam, plekken)}
           laatsteReflectie={laatsteReflectie}

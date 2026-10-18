@@ -20,9 +20,9 @@ import {
   type Voortgangsstatus,
 } from '../leerlogica'
 import { echteDb } from '../opslag/database'
-import { leesStrategieKeuzes } from '../opslag/strategie'
+import { leesKeuzeRedenen, leesStrategieKeuzes, type Keuzereden } from '../opslag/strategie'
 import { BeeldvergelijkingTekst, StatusLabel } from './Terugblik'
-import { GEREEDSCHAP, StrategieKaart } from '../weergave/strategiekaarten'
+import { GEREEDSCHAP, KEUZEREDENEN, StrategieKaart } from '../weergave/strategiekaarten'
 
 const instellingen = STANDAARD_INSTELLINGEN
 const STATUSSEN: Voortgangsstatus[] = ['nog aan het leren', 'zelf teruggehaald', 'later nog geweten']
@@ -41,6 +41,7 @@ export function Inzichten({ onTerug }: { onTerug: () => void }) {
     paginas: Bronpagina[]
     pogingen: Poging[]
     reflecties: ToetsReflectie[]
+    redenen: Keuzereden[]
     beelden: Geheugenbeeld[]
     keuzes: Strategiekeuze[]
     plekken: Plek[]
@@ -53,6 +54,7 @@ export function Inzichten({ onTerug }: { onTerug: () => void }) {
       paginas: await echteDb.bronpaginas.toArray(),
       pogingen: await echteDb.pogingen.toArray(),
       reflecties: await echteDb.leesMeta<ToetsReflectie[]>('toetsreflecties', []),
+      redenen: await leesKeuzeRedenen(echteDb),
       beelden: await echteDb.geheugenbeelden.toArray(),
       keuzes: await leesStrategieKeuzes(echteDb),
       plekken: await echteDb.plekken.toArray(),
@@ -64,7 +66,7 @@ export function Inzichten({ onTerug }: { onTerug: () => void }) {
   }, [laad])
 
   if (!gegevens) return null
-  const { bronnen, paren, paginas, pogingen, beelden, keuzes, plekken, reflecties } = gegevens
+  const { bronnen, paren, paginas, pogingen, beelden, keuzes, plekken, reflecties, redenen } = gegevens
   const vandaag = kalenderdag(new Date().toISOString(), instellingen.tijdzone)
   const items = bronnen.flatMap((b) => leeritemsVanBron(b, paren, plekken))
   const statusVan = new Map(items.map((i) => [i.id, berekenVoortgang(i, pogingen, instellingen).status]))
@@ -177,7 +179,9 @@ export function Inzichten({ onTerug }: { onTerug: () => void }) {
                 ? `De app plant dit voor je. Je oefende op ${new Set(pogingen.map((p) => kalenderdag(p.tijdstip, instellingen.tijdzone))).size} verschillende dagen.`
                 : (() => {
                     const stap = berekenStrategiestap(g, keuzes, geleerd, instellingen.drempelZelfGemaakt)
-                    return stap ? STAPUITLEG[stap] : 'Nog niet gebruikt.'
+                    const laatste = [...redenen].reverse().find((r) => r.strategie === g)
+                    const tekst = laatste && KEUZEREDENEN[g].find((k) => k.id === laatste.reden)?.tekst
+                    return `${stap ? STAPUITLEG[stap] : 'Nog niet gebruikt.'}${tekst ? ` Laatst koos je dit omdat ${tekst}.` : ''}`
                   })()
           return <StrategieKaart key={g} id={g} status={status} />
         })}

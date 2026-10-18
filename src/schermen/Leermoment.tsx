@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Leeritem, PlekGegevens, Strategie } from '../leerlogica'
 import type { Geheugenbeeld, Kaart } from '../bronnen/model'
 import { MAX_PLEKKEN, MIN_PLEKKEN, type RouteStand } from '../bronnen/routes'
-import { GEREEDSCHAP, STRATEGIEKAARTEN, StrategieKaart } from '../weergave/strategiekaarten'
+import { GEREEDSCHAP, KEUZEREDENEN, reactieOpReden, STRATEGIEKAARTEN, StrategieKaart, type Keuzereden } from '../weergave/strategiekaarten'
 import { Voorleesknop } from '../weergave/voorlezen'
 import { KaartUitsnede } from './KaartUitsnede'
 import { emojiVoor, voorstelVoorPlek, voorstelVoorWoord, type Beeldvoorstel, type EmojiRegister } from '../beelden/voorstel'
@@ -49,7 +49,7 @@ interface Props {
   routenaam: string
   /** "woord = betekenis" van een leeritem, om de route te laten doorlopen. */
   itemTekst: (leeritemId: string) => string
-  onKiesStrategie: (strategie: Strategie | 'geen') => void
+  onKiesStrategie: (strategie: Strategie | 'geen', reden?: string) => void
   onVoorgedaan: (strategie: Strategie) => void
   onMaakRoute: (naam: string, plekken: string[]) => void
   laatsteReflectie: string | null
@@ -123,6 +123,8 @@ export function Leermoment({
   onKlaar,
 }: Props) {
   const [stap, setStap] = useState(0)
+  const [voorlopig, setVoorlopig] = useState<Strategie | 'geen' | null>(null)
+  const [reden, setReden] = useState<Keuzereden | null>(null)
   const [beschrijving, setBeschrijving] = useState('')
   const [emoji, setEmoji] = useState('')
   const [plaatje, setPlaatje] = useState<string | null>(null)
@@ -189,6 +191,43 @@ export function Leermoment({
     )
   }
 
+  // Kiezen met reden (spec leren-leren, S3): eerst de aanpak, dan "Ik koos dit omdat…", dan een korte reactie.
+  if (strategie === undefined && voorlopig !== null) {
+    const naam = voorlopig === 'geen' ? 'zonder extra aanpak' : STRATEGIEKAARTEN[voorlopig].naam.toLowerCase()
+    return (
+      <div className="leermoment">
+        <h3>{topo ? 'Nieuwe plek' : 'Nieuwe woorden'}</h3>
+        {!reden ? (
+          <>
+            <p className="vraag-klein">
+              Ik koos <strong>{naam}</strong> omdat…
+            </p>
+            <div className="opties-lijst">
+              {KEUZEREDENEN[voorlopig].map((r) => (
+                <button key={r.id} className="knop knop-rustig optie" onClick={() => setReden(r)}>
+                  …{r.tekst}
+                </button>
+              ))}
+            </div>
+            <button className="link" onClick={() => (setVoorlopig(null), setReden(null))}>
+              ← Toch iets anders kiezen
+            </button>
+          </>
+        ) : (
+          <>
+            <p>
+              Ik koos <strong>{naam}</strong> omdat {reden.tekst}.
+            </p>
+            <p className="feedback">{reactieOpReden(reden)}</p>
+            <button className="knop knop-breed" autoFocus onClick={() => onKiesStrategie(voorlopig, reden.id)}>
+              Verder
+            </button>
+          </>
+        )}
+      </div>
+    )
+  }
+
   if (strategie === undefined) {
     return (
       <div className="leermoment">
@@ -201,7 +240,7 @@ export function Leermoment({
           </p>
         )}
         <div className="strategieen">
-          <button className="strategie" onClick={() => onKiesStrategie('beelden koppelen')}>
+          <button className="strategie" onClick={() => setVoorlopig('beelden koppelen')}>
             <strong>🖼️ Beelden koppelen</strong>
             <span>
               {topo
@@ -210,7 +249,7 @@ export function Leermoment({
             </span>
           </button>
           {!topo && (
-            <button className="strategie" onClick={() => onKiesStrategie('geheugenroute')}>
+            <button className="strategie" onClick={() => setVoorlopig('geheugenroute')}>
               <strong>🗺️ Geheugenroute</strong>
               <span>
                 {STRATEGIEKAARTEN.geheugenroute.wat} Past {STRATEGIEKAARTEN.geheugenroute.wanneer.toLowerCase()}
@@ -218,7 +257,7 @@ export function Leermoment({
             </button>
           )}
         </div>
-        <button className="link" onClick={() => onKiesStrategie('geen')}>
+        <button className="link" onClick={() => setVoorlopig('geen')}>
           Liever zonder, gewoon herhalen
         </button>
         <details className="gereedschapskist-klein">

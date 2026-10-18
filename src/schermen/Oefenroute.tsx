@@ -224,8 +224,8 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     setExtraAntwoorden(nieuw)
   }
 
-  async function kiesStrategie(bronId: string, strategie: Strategie | 'geen') {
-    await legStrategieVast(db, bronId, strategie, nu())
+  async function kiesStrategie(bronId: string, strategie: Strategie | 'geen', reden?: string) {
+    await legStrategieVast(db, bronId, strategie, nu(), reden)
     setStrategiePerBron({ ...strategiePerBron, [bronId]: strategie })
   }
 

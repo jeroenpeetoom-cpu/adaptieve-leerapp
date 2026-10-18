@@ -80,3 +80,43 @@ export function StrategieKaart({ id, status, open = false }: { id: Gereedschap; 
     </details>
   )
 }
+
+/** Een reden om een aanpak te kiezen. `soort` zegt of de reden past bij waar de aanpak voor bedoeld is (S3). */
+export interface Keuzereden {
+  id: string
+  tekst: string
+  soort: 'past' | 'ervaring' | 'proberen' | 'past-minder'
+}
+
+export const KEUZEREDENEN: Record<'beelden koppelen' | 'geheugenroute' | 'geen', Keuzereden[]> = {
+  'beelden koppelen': [
+    { id: 'lastig', tekst: 'het zijn losse woorden die ik lastig vind', soort: 'past' },
+    { id: 'werkte', tekst: 'het werkte de vorige keer goed', soort: 'ervaring' },
+    { id: 'proberen', tekst: 'ik wil het eens proberen', soort: 'proberen' },
+  ],
+  geheugenroute: [
+    { id: 'rijtje', tekst: 'ik moet een rijtje in volgorde kennen', soort: 'past' },
+    { id: 'veel', tekst: 'het zijn veel woorden tegelijk', soort: 'past' },
+    { id: 'werkte', tekst: 'het werkte de vorige keer goed', soort: 'ervaring' },
+    { id: 'proberen', tekst: 'ik wil het eens proberen', soort: 'proberen' },
+  ],
+  geen: [
+    { id: 'makkelijk', tekst: 'de woorden zijn makkelijk', soort: 'past' },
+    { id: 'eerst-zien', tekst: 'ik wil eerst zien wat ik al weet', soort: 'past' },
+    { id: 'geen-zin', tekst: 'ik heb geen zin in een extra stap', soort: 'past-minder' },
+  ],
+}
+
+/** Korte reactie op de reden, die het kind leert kijken of een aanpak bij het doel past. */
+export function reactieOpReden(reden: Keuzereden): string {
+  switch (reden.soort) {
+    case 'past':
+      return 'Goede reden: dat is precies waar deze aanpak bij past.'
+    case 'ervaring':
+      return 'Slim: je kijkt naar wat bij jou werkt. Straks zie je of het deze keer weer helpt.'
+    case 'proberen':
+      return 'Prima om uit te proberen. Later zie je in Inzichten of het hielp.'
+    case 'past-minder':
+      return 'Eerlijk! Let straks wel op welke woorden lastig blijven. Bij die woorden kan een beeld alsnog helpen.'
+  }
+}
