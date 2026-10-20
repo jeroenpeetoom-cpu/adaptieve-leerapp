@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bepaalAntwoordwijze, type Leeritem } from './index'
+import { bepaalAntwoordwijze, lijktIngesproken, type Leeritem } from './index'
 
 const item = (naar: 'nl' | 'en'): Leeritem => ({
   id: 'i',
@@ -29,5 +29,22 @@ describe('antwoordwijze', () => {
 
   it('laat extra pogingen op dezelfde dag weer zeggen', () => {
     expect(bepaalAntwoordwijze(item('en'), 'zelf teruggehaald', false)).toBe('zeggen')
+  })
+})
+
+describe('ingesproken of getypt', () => {
+  it('ziet de eerste letter na een spatie als typen', () => {
+    expect(lijktIngesproken('stay ', 'stay u')).toBe(false)
+    expect(lijktIngesproken('stay up ', 'stay up l')).toBe(false)
+  })
+
+  it('ziet een spatie of één letter als typen', () => {
+    expect(lijktIngesproken('stay', 'stay ')).toBe(false)
+    expect(lijktIngesproken('sta', 'stay')).toBe(false)
+  })
+
+  it('ziet een heel woord in één keer als ingesproken', () => {
+    expect(lijktIngesproken('', 'bridge')).toBe(true)
+    expect(lijktIngesproken('stay ', 'stay up')).toBe(true)
   })
 })

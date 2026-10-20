@@ -24,6 +24,7 @@ import {
   leermomentNodig,
   nogTeGaan,
   optiesVoor,
+  lijktIngesproken,
   vergelijkStap,
   type Voornemen,
   voorspel,
@@ -449,7 +450,7 @@ export function OefenSessie({
 
   /** Een woord dat in één keer binnenkomt (en niet letter voor letter) is ingesproken of geplakt. */
   function opInvoer(nieuw: string) {
-    const ingesproken = nieuw.trim().length - antwoord.trim().length >= 2
+    const ingesproken = lijktIngesproken(antwoord, nieuw)
     if (ingesproken && wijze === 'typen') {
       setAntwoord('')
       setTypMelding(true)

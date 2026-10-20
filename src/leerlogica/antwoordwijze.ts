@@ -16,3 +16,12 @@ export function bepaalAntwoordwijze(item: Leeritem, status: Voortgangsstatus, ee
   if (status === 'nog aan het leren') return 'zeggen'
   return eersteVanDeDag ? 'typen' : 'zeggen'
 }
+
+/**
+ * Lijkt een wijziging in het antwoordveld ingesproken? Dan komen er in één keer minstens twee letters bij.
+ * Spaties tellen niet mee: na "stay " is "stay u" één getypte letter, geen ingesproken woord.
+ */
+export function lijktIngesproken(oud: string, nieuw: string): boolean {
+  const letters = (t: string) => t.replace(/\s/g, '').length
+  return letters(nieuw) - letters(oud) >= 2
+}
