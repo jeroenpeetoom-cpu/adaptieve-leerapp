@@ -69,36 +69,10 @@ export function BeeldvergelijkingTekst({ vergelijking }: { vergelijking: Beeldve
   )
 }
 
-interface Props {
-  sessie: SessieToestand
-  pogingen: Poging[]
-  vandaag: string
-  instellingen: Instellingen
-  /** Alle leeritems en welke een eigen geheugenbeeld hebben, voor de vergelijking met en zonder beeld. */
-  alleItems?: Leeritem[]
-  metBeeld?: Set<string>
-  /** Het voornemen uit de vorige reflectie, om te laten zien of het lukte. */
-  voornemen?: Voornemen | null
-  children?: ReactNode
-}
-
-export function Terugblik({ sessie, pogingen, vandaag, instellingen, alleItems, metBeeld, voornemen = null, children }: Props) {
-  const aanpak = beschrijfAanpak(sessie)
-  const vergelijking = alleItems && metBeeld ? vergelijkBeelden(alleItems, pogingen, metBeeld, instellingen) : null
-  const items = [...new Map(sessie.leeritems.map((i) => [i.id, i])).values()]
-  const zelf = items.filter((i) =>
-    sessie.pogingen.some((p) => p.leeritemId === i.id && p.oordeel === 'goed' && p.hulp === 'vrij opgehaald'),
-  )
-
+/** Bewijs uit deze sessie om op terug te kijken: de voorspelling en het voornemen (spec leren-leren, S1 en S4). */
+export function Bewijs({ sessie, voornemen = null }: { sessie: SessieToestand; voornemen?: Voornemen | null }) {
   return (
-    <section className="kaart">
-      <h2>Terugblik</h2>
-      <p className="landing">
-        {LANDING(sessie.pogingen.filter((p) => p.oordeel === 'goed' && p.hulp === 'vrij opgehaald' && !p.antwoordZelfToegevoegd).length)}
-      </p>
-      <p>
-        Zelf gelukt: <strong>{zelf.length}</strong> van de {items.length} {items.length === 1 ? 'woord' : 'woorden'}.
-      </p>
+    <>
       {(() => {
         const v = uitkomstVoorspelling(sessie)
         return v ? (
@@ -119,6 +93,38 @@ export function Terugblik({ sessie, pogingen, vandaag, instellingen, alleItems, 
           </p>
         ) : null
       })()}
+    </>
+  )
+}
+
+interface Props {
+  sessie: SessieToestand
+  pogingen: Poging[]
+  vandaag: string
+  instellingen: Instellingen
+  /** Alle leeritems en welke een eigen geheugenbeeld hebben, voor de vergelijking met en zonder beeld. */
+  alleItems?: Leeritem[]
+  metBeeld?: Set<string>
+  children?: ReactNode
+}
+
+export function Terugblik({ sessie, pogingen, vandaag, instellingen, alleItems, metBeeld, children }: Props) {
+  const aanpak = beschrijfAanpak(sessie)
+  const vergelijking = alleItems && metBeeld ? vergelijkBeelden(alleItems, pogingen, metBeeld, instellingen) : null
+  const items = [...new Map(sessie.leeritems.map((i) => [i.id, i])).values()]
+  const zelf = items.filter((i) =>
+    sessie.pogingen.some((p) => p.leeritemId === i.id && p.oordeel === 'goed' && p.hulp === 'vrij opgehaald'),
+  )
+
+  return (
+    <section className="kaart">
+      <h2>Terugblik</h2>
+      <p className="landing">
+        {LANDING(sessie.pogingen.filter((p) => p.oordeel === 'goed' && p.hulp === 'vrij opgehaald' && !p.antwoordZelfToegevoegd).length)}
+      </p>
+      <p>
+        Zelf gelukt: <strong>{zelf.length}</strong> van de {items.length} {items.length === 1 ? 'woord' : 'woorden'}.
+      </p>
       {aanpak && <p className="aanpak">🧭 {aanpak}</p>}
       {vergelijking?.genoeg && <BeeldvergelijkingTekst vergelijking={vergelijking} />}
       <ul className="terugblik">

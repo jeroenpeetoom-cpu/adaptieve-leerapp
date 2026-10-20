@@ -1506,3 +1506,15 @@ select.invoer {
   background: var(--zacht);
   color: var(--tekst);
 }
+
+/* Afsluitstap: de reflectievraag in beeld vóór het overzicht. */
+.afsluitstap h2 {
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+.reflectie-vraag {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 1rem 0 0.75rem;
+}

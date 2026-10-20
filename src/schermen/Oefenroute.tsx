@@ -30,7 +30,7 @@ import { PuntenErbij } from './Punten'
 import { ReflectieVraag } from './Reflectie'
 import type { Database } from '../opslag/database'
 import { OefenSessie } from './OefenSessie'
-import { Terugblik } from './Terugblik'
+import { Bewijs, Terugblik } from './Terugblik'
 
 type Weergave =
   | { soort: 'overzicht' }
@@ -74,6 +74,8 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
   const [laatsteReflectie, setLaatsteReflectie] = useState<Reflectie | null>(null)
   const [reflectieVariant, setReflectieVariant] = useState<Reflectievariant | null>(null)
   const [voornemen, setVoornemen] = useState<Voornemen | null>(null)
+  /** De sessie waarvoor de leerling de afsluitende reflectie al heeft gedaan of overgeslagen. */
+  const [reflectieGedaan, setReflectieGedaan] = useState<string | null>(null)
   const [vergelijkingen, setVergelijkingen] = useState<{ a: string; b: string; tijdstip: string }[]>([])
   const [vorigeVoorspelling, setVorigeVoorspelling] = useState<{ voorspeld: number; uitkomst: number; van: number; variant: number } | null>(null)
   /** De bron die de leerling koos om te oefenen; null is alles samen. "Nog een rondje" blijft daarbij. */
@@ -359,6 +361,31 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     )
   }
 
+  // Eerst de afsluitstap met het bewijs en de reflectievraag; pas daarna het overzicht, zodat het niet
+  // al afgerond voelt voordat hij heeft teruggekeken.
+  // Niet na een vrijwillige extra (zonder tijdslimiet): dan is er net al teruggekeken.
+  if (weergave.soort === 'klaar' && reflectieGedaan !== weergave.toestand.sessieId && weergave.toestand.budgetSec !== undefined) {
+    const sessieId = weergave.toestand.sessieId
+    return (
+      <section className="kaart afsluitstap">
+        <p className="vraaglabel">
+          <span className="chip">🏁 laatste stap van je missie</span>
+        </p>
+        <h2>Even terugkijken</h2>
+        <Bewijs sessie={weergave.toestand} voornemen={voornemen} />
+        <ReflectieVraag
+          key={sessieId}
+          vraag={weergave.reflectievraag}
+          onKies={(keuze) => {
+            void bewaarReflectie(sessieId, weergave.reflectievraag, keuze)
+            setTimeout(() => setReflectieGedaan(sessieId), 900)
+          }}
+          onOverslaan={() => setReflectieGedaan(sessieId)}
+        />
+      </section>
+    )
+  }
+
   if (weergave.soort === 'klaar') {
     return (
       <Terugblik
@@ -368,14 +395,8 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
         instellingen={instellingen}
         alleItems={leeritems}
         metBeeld={new Set(beelden.map((b) => b.leeritemId))}
-        voornemen={voornemen}
       >
         {weergave.erbij && <PuntenErbij erbij={weergave.erbij} totaal={weergave.totaal} />}
-        <ReflectieVraag
-          key={weergave.toestand.sessieId}
-          vraag={weergave.reflectievraag}
-          onKies={(keuze) => void bewaarReflectie(weergave.toestand.sessieId, weergave.reflectievraag, keuze)}
-        />
         {melding && <p className="feedback">{melding}</p>}
         {(() => {
           const s = samenstellingVoor(gekozenBron)

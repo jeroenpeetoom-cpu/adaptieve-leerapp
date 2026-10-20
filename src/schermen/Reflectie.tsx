@@ -5,7 +5,7 @@ import { VOLGENDE_STAPPEN, type Sessiereflectievraag } from '../leerlogica'
  * Na de sessie één korte vraag met bewijs uit eigen werk (spec leren-leren, S4). Wisselt per keer; altijd
  * over te slaan en nooit een bewijs voor voortgang.
  */
-export function ReflectieVraag({ vraag, onKies }: { vraag: Sessiereflectievraag; onKies: (keuze: string) => void }) {
+export function ReflectieVraag({ vraag, onKies, onOverslaan }: { vraag: Sessiereflectievraag; onKies: (keuze: string) => void; onOverslaan?: () => void }) {
   const [gekozen, setGekozen] = useState<string | null>(null)
   const [overgeslagen, setOvergeslagen] = useState(false)
   if (overgeslagen) return null
@@ -21,9 +21,7 @@ export function ReflectieVraag({ vraag, onKies }: { vraag: Sessiereflectievraag;
   }
   return (
     <div className="reflectie">
-      <p>
-        <strong>{vraag.vraag}</strong>
-      </p>
+      <p className="reflectie-vraag">{vraag.vraag}</p>
       <div className="opties-lijst">
         {vraag.keuzes.map((k) => (
           <button
@@ -38,7 +36,13 @@ export function ReflectieVraag({ vraag, onKies }: { vraag: Sessiereflectievraag;
           </button>
         ))}
       </div>
-      <button className="link" onClick={() => setOvergeslagen(true)}>
+      <button
+        className="link"
+        onClick={() => {
+          setOvergeslagen(true)
+          onOverslaan?.()
+        }}
+      >
         Overslaan
       </button>
     </div>
