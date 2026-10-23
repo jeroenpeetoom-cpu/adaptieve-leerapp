@@ -2,28 +2,32 @@
 // sessies vol zitten en op tijd worden afgerond. Simuleert 14 dagen met één sessie per dag.
 import { expect, it } from 'vitest'
 import {
-  afrondenNodig, beantwoord, berekenTempo, huidigLeeritem, isKlaar, kalenderdag, mengVolgorde, raad, raadvraagNodig, rondAf,
+  afrondenNodig, beantwoord, dagenTussen, haalbaarheid, repetitieVenster, berekenTempo, huidigLeeritem, isKlaar, kalenderdag, mengVolgorde, raad, raadvraagNodig, rondAf,
   startSessie, stelSessieSamen, STANDAARD_INSTELLINGEN, telDagenOp, volgende, type Leeritem, type Poging,
 } from './index'
 
-function simuleer(richtingen: 'een' | 'beide', minuten: number, zaad: number) {
+function simuleer(richtingen: 'een' | 'beide', minuten: number, zaad: number, woorden = 33) {
   let r = zaad
   const kans = () => ((r = (r * 1103515245 + 12345) % 2147483648) / 2147483648)
   const ins = { ...STANDAARD_INSTELLINGEN, sessieMinuten: minuten }
   const items: Leeritem[] = []
-  for (let i = 0; i < 33; i++) {
+  for (let i = 0; i < woorden; i++) {
     const lang = i % 5 === 0 ? 'een hele lange zin die je moet typen' : `woord${i}`
     items.push({ id: `w${i}-en`, soort: 'woordpaar', bronId: 'b', woordpaarId: `w${i}`, bronversie: 1, oefenrichting: { van: 'en', naar: 'nl' }, vraag: `en${i}`, toegestaneAntwoorden: [lang] })
     if (richtingen === 'beide') items.push({ id: `w${i}-nl`, soort: 'woordpaar', bronId: 'b', woordpaarId: `w${i}`, bronversie: 1, oefenrichting: { van: 'nl', naar: 'en' }, vraag: lang, toegestaneAntwoorden: [`en${i}`] })
   }
-  const start = '2026-10-01'
-  const toetsdag = telDagenOp(start, 14)
+  const toetsdag = '2026-11-15'
+  // Beginnen op precies de dag die de haalbaarheidscontrole aanraadt: zo bewijst de test dat het advies klopt.
+  const start = haalbaarheid(items, [], toetsdag, toetsdag, ins).beginUiterlijk
+  const dagenTotToets = dagenTussen(start, toetsdag)
+  const venster = repetitieVenster(items, ins)
   const pogingen: Poging[] = []
   const geleerd = new Map<string, number>()
-  for (let dag = 0; dag < 14; dag++) {
+  for (let dag = 0; dag < dagenTotToets; dag++) {
     const vandaag = telDagenOp(start, dag)
     let t = new Date(`${vandaag}T15:00:00Z`).getTime()
     const s = stelSessieSamen(items, pogingen, [{ bronId: 'b', toetsdag, afgerond: false }], vandaag, ins, berekenTempo(pogingen, ins))
+    if (process.env.SIMDEBUG) console.log(dag, 'rep', s.repetitie.length, 'her', s.herhalingen.length, 'nieuw', s.nieuw.length, 'min', s.minuten, 'tekort', s.tekort)
     let lijst = [...s.repetitie, ...s.herhalingen, ...s.nieuw]
     if (!lijst.length) continue
     const inT = new Set(s.toetsvorm)
@@ -64,20 +68,23 @@ function simuleer(richtingen: 'een' | 'beide', minuten: number, zaad: number) {
   for (const p of pogingen) laatst.set(p.leeritemId, kalenderdag(p.tijdstip, 'Europe/Amsterdam'))
   const dagen = new Map<string, Set<string>>()
   for (const p of pogingen) { if (!dagen.has(p.leeritemId)) dagen.set(p.leeritemId, new Set()); dagen.get(p.leeritemId)!.add(kalenderdag(p.tijdstip, 'Europe/Amsterdam')) }
-  const grens = telDagenOp(toetsdag, -3)
+  const grens = telDagenOp(toetsdag, -venster)
   const nietRecent = items.filter((i) => !laatst.get(i.id) || laatst.get(i.id)! < grens).length
   const gem = [...dagen.values()].reduce((a, d) => a + d.size, 0) / items.length
   const eenDag = items.filter((i) => (dagen.get(i.id)?.size ?? 0) <= 1).length
+  if (process.env.SIMDEBUG) console.log('niet recent:', items.filter((i) => !laatst.get(i.id) || laatst.get(i.id)! < grens).map((i) => `${i.id}@${laatst.get(i.id)}`).join(' '))
   return { nooit, aantalPogingen: pogingen.length, nietRecent, gem: gem.toFixed(1), eenDag }
 }
 
-it('elk woord komt vóór de toets langs, ook vlak ervoor en op meer dan één dag', () => {
+it('elk woord komt vóór de toets langs, in de laatste ronde en op meer dan één dag, ook bij 50 en 80 woorden', () => {
+  for (const n of [33, 50, 80])
   for (const r of ['een', 'beide'] as const)
     for (const m of [8, 12])
-      for (const z of [1, 2, 3, 4, 5, 6]) {
-        const u = simuleer(r, m, z)
-        expect(u.nooit, `${r} ${m} min, zaad ${z}`).toEqual([])
-        expect(u.nietRecent, `${r} ${m} min, zaad ${z}`).toBe(0)
-        expect(u.eenDag, `${r} ${m} min, zaad ${z}`).toBe(0)
+      for (const z of [1, 2, 3]) {
+        const u = simuleer(r, m, z, n)
+        if (process.env.SIMDEBUG) console.log(n, r, m, z, u)
+        expect(u.nooit, `${n} woorden ${r} ${m} min, zaad ${z}`).toEqual([])
+        expect(u.nietRecent, `${n} woorden ${r} ${m} min, zaad ${z}`).toBe(0)
+        expect(u.eenDag, `${n} woorden ${r} ${m} min, zaad ${z}`).toBe(0)
       }
-})
+}, 120_000)

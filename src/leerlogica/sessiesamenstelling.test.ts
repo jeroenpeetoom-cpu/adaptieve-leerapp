@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { STANDAARD_INSTELLINGEN, stelExtraSamen, stelSessieSamen, type BronInfo, type Leeritem, type Poging, type Tempo } from './index'
+import { haalbaarheid, repetitieVenster, STANDAARD_INSTELLINGEN, stelExtraSamen, stelSessieSamen, type BronInfo, type Leeritem, type Poging, type Tempo } from './index'
 
 const item = (id: string, bronId = 'b1'): Leeritem => ({
   id,
@@ -96,9 +96,9 @@ describe('sessiesamenstelling binnen een tijdsbudget', () => {
 })
 
 describe('planning voor een toets', () => {
-  it('verdeelt de nieuwe leeritems over de dagen tot 3 dagen vóór de toets, en laat de sessie zo nodig uitlopen', () => {
-    // 40 leeritems, toets over 7 dagen: 4 dagen om alles te leren, dus 10 per dag (15 minuten).
-    const s = samen(reeks(40), [], [bron({ toetsdag: '2026-10-08' })], '2026-10-01')
+  it('verdeelt de nieuwe leeritems over de dagen tot 4 dagen vóór de toets, en laat de sessie zo nodig uitlopen', () => {
+    // 40 leeritems, toets over 8 dagen: 4 dagen om alles te leren (daarna de laatste ronde), dus 10 per dag (15 minuten).
+    const s = samen(reeks(40), [], [bron({ toetsdag: '2026-10-09' })], '2026-10-01')
     expect(s.nieuw).toHaveLength(10)
     expect(s).toMatchObject({ minuten: 15, langer: true, tekort: false })
   })
@@ -116,29 +116,42 @@ describe('planning voor een toets', () => {
     expect(samen(reeks(20), [], [bron({ toetsdag: '2026-09-20' })], '2026-10-01').nieuw).toHaveLength(8)
   })
 
-  it('laat in de laatste 2 dagen alle geleerde leeritems één keer langskomen, verdeeld over die dagen', () => {
+  it('laat in de laatste 3 dagen alle geleerde leeritems één keer langskomen; de laatste dag is buffer', () => {
     // Toets op 10 oktober. Tien woorden op 3 oktober geleerd en op 5 oktober herhaald (volgende keer 8 oktober).
     const woorden = reeks(10, 'w')
     const pogingen = woorden.flatMap((w) => [geoefend(w.id, 3), geoefend(w.id, 5)])
     const toets = [bron({ toetsdag: '2026-10-10' })]
 
-    const dag8 = samen(woorden, pogingen, toets, '2026-10-08')
-    expect(dag8.repetitie).toHaveLength(5) // helft van de 10
-    // Ze waren op 8 oktober ook aan de beurt, maar komen niet dubbel.
-    expect(new Set([...ids(dag8.repetitie), ...ids(dag8.herhalingen)]).size).toBe(10)
+    // 7 oktober: de helft, verdeeld over de dagen vóór de laatste.
+    const dag7 = samen(woorden, pogingen, toets, '2026-10-07')
+    expect(dag7.repetitie).toHaveLength(5)
 
-    // Op 9 oktober komt de rest, ook als die nog niet aan de beurt is.
-    const na8 = [...pogingen, ...dag8.repetitie.map((w) => geoefend(w.id, 8))]
-    const dag9 = samen(woorden, na8, toets, '2026-10-09')
-    expect(ids(dag9.repetitie).sort()).toEqual(woorden.map((w) => w.id).filter((id) => !ids(dag8.repetitie).includes(id)).sort())
+    // 8 oktober: de rest, ook als die nog niet aan de beurt is, en niets dubbel.
+    const na7 = [...pogingen, ...dag7.repetitie.map((w) => geoefend(w.id, 7))]
+    const dag8 = samen(woorden, na7, toets, '2026-10-08')
+    expect(ids(dag8.repetitie).sort()).toEqual(woorden.map((w) => w.id).filter((id) => !ids(dag7.repetitie).includes(id)).sort())
+
+    // 9 oktober: buffer; alles is al geweest.
+    const na8 = [...na7, ...dag8.repetitie.map((w) => geoefend(w.id, 8))]
+    expect(samen(woorden, na8, toets, '2026-10-09').repetitie).toEqual([])
   })
 
-  it('doet geen generale repetitie op de toetsdag zelf of eerder dan 2 dagen van tevoren', () => {
+  it('doet geen generale repetitie op de toetsdag zelf of eerder dan 3 dagen van tevoren', () => {
     const woorden = reeks(4, 'w')
     const pogingen = woorden.map((w) => geoefend(w.id, 3))
     const toets = [bron({ toetsdag: '2026-10-10' })]
     expect(samen(woorden, pogingen, toets, '2026-10-10').repetitie).toEqual([])
-    expect(samen(woorden, pogingen, toets, '2026-10-07').repetitie).toEqual([])
+    expect(samen(woorden, pogingen, toets, '2026-10-06').repetitie).toEqual([])
+  })
+
+  it('maakt de laatste ronde langer bij een grote lijst, en schat haalbaarheid', () => {
+    const groot = reeks(160)
+    expect(repetitieVenster(groot, STANDAARD_INSTELLINGEN)).toBeGreaterThan(3)
+    expect(repetitieVenster(reeks(30), STANDAARD_INSTELLINGEN)).toBe(3)
+    const h = haalbaarheid(groot, [], '2026-10-15', '2026-10-01', STANDAARD_INSTELLINGEN)
+    expect(h.past).toBe(false)
+    expect(h.beginUiterlijk < '2026-10-01').toBe(true)
+    expect(haalbaarheid(reeks(20), [], '2026-10-15', '2026-10-01', STANDAARD_INSTELLINGEN).past).toBe(true)
   })
 })
 

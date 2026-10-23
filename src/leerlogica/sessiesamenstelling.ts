@@ -45,6 +45,58 @@ export interface Samenstelling {
   tekort: boolean
 }
 
+/** Deel van een sessie van 15 minuten dat de laatste ronde mag gebruiken; de rest blijft voor ander werk. */
+const DEEL_VOOR_LAATSTE_RONDE = 0.8
+/** Deel van een sessie dat voor nieuwe woorden beschikbaar is; de rest gaat naar herhalingen. */
+const DEEL_VOOR_NIEUW = 0.7
+
+/**
+ * Hoeveel dagen de laatste ronde vóór de toets duurt: minstens het ingestelde aantal, en langer als één
+ * keer alle leeritems herhalen niet in die dagen past (spec layout, beslissing 11).
+ */
+export function repetitieVenster(bronItems: Leeritem[], instellingen: Instellingen): number {
+  // Met de vaste schatting, niet het gemeten tempo: anders schuift het begin van de laatste ronde van dag
+  // tot dag mee, en valt er een woord tussen.
+  const vast: Tempo = { herhalingSec: instellingen.schattingHerhalingSec, nieuwSec: instellingen.schattingNieuwSec }
+  const totaal = bronItems.reduce((som, i) => som + duurHerhaling(vast, i.toegestaneAntwoorden[0]), 0)
+  const perDag = instellingen.maxSessieMinuten * 60 * DEEL_VOOR_LAATSTE_RONDE
+  return Math.max(instellingen.repetitieDagen, Math.ceil(totaal / perDag))
+}
+
+/** Zoveel dagen vóór de toets moeten alle nieuwe leeritems geleerd zijn: een dag vóór de laatste ronde. */
+export function klaarDagenVooraf(bronItems: Leeritem[], instellingen: Instellingen): number {
+  return Math.max(instellingen.toetsKlaarDagenVooraf, repetitieVenster(bronItems, instellingen) + 1)
+}
+
+export interface Haalbaarheid {
+  past: boolean
+  /** De laatste dag waarop de leerling moet beginnen om alles op tijd te leren. */
+  beginUiterlijk: string
+  nieuw: number
+}
+
+/**
+ * Past een lijst nog vóór de toets? Nieuwe woorden moeten geleerd zijn vóór de laatste ronde, met per dag
+ * ongeveer de helft van een sessie van 15 minuten voor nieuwe woorden.
+ */
+export function haalbaarheid(
+  bronItems: Leeritem[],
+  pogingen: Poging[],
+  toetsdag: string,
+  vandaag: string,
+  instellingen: Instellingen,
+  tempo: Tempo = berekenTempo(pogingen, instellingen),
+): Haalbaarheid {
+  const nieuw = bronItems.filter((i) => !pogingen.some((p) => p.leeritemId === i.id && p.bronversie === i.bronversie))
+  const nodig = nieuw.reduce((som, i) => som + duurNieuw(tempo, i.toegestaneAntwoorden[0]), 0)
+  const perDag = instellingen.maxSessieMinuten * 60 * DEEL_VOOR_NIEUW
+  const dagenNodig = Math.ceil(nodig / perDag)
+  const klaar = klaarDagenVooraf(bronItems, instellingen)
+  // Leerdagen: vandaag tot en met de dag vóór de laatste ronde.
+  const beschikbaar = Math.max(0, dagenTussen(vandaag, toetsdag) - klaar + 1)
+  return { past: dagenNodig <= beschikbaar, beginUiterlijk: telDagenOp(toetsdag, -(klaar - 1 + dagenNodig)), nieuw: nieuw.length }
+}
+
 /**
  * Stelt een sessie samen binnen een tijdsbudget:
  * 1. generale repetitie: in de laatste dagen vóór een toets komen alle leeritems van die bron één keer
@@ -85,6 +137,14 @@ export function stelSessieSamen(
     return true
   }
 
+  const vensterPerBron = new Map<string, { venster: number; klaar: number }>()
+  for (const bron of bronnen) {
+    const eigen = actief.filter((i) => i.bronId === bron.bronId)
+    vensterPerBron.set(bron.bronId, { venster: repetitieVenster(eigen, instellingen), klaar: klaarDagenVooraf(eigen, instellingen) })
+  }
+  const venster = (bronId: string) => vensterPerBron.get(bronId)?.venster ?? instellingen.repetitieDagen
+  const klaarVooraf = (bronId: string) => vensterPerBron.get(bronId)?.klaar ?? instellingen.toetsKlaarDagenVooraf
+
   const toetsOver = (bronId: string): number | null => {
     const toetsdag = bronPerId.get(bronId)?.toetsdag
     return toetsdag ? dagenTussen(vandaag, toetsdag) : null
@@ -100,8 +160,8 @@ export function stelSessieSamen(
   const repetitie: Leeritem[] = []
   for (const bron of bronnen) {
     const d = toetsOver(bron.bronId)
-    if (d === null || d < 1 || d > instellingen.repetitieDagen || bron.afgerond) continue
-    const start = telDagenOp(bron.toetsdag!, -instellingen.repetitieDagen)
+    if (d === null || d < 1 || d > venster(bron.bronId) || bron.afgerond) continue
+    const start = telDagenOp(bron.toetsdag!, -venster(bron.bronId))
     // Nog nooit geoefende leeritems komen hier niet: die komen als nieuw, met voorrang (stap 2).
     const nodig = actief
       .filter((i) => i.bronId === bron.bronId && planning.get(i.id)!.volgendeDag !== null)
@@ -110,7 +170,8 @@ export function stelSessieSamen(
         return laatst === null || kalenderdag(laatst, instellingen.tijdzone) < start
       })
       .sort((a, b) => Number(b.toetsstof ?? false) - Number(a.toetsstof ?? false) || (laatstGeoefend(a) ?? '').localeCompare(laatstGeoefend(b) ?? ''))
-    const quotum = Math.ceil(nodig.length / d)
+    // Verdeeld over de dagen vóór de laatste; de laatste dag is buffer voor wat nog over is.
+    const quotum = Math.ceil(nodig.length / Math.max(1, d - 1))
     for (const item of nodig.slice(0, quotum)) {
       const duur = duurHerhaling(tempo, item.toegestaneAntwoorden[0])
       if (gebruikt + duur > maximum) {
@@ -128,7 +189,7 @@ export function stelSessieSamen(
   //    sessie steeds dezelfde (laatste) woorden van de lijst liggen.
   const krap = (bronId: string) => {
     const d = toetsOver(bronId)
-    return d !== null && d >= 0 && d - instellingen.toetsKlaarDagenVooraf <= 1
+    return d !== null && d >= 0 && d - klaarVooraf(bronId) <= 1
   }
   const nogNieuw = actief
     .filter((i) => planning.get(i.id)!.volgendeDag === null && !inOnderhoud(i))
@@ -150,7 +211,7 @@ export function stelSessieSamen(
     const d = toetsOver(bron.bronId)
     if (d === null || d < 0 || bron.afgerond) continue
     const eigen = actief.filter((i) => i.bronId === bron.bronId && planning.get(i.id)!.volgendeDag === null)
-    const dagenOver = d - instellingen.toetsKlaarDagenVooraf
+    const dagenOver = d - klaarVooraf(bron.bronId)
     const quotum = dagenOver <= 0 ? eigen.length : Math.ceil(eigen.length / dagenOver)
     // Het quotum telt alle nieuwe leeritems, ook de moeilijke richting die nog moet wachten.
     for (const item of nogNieuw.filter((i) => i.bronId === bron.bronId).slice(0, quotum)) {

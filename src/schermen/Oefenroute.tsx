@@ -7,6 +7,7 @@ import {
   startSessie,
   stelExtraSamen,
   stelSessieSamen,
+  haalbaarheid,
   kiesVergelijking,
   metVergelijking,
   kiesSessiereflectie,
@@ -431,6 +432,21 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
       {boven}
       <section className="kaart">
         <h2>Vandaag</h2>
+        {bronnen
+          .filter((b) => b.toetsdag && b.toetsdag >= vandaag && !b.afgerond && !b.wachtOpReflectie)
+          .map((b) => {
+            // Past de lijst nog vóór de toets? Anders nu al zeggen, niet pas na de toets (spec layout, beslissing 11).
+            const h = haalbaarheid(leeritems.filter((i) => i.bronId === b.bronId), pogingen, b.toetsdag!, vandaag, instellingen)
+            if (h.past || h.nieuw === 0) return null
+            const datum = (dag: string) => new Date(`${dag}T12:00:00Z`).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' })
+            return (
+              <p key={b.bronId} className="feedback feedback-bijna" role="note">
+                📅 <strong>{bronnamen[b.bronId] ?? 'Deze lijst'}</strong>: nog {h.nieuw} {h.nieuw === 1 ? 'woord' : 'woorden'} om te leren
+                vóór de toets van {datum(b.toetsdag!)}. Dat past niet meer in één sessie per dag. Oefen elke dag, en doe na
+                afloop ook "Nog 3 vragen?". Om het rustig te halen had je uiterlijk {datum(h.beginUiterlijk)} moeten beginnen.
+              </p>
+            )
+          })}
         {basis.length === 0 ? (
           leeg
         ) : perBron.length + openSessies.length > 1 ? (
