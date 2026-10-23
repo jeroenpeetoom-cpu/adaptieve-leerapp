@@ -245,3 +245,21 @@ describe('na de toets', () => {
     expect(ids(s.nieuw)).not.toContain('nieuw-o')
   })
 })
+
+describe('vangnet vóór de toets', () => {
+  it('neemt vlak voor de toets een woord dat nog nooit geoefend is mee als nieuw, met voorrang', () => {
+    const s = samen([item('a'), item('nooit')], [geoefend('a', 1)], [bron({ toetsdag: '2026-10-11' })], '2026-10-10')
+    expect(ids(s.repetitie)).toEqual(['a'])
+    expect(ids(s.nieuw)).toEqual(['nooit'])
+    expect(s.voorrang).toEqual(['nooit'])
+  })
+
+  it('geeft nieuwe woorden voor een toets voorrang op gewone herhalingen', () => {
+    // Veel herhalingen die het hele budget zouden vullen, plus nieuwe woorden voor een toets.
+    const oud = reeks(60, 'h')
+    const pogingen = oud.map((i) => geoefend(i.id, 1))
+    const s = samen([...oud, ...reeks(10, 'n')], pogingen, [bron({ toetsdag: '2026-10-20' })], '2026-10-10')
+    expect(s.nieuw.length).toBeGreaterThan(0)
+    expect(s.voorrang.length).toBe(s.nieuw.length)
+  })
+})

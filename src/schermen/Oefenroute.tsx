@@ -216,7 +216,14 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     // Eerst de toetsronde (schoolvorm), dan de rest; elk deel door elkaar.
     const inToets = new Set(maximaal ? [] : gekozen.toetsvorm)
     const toetsItems = mengVolgorde(items.filter((i) => inToets.has(i.id)), sessieId)
-    items = [...toetsItems, ...mengVolgorde(items.filter((i) => !inToets.has(i.id)), sessieId)].slice(0, maximaal)
+    // Nieuwe woorden die een toets nodig heeft direct daarna, zodat afronden op tijd ze nooit wegknipt.
+    const voorrang = new Set(maximaal ? [] : gekozen.voorrang)
+    const rest = items.filter((i) => !inToets.has(i.id))
+    items = [
+      ...toetsItems,
+      ...mengVolgorde(rest.filter((i) => voorrang.has(i.id)), sessieId),
+      ...mengVolgorde(rest.filter((i) => !voorrang.has(i.id)), sessieId),
+    ].slice(0, maximaal)
     const strategiePerItem = Object.fromEntries(
       beelden.map((b) => [b.leeritemId, b.routeId ? ('geheugenroute' as const) : ('beelden koppelen' as const)]),
     )

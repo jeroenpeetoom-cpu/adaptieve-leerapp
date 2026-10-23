@@ -32,6 +32,11 @@ export interface Samenstelling {
    * geweten zijn en de vorige keer niet in toetsvorm kwamen (zo wisselt het af).
    */
   toetsvorm: string[]
+  /**
+   * Nieuwe leeritems die een toets nodig heeft. Die horen vooraan in de sessie, zodat afronden op tijd ze
+   * nooit wegknipt; anders kunnen de laatste woorden van een lijst wekenlang blijven liggen.
+   */
+  voorrang: string[]
   /** Geschatte duur in minuten, op het tempo van de leerling. */
   minuten: number
   /** De sessie duurt langer dan het budget, omdat een toets dat vraagt (nooit langer dan het maximum). */
@@ -97,6 +102,7 @@ export function stelSessieSamen(
     const d = toetsOver(bron.bronId)
     if (d === null || d < 1 || d > instellingen.repetitieDagen || bron.afgerond) continue
     const start = telDagenOp(bron.toetsdag!, -instellingen.repetitieDagen)
+    // Nog nooit geoefende leeritems komen hier niet: die komen als nieuw, met voorrang (stap 2).
     const nodig = actief
       .filter((i) => i.bronId === bron.bronId && planning.get(i.id)!.volgendeDag !== null)
       .filter((i) => {
@@ -118,30 +124,8 @@ export function stelSessieSamen(
     }
   }
 
-  // 2. Herhalingen binnen het budget.
-  const herhalingen: Leeritem[] = []
-  const aanDeBeurt = actief
-    .filter((i) => isAanDeBeurt(planning.get(i.id)!, vandaag))
-    // Toetsstof eerst, daarna de langst wachtende.
-    .sort(
-      (a, b) =>
-        Number(b.toetsstof ?? false) - Number(a.toetsstof ?? false) ||
-        planning.get(a.id)!.volgendeDag!.localeCompare(planning.get(b.id)!.volgendeDag!),
-    )
-  // Bronnen in onderhoud komen pas na al het andere, en met een paar per keer.
-  let onderhoud = 0
-  for (const item of [...aanDeBeurt.filter((i) => !inOnderhoud(i)), ...aanDeBeurt.filter(inOnderhoud)]) {
-    const duur = duurHerhaling(tempo, item.toegestaneAntwoorden[0])
-    if (gebruikt + duur > budget) break
-    if (inOnderhoud(item) && onderhoud >= ONDERHOUD_PER_SESSIE) break
-    if (neem(item)) {
-      herhalingen.push(item)
-      gebruikt += duur
-      if (inOnderhoud(item)) onderhoud++
-    }
-  }
-
-  // 3. Nieuwe leeritems: eerst wat een toets vraagt, dan tot het budget vol is.
+  // 2. Nieuwe leeritems die een toets vraagt, vóór de gewone herhalingen: anders blijven bij een volle
+  //    sessie steeds dezelfde (laatste) woorden van de lijst liggen.
   const krap = (bronId: string) => {
     const d = toetsOver(bronId)
     return d !== null && d >= 0 && d - instellingen.toetsKlaarDagenVooraf <= 1
@@ -150,6 +134,9 @@ export function stelSessieSamen(
     .filter((i) => planning.get(i.id)!.volgendeDag === null && !inOnderhoud(i))
     .filter((i) => !isMoeilijkeRichting(i) || krap(i.bronId) || makkelijkeKantOpgehaald(i, actief, pogingen))
   const nieuw: Leeritem[] = []
+  const toetsNieuw: Leeritem[] = []
+  /** Tijd voor nieuwe leeritems die een toets vraagt: die komt bovenop het budget, tot het maximum. */
+  let toetsTijd = 0
   const voegNieuwToe = (item: Leeritem, grens: number) => {
     const duur = duurNieuw(tempo, item.toegestaneAntwoorden[0])
     if (nieuw.length >= instellingen.maxNieuwPerSessie || gebruikt + duur > grens) return false
@@ -167,12 +154,43 @@ export function stelSessieSamen(
     const quotum = dagenOver <= 0 ? eigen.length : Math.ceil(eigen.length / dagenOver)
     // Het quotum telt alle nieuwe leeritems, ook de moeilijke richting die nog moet wachten.
     for (const item of nogNieuw.filter((i) => i.bronId === bron.bronId).slice(0, quotum)) {
+      const voor = nieuw.length
       if (!voegNieuwToe(item, maximum)) {
         tekort = true
         break
       }
+      if (nieuw.length > voor) {
+        toetsNieuw.push(item)
+        toetsTijd += duurNieuw(tempo, item.toegestaneAntwoorden[0])
+      }
     }
   }
+
+  // Herhalingen binnen het budget.
+  const herhalingen: Leeritem[] = []
+  const aanDeBeurt = actief
+    .filter((i) => isAanDeBeurt(planning.get(i.id)!, vandaag))
+    // Toetsstof eerst, daarna de langst wachtende.
+    .sort(
+      (a, b) =>
+        Number(b.toetsstof ?? false) - Number(a.toetsstof ?? false) ||
+        planning.get(a.id)!.volgendeDag!.localeCompare(planning.get(b.id)!.volgendeDag!),
+    )
+  // Bronnen in onderhoud komen pas na al het andere, en met een paar per keer.
+  let onderhoud = 0
+  for (const item of [...aanDeBeurt.filter((i) => !inOnderhoud(i)), ...aanDeBeurt.filter(inOnderhoud)]) {
+    const duur = duurHerhaling(tempo, item.toegestaneAntwoorden[0])
+    // Herhalingen houden hun gewone budget; de toets mag de sessie verlengen, nooit verder dan het maximum.
+    if (gebruikt - toetsTijd + duur > budget || gebruikt + duur > maximum) break
+    if (inOnderhoud(item) && onderhoud >= ONDERHOUD_PER_SESSIE) break
+    if (neem(item)) {
+      herhalingen.push(item)
+      gebruikt += duur
+      if (inOnderhoud(item)) onderhoud++
+    }
+  }
+
+  // 3. Daarna nieuwe leeritems tot het budget vol is.
   for (const item of nogNieuw) {
     if (!voegNieuwToe(item, budget)) break
   }
@@ -189,7 +207,8 @@ export function stelSessieSamen(
   ].map((i) => i.id)
 
   const minuten = Math.ceil(gebruikt / 60)
-  return { repetitie, herhalingen, nieuw, toetsvorm, minuten, langer: gebruikt > budget + 30, tekort }
+  const voorrang = toetsNieuw.map((i) => i.id)
+  return { repetitie, herhalingen, nieuw, toetsvorm, voorrang, minuten, langer: gebruikt > budget + 30, tekort }
 }
 
 /** Nederlands → vreemde taal en benoemen zijn moeilijker: de leerling moet het antwoord zelf maken. */
