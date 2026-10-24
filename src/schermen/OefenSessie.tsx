@@ -645,6 +645,7 @@ export function OefenSessie({
               key={`${item.id}-${toestand.huidige}`}
               regel={regel}
               vraag={vraag}
+              zaad={`${toestand.sessieId}-${toestand.huidige}-${item.id}`}
               steun={regelsteun(
                 item.regel.richting,
                 [...eerderePogingen.filter((p) => !toestand.pogingen.some((q) => q.id === p.id)), ...toestand.pogingen.slice(0, toestand.pogingen.length - toestand.pogingenBijHuidige)]

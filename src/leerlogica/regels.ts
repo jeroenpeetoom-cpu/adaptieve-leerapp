@@ -211,3 +211,42 @@ export function begripUitGetypt(regel: Regel, getypt: string): string | undefine
   const opLengte = [...regel.begrippen].sort((a, b) => b.vorm.length - a.vorm.length)
   return opLengte.find((b) => [b.vorm, ...(b.varianten ?? [])].some((v) => kaal(v) === g))?.id
 }
+
+/** Het begrip dat er het meest op lijkt: verschilt in precies één beslisvraag, met de valkuil voorop. */
+export function verwarbaarBegrip(regel: Regel, begripId: string): string {
+  const b = regel.begrippen.find((x) => x.id === begripId)!
+  const buren = regel.begrippen.filter((x) => x.id !== b.id && x.antwoorden.filter((a, i) => a !== b.antwoorden[i]).length === 1)
+  // can't en don't have to: allebei "niet", en precies dat haalt een Nederlandstalig kind door elkaar.
+  return (buren.find((x) => x.antwoorden.at(-1) === b.antwoorden.at(-1)) ?? buren[0]).id
+}
+
+export interface Zelfuitleg {
+  vraag: string
+  opties: { tekst: string; goed: boolean }[]
+}
+
+/**
+ * Een zelfuitlegvraag (spec regels, R3): waarom is het hier dit begrip en niet het begrip dat erop lijkt?
+ * De opties zijn de uitleg via de beslisvragen, dezelfde uitleg voor het andere begrip, en de bekende
+ * denkfout dat "niet" altijd "mag niet" betekent.
+ */
+export function maakZelfuitleg(regel: Regel, begripId: string, zaad: string): Zelfuitleg {
+  const b = regel.begrippen.find((x) => x.id === begripId)!
+  const ander = regel.begrippen.find((x) => x.id === verwarbaarBegrip(regel, begripId))!
+  const uitleg = (x: Begrip) => `Het gaat om ${x.antwoorden[0]}, en het is ${x.antwoorden[1]}: ${x.betekenis}.`
+  const opties = [
+    { tekst: uitleg(b), goed: true },
+    { tekst: uitleg(ander), goed: false },
+    { tekst: 'Als er "niet" in staat, is het altijd verboden.', goed: false },
+  ]
+  const kans = zaadKans(zaad)
+  return {
+    vraag: `Waarom is het hier "${b.vorm}" en niet "${ander.vorm}"?`,
+    opties: opties.map((o) => ({ o, k: kans() })).sort((x, y) => x.k - y.k).map((x) => x.o),
+  }
+}
+
+/** Af en toe een zelfuitleg na een goed antwoord zonder steun: ongeveer één op de drie keer, vast per zaad. */
+export function zelfuitlegNu(zaad: string): boolean {
+  return zaadKans(`${zaad}-uitleg`)() < 1 / 3
+}

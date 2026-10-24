@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { begripUitGetypt, maakRegelvraag, regelfeedback, type Poging, type Regel, type Regelsteun, type Regelvraag, type Werkwoord } from '../leerlogica'
+import { begripUitGetypt, maakRegelvraag, maakZelfuitleg, regelfeedback, zelfuitlegNu, type Poging, type Regel, type Regelsteun, type Regelvraag, type Werkwoord } from '../leerlogica'
 import { Voorleesknop } from '../weergave/voorlezen'
 
 /** Het schema van een regel met twee beslisvragen: kolommen voor de eerste vraag, rijen voor de tweede. */
@@ -90,6 +90,7 @@ export function RegelLes({ regel, werkwoorden, onKlaar }: { regel: Regel; werkwo
           <p className="steuntje">
             <strong>Ik denk even hardop:</strong> {regel.hardop}
           </p>
+          <p className="gedempt">📐 Nieuw in je gereedschapskist: schema met beslisvragen. Handig bij elke regel met woorden die op elkaar lijken.</p>
           <button className="knop knop-breed" autoFocus onClick={() => setStap(2)}>
             Verder
           </button>
@@ -183,6 +184,7 @@ export function RegelVraag({
   regel,
   vraag,
   steun,
+  zaad,
   laatste,
   afgesloten,
   bezig,
@@ -193,6 +195,8 @@ export function RegelVraag({
   regel: Regel
   vraag: Regelvraag
   steun: Regelsteun
+  /** Vast per vraag, voor de keuze of er een zelfuitleg komt. */
+  zaad: string
   laatste: Poging | undefined
   afgesloten: boolean
   bezig: boolean
@@ -203,6 +207,7 @@ export function RegelVraag({
 }) {
   const [keuzes, setKeuzes] = useState<string[]>([])
   const [getypt, setGetypt] = useState('')
+  const [uitleg, setUitleg] = useState<number | null>(null)
   const gekozen = gekozenBegrip(regel, laatste)
   const tekstVan = (id: string) => {
     const b = regel.begrippen.find((x) => x.id === id)!
@@ -248,12 +253,43 @@ export function RegelVraag({
       </p>
       {afgesloten && laatste ? (
         <div className={`feedback ${laatste.oordeel === 'goed' ? 'feedback-goed' : ''}`} role="status">
-          {laatste.oordeel === 'goed' ? (
+          {laatste.oordeel === 'goed' && (
             <p>
               {steun === 'kiezen' || steun === 'typen' ? 'Goed zo, helemaal zelf!' : 'Goed! Met de twee vragen kom je er steeds.'} "
               {regel.begrippen.find((b) => b.id === vraag.goed)!.vorm}" = {regel.begrippen.find((b) => b.id === vraag.goed)!.betekenis}.
             </p>
-          ) : (
+          )}
+          {laatste.oordeel === 'goed' && (steun === 'kiezen' || steun === 'typen') && zelfuitlegNu(zaad) && (() => {
+            // Zelfuitleg (R3): waarom dit begrip en niet het begrip dat erop lijkt?
+            const z = maakZelfuitleg(regel, vraag.goed, zaad)
+            return (
+              <div className="zelfuitleg">
+                <p>
+                  <strong>🤔 {z.vraag}</strong>
+                </p>
+                <div className="opties-lijst">
+                  {z.opties.map((o, i) => (
+                    <button
+                      key={o.tekst}
+                      className={`knop knop-rustig optie ${uitleg === i ? (o.goed ? 'uitleg-goed' : 'uitleg-mis') : ''}`}
+                      disabled={uitleg !== null}
+                      onClick={() => setUitleg(i)}
+                    >
+                      {o.tekst}
+                    </button>
+                  ))}
+                </div>
+                {uitleg !== null && (
+                  <p className="gedempt">
+                    {z.opties[uitleg].goed
+                      ? 'Precies. Zo kun je het ook aan een ander uitleggen.'
+                      : `Niet helemaal. ${z.opties.find((o) => o.goed)!.tekst}`}
+                  </p>
+                )}
+              </div>
+            )
+          })()}
+          {laatste.oordeel !== 'goed' && (
             <>
               <p>{gekozen ? regelfeedback(regel, vraag.goed, gekozen) : `Het is "${regel.begrippen.find((b) => b.id === vraag.goed)!.vorm}".`}</p>
               <Regelschema regel={regel} uitgelicht={vraag.goed} />

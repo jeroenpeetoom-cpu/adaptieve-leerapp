@@ -2,7 +2,7 @@
 // zet en hoe je controleert of hij geholpen heeft. Ophalen en gespreid herhalen doet de app al bij elke
 // vraag; de leerling leert ze hier ook als eigen gereedschap kennen.
 
-export type Gereedschap = 'ophalen' | 'herhalen' | 'beelden koppelen' | 'geheugenroute'
+export type Gereedschap = 'ophalen' | 'herhalen' | 'beelden koppelen' | 'geheugenroute' | 'schema'
 
 export interface Strategiekaart {
   emoji: string
@@ -52,9 +52,18 @@ export const STRATEGIEKAARTEN: Record<Gereedschap, Strategiekaart> = {
     controle: 'Kun je de woorden ook noemen zonder de route te lopen? Dan zitten ze erin.',
     hardop: 'Ik moet een heel rijtje onthouden, dus ik maak een route. Daarna test ik mezelf zonder te kijken.',
   },
+  schema: {
+    emoji: '📐',
+    naam: 'Schema met beslisvragen',
+    wat: 'Je zet begrippen die op elkaar lijken in een schema, en kiest met een paar vaste vragen welk begrip past.',
+    wanneer: 'Bij een regel met begrippen die je door elkaar haalt, zoals can en have to.',
+    stappen: ['Zet de begrippen in een schema met wat ze betekenen.', 'Bedenk een paar vragen die het verschil maken.', 'Stel bij elke nieuwe zin die vragen, en kies dan.'],
+    controle: 'Kies je ook in een zin die je nog nooit zag het goede begrip, zonder de vragen? Dan snap je de regel.',
+    hardop: 'Deze woorden lijken op elkaar en ik haal ze door elkaar, dus ik maak een schema en stel mezelf steeds dezelfde vragen.',
+  },
 }
 
-export const GEREEDSCHAP: Gereedschap[] = ['ophalen', 'herhalen', 'beelden koppelen', 'geheugenroute']
+export const GEREEDSCHAP: Gereedschap[] = ['ophalen', 'herhalen', 'beelden koppelen', 'geheugenroute', 'schema']
 
 /** Eén strategiekaart, in te klappen. */
 export function StrategieKaart({ id, status, open = false }: { id: Gereedschap; status?: string; open?: boolean }) {

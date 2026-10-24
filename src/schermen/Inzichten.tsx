@@ -170,14 +170,25 @@ export function Inzichten({ onTerug }: { onTerug: () => void }) {
           )
         })()}
         <h3>🧰 Je gereedschapskist</h3>
-        <p className="gedempt">Vier aanpakken die je kunt kiezen. Tik op een aanpak om te zien hoe hij werkt.</p>
+        <p className="gedempt">Aanpakken die je kunt kiezen. Tik op een aanpak om te zien hoe hij werkt.</p>
         {GEREEDSCHAP.map((g) => {
           const status =
             g === 'ophalen'
               ? `Dit doe je bij elke vraag. ${items.filter((i) => statusVan.get(i.id) !== 'nog aan het leren').length} woorden en plekken haalde je al zelf terug.`
               : g === 'herhalen'
                 ? `De app plant dit voor je. Je oefende op ${new Set(pogingen.map((p) => kalenderdag(p.tijdstip, instellingen.tijdzone))).size} verschillende dagen.`
-                : (() => {
+                : g === 'schema'
+                  ? (() => {
+                      // Van voorgedaan (de les) via met steun (de beslisvragen) naar helemaal zelf.
+                      const regelIds = new Set(items.filter((i) => i.regel).map((i) => i.id))
+                      const eigen = pogingen.filter((p) => regelIds.has(p.leeritemId) && p.oordeel === 'goed')
+                      const regels = new Set(items.filter((i) => i.regel).map((i) => i.regel!.regelId)).size
+                      if (regels === 0) return 'Nog niet gebruikt. Je leert het bij je eerste regel.'
+                      const zelf = eigen.filter((p) => p.hulp === 'vrij opgehaald').length
+                      const metSteun = eigen.length - zelf
+                      return `Je gebruikt dit bij ${regels} ${regels === 1 ? 'regel' : 'regels'}: ${metSteun} keer goed met de beslisvragen, ${zelf} keer helemaal zelf.`
+                    })()
+                  : (() => {
                     const stap = berekenStrategiestap(g, keuzes, geleerd, instellingen.drempelZelfGemaakt)
                     const laatste = [...redenen].reverse().find((r) => r.strategie === g)
                     const tekst = laatste && KEUZEREDENEN[g].find((k) => k.id === laatste.reden)?.tekst

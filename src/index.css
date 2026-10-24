@@ -1617,3 +1617,19 @@ select.invoer {
   padding-top: 0.5rem;
   margin-top: 0.5rem;
 }
+
+.zelfuitleg {
+  border-top: 1px solid var(--rand);
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+}
+
+.optie.uitleg-goed {
+  border-color: var(--succes);
+  background: var(--succes-zacht);
+}
+
+.optie.uitleg-mis {
+  border-color: var(--herstel);
+  background: var(--herstel-zacht);
+}

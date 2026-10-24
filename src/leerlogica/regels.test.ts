@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { begripUitGetypt, maakRegelvraag, regelfeedback, regelMetId, regelsteun, stelRegelsVoor, werkwoordenUitLijst } from './index'
+import { begripUitGetypt, maakRegelvraag, maakZelfuitleg, regelfeedback, regelMetId, regelsteun, stelRegelsVoor, verwarbaarBegrip, werkwoordenUitLijst } from './index'
 
 const regel = regelMetId('can-have-to')!
 
@@ -82,5 +82,20 @@ describe('steun afbouwen', () => {
     expect(begripUitGetypt(regel, 'cannot')).toBe('cant')
     expect(begripUitGetypt(regel, 'have to')).toBe('have-to')
     expect(begripUitGetypt(regel, 'must')).toBeUndefined()
+  })
+})
+
+describe('zelfuitleg', () => {
+  it('kiest bij don\'t have to het begrip waar het mee verward wordt', () => {
+    expect(verwarbaarBegrip(regel, 'dont-have-to')).toBe('cant')
+    expect(verwarbaarBegrip(regel, 'cant')).toBe('dont-have-to')
+  })
+
+  it('heeft één goede uitleg via de beslisvragen, en de bekende denkfout als afleider', () => {
+    const z = maakZelfuitleg(regel, 'dont-have-to', 'z')
+    expect(z.vraag).toContain("\"don't have to\" en niet \"can't\"")
+    expect(z.opties.filter((o) => o.goed)).toHaveLength(1)
+    expect(z.opties.find((o) => o.goed)!.tekst).toContain('moeten')
+    expect(z.opties.some((o) => o.tekst.includes('altijd verboden'))).toBe(true)
   })
 })
