@@ -2,11 +2,11 @@
 // sessies vol zitten en op tijd worden afgerond. Simuleert 14 dagen met één sessie per dag.
 import { expect, it } from 'vitest'
 import {
-  afrondenNodig, beantwoord, dagenTussen, haalbaarheid, repetitieVenster, berekenTempo, huidigLeeritem, isKlaar, kalenderdag, mengVolgorde, raad, raadvraagNodig, rondAf,
+  afrondenNodig, beantwoord, REGELS, dagenTussen, haalbaarheid, repetitieVenster, berekenTempo, huidigLeeritem, isKlaar, kalenderdag, mengVolgorde, raad, raadvraagNodig, rondAf,
   startSessie, stelSessieSamen, STANDAARD_INSTELLINGEN, telDagenOp, volgende, type Leeritem, type Poging,
 } from './index'
 
-function simuleer(richtingen: 'een' | 'beide', minuten: number, zaad: number, woorden = 33) {
+function simuleer(richtingen: 'een' | 'beide', minuten: number, zaad: number, woorden = 33, metRegel = false) {
   let r = zaad
   const kans = () => ((r = (r * 1103515245 + 12345) % 2147483648) / 2147483648)
   const ins = { ...STANDAARD_INSTELLINGEN, sessieMinuten: minuten }
@@ -17,6 +17,16 @@ function simuleer(richtingen: 'een' | 'beide', minuten: number, zaad: number, wo
     if (richtingen === 'beide') items.push({ id: `w${i}-nl`, soort: 'woordpaar', bronId: 'b', woordpaarId: `w${i}`, bronversie: 1, oefenrichting: { van: 'nl', naar: 'en' }, vraag: lang, toegestaneAntwoorden: [`en${i}`] })
   }
   const toetsdag = '2026-11-15'
+  // Een regel met vier begrippen, elk begrijpen en toepassen (zoals leeritemsVanRegels ze maakt).
+  if (metRegel)
+    for (const b of REGELS[0].begrippen)
+      for (const richting of ['begrijpen', 'toepassen'] as const)
+        items.push({
+          id: `regel:${b.id}:${richting}`, soort: 'regel', bronId: 'b', woordpaarId: `regel:${b.id}`, bronversie: 1,
+          oefenrichting: richting === 'begrijpen' ? { van: 'en', naar: 'nl' } : { van: 'nl', naar: 'en' },
+          vraag: richting === 'begrijpen' ? b.vorm : b.betekenis, toegestaneAntwoorden: [richting === 'begrijpen' ? b.betekenis : b.vorm],
+          regel: { regelId: REGELS[0].id, begrip: b.id, richting },
+        })
   // Beginnen op precies de dag die de haalbaarheidscontrole aanraadt: zo bewijst de test dat het advies klopt.
   const start = haalbaarheid(items, [], toetsdag, toetsdag, ins).beginUiterlijk
   const dagenTotToets = dagenTussen(start, toetsdag)
@@ -77,14 +87,15 @@ function simuleer(richtingen: 'een' | 'beide', minuten: number, zaad: number, wo
 }
 
 it('elk woord komt vóór de toets langs, in de laatste ronde en op meer dan één dag, ook bij 50 en 80 woorden', () => {
-  for (const n of [33, 50, 80])
+  for (const metRegel of [false, true])
+  for (const n of metRegel ? [33] : [33, 50, 80])
   for (const r of ['een', 'beide'] as const)
     for (const m of [8, 12])
       for (const z of [1, 2, 3]) {
-        const u = simuleer(r, m, z, n)
+        const u = simuleer(r, m, z, n, metRegel)
         if (process.env.SIMDEBUG) console.log(n, r, m, z, u)
-        expect(u.nooit, `${n} woorden ${r} ${m} min, zaad ${z}`).toEqual([])
-        expect(u.nietRecent, `${n} woorden ${r} ${m} min, zaad ${z}`).toBe(0)
-        expect(u.eenDag, `${n} woorden ${r} ${m} min, zaad ${z}`).toBe(0)
+        expect(u.nooit, `${n} woorden${metRegel ? ' met regel' : ''} ${r} ${m} min, zaad ${z}`).toEqual([])
+        expect(u.nietRecent, `${n} woorden${metRegel ? ' met regel' : ''} ${r} ${m} min, zaad ${z}`).toBe(0)
+        expect(u.eenDag, `${n} woorden${metRegel ? ' met regel' : ''} ${r} ${m} min, zaad ${z}`).toBe(0)
       }
 }, 120_000)

@@ -77,6 +77,7 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
   const [voornemen, setVoornemen] = useState<Voornemen | null>(null)
   /** De sessie waarvoor de leerling de afsluitende reflectie al heeft gedaan of overgeslagen. */
   const [reflectieGedaan, setReflectieGedaan] = useState<string | null>(null)
+  const [regelLessen, setRegelLessen] = useState<string[]>([])
   const [vergelijkingen, setVergelijkingen] = useState<{ a: string; b: string; tijdstip: string }[]>([])
   const [vorigeVoorspelling, setVorigeVoorspelling] = useState<{ voorspeld: number; uitkomst: number; van: number; variant: number } | null>(null)
   /** De bron die de leerling koos om te oefenen; null is alles samen. "Nog een rondje" blijft daarbij. */
@@ -101,6 +102,7 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     setLaatsteReflectie(await db.leesMeta<Reflectie | null>('laatsteReflectie', null))
     setReflectieVariant(await db.leesMeta<Reflectievariant | null>('reflectieVariant', null))
     setVoornemen(await db.leesMeta<Voornemen | null>('voornemen', null))
+    setRegelLessen(await db.leesMeta<string[]>('regelLessen', []))
     setVergelijkingen(await db.leesMeta<{ a: string; b: string; tijdstip: string }[]>('vergelijkingen', []))
     setStrategiePerBron(await db.leesMeta<Record<string, Strategie | 'geen'>>('strategiePerBron', {}))
     setVoorgedaan(await db.leesMeta<Strategie[]>('voorgedaan', []))
@@ -359,6 +361,12 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
           kaarten={kaarten}
           vorigeVoorspelling={vorigeVoorspelling}
           voornemen={voornemen}
+          regelLessen={regelLessen}
+          onRegelLes={(regelId) => {
+            const nieuw = [...new Set([...regelLessen, regelId])]
+            setRegelLessen(nieuw)
+            void db.schrijfMeta('regelLessen', nieuw)
+          }}
           strategiePerBron={strategiePerBron}
           voorgedaan={voorgedaan}
           onKiesStrategie={kiesStrategie}

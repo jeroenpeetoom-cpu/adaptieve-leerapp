@@ -4,7 +4,8 @@ import { splits, splitsbareWoorden, voegSamen } from '../bronnen/bewerken'
 import { kanBevestigen, nogTeBekijken } from '../bronnen/leeritems'
 import type { Bron, Bronpagina, Woordpaar } from '../bronnen/model'
 import { controleerBestand, herken } from '../herkenning/herkenner'
-import { isInhoudelijkeWijziging, type Strategie } from '../leerlogica'
+import { isInhoudelijkeWijziging, REGELS, regelMetId, stelRegelsVoor, type Strategie } from '../leerlogica'
+import { Regelschema } from './Regel'
 import { echteDb } from '../opslag/database'
 import { verwijderBron } from '../opslag/verwijderen'
 import { legStrategieVast } from '../opslag/strategie'
@@ -333,6 +334,27 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
     await echteDb.bronnen.update(bronId, velden)
   }
 
+  /**
+   * Een regel toevoegen (spec regels): de zinnen van de lijst met een vorm van de regel worden voorbeelden en
+   * geen vertaalzinnen meer; de leerling oefent voortaan het begrip toepassen.
+   */
+  async function voegRegelToe(regelId: string) {
+    if (!bron) return
+    const regel = regelMetId(regelId)!
+    await wijzigBron({ regels: [...new Set([...(bron.regels ?? []), regelId])] })
+    const voorbeelden = paren.filter((wp) => wp.bevestigd && regel.herken.test(wp.woord) && /[.?!]$|^[A-Z]/.test(wp.woord.trim()))
+    for (const wp of voorbeelden) await echteDb.woordparen.update(wp.id, { regelvoorbeeld: regelId })
+    setParen((p) => p.map((wp) => (voorbeelden.some((v) => v.id === wp.id) ? { ...wp, regelvoorbeeld: regelId } : wp)))
+  }
+
+  async function verwijderRegel(regelId: string) {
+    if (!bron) return
+    await wijzigBron({ regels: (bron.regels ?? []).filter((r) => r !== regelId) })
+    const voorbeelden = paren.filter((wp) => wp.regelvoorbeeld === regelId)
+    for (const wp of voorbeelden) await echteDb.woordparen.update(wp.id, { regelvoorbeeld: undefined })
+    setParen((p) => p.map((wp) => (wp.regelvoorbeeld === regelId ? { ...wp, regelvoorbeeld: undefined } : wp)))
+  }
+
   async function kiesStrategie(nieuw: Strategie | 'geen') {
     await legStrategieVast(echteDb, bronId, nieuw, new Date().toISOString())
     setStrategie(nieuw)
@@ -634,6 +656,57 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
           {open.some((wp) => wp.woord.trim() === '' || wp.betekenis.trim() === '') && (
             <p className="feedback">Vul bij elk woordpaar beide kanten in, of verwijder het.</p>
           )}
+        </section>
+      )}
+
+      {bevestigd.length > 0 && (
+        <section className="kaart">
+          <h2>📐 Regels</h2>
+          <p className="gedempt">
+            Staat er op het blad een regel, zoals wanneer je can of have to gebruikt? Dan oefent de app het begrip toepassen in
+            steeds nieuwe zinnen, in plaats van de voorbeeldzinnen te vertalen.
+          </p>
+          {(bron.regels ?? []).map((id) => {
+            const r = regelMetId(id)
+            if (!r) return null
+            return (
+              <div key={id} className="regel-in-bron">
+                <p>
+                  <strong>✅ {r.titel}</strong>
+                  {' · '}
+                  {paren.filter((wp) => wp.regelvoorbeeld === id).length} voorbeeldzinnen
+                </p>
+                <Regelschema regel={r} />
+                <button className="link" onClick={() => void verwijderRegel(id)}>
+                  Regel weghalen
+                </button>
+              </div>
+            )
+          })}
+          {(() => {
+            const voorgesteld = stelRegelsVoor(bevestigd.map((wp) => wp.woord)).filter((r) => !(bron.regels ?? []).includes(r.id))
+            const overig = REGELS.filter((r) => !(bron.regels ?? []).includes(r.id) && !voorgesteld.includes(r))
+            return (
+              <>
+                {voorgesteld.map((r) => (
+                  <div key={r.id} className="feedback feedback-bijna">
+                    <p>
+                      Deze lijst heeft zinnen met <strong>{r.begrippen.map((b) => b.vorm).join(', ')}</strong>. Wil je de regel{' '}
+                      <strong>{r.titel}</strong> toevoegen?
+                    </p>
+                    <button className="knop" onClick={() => void voegRegelToe(r.id)}>
+                      📐 Regel toevoegen
+                    </button>
+                  </div>
+                ))}
+                {overig.map((r) => (
+                  <button key={r.id} className="knop knop-rustig" onClick={() => void voegRegelToe(r.id)}>
+                    📐 {r.titel} toevoegen
+                  </button>
+                ))}
+              </>
+            )
+          })()}
         </section>
       )}
 

@@ -105,7 +105,8 @@ function laatsteOordeel(toestand: Pick<SessieToestand, 'pogingen' | 'laatsteOord
 }
 
 function vormVoor(toestand: Pick<SessieToestand, 'pogingen' | 'laatsteOordeelVooraf'>, item?: Leeritem): Vorm {
-  if (!item) return 'typen'
+  // Een regelvraag is altijd kiezen uit de begrippen; dat is de oefening zelf, geen opstap.
+  if (!item || item.regel) return 'typen'
   const oordeel = laatsteOordeel(toestand, item.id)
   return oordeel === 'fout' || oordeel === 'niet geweten' ? 'meerkeuze' : 'typen'
 }
@@ -243,7 +244,8 @@ export function isNieuwLeeritem(toestand: SessieToestand, itemId: string): boole
 export function leermomentNodig(toestand: SessieToestand): boolean {
   const item = huidigLeeritem(toestand)
   const laatste = laatstePogingHier(toestand)
-  if (!item || !laatste || !toestand.afgesloten || laatste.oordeel === 'goed') return false
+  // Bij een regel legt de feedback de regel uit; de eerste les komt apart, vóór de eerste regelvraag.
+  if (!item || item.regel || !laatste || !toestand.afgesloten || laatste.oordeel === 'goed') return false
   const eerdereHier = toestand.pogingen.slice(0, -toestand.pogingenBijHuidige).some((p) => p.leeritemId === item.id)
   return isNieuwLeeritem(toestand, item.id) && !eerdereHier
 }
@@ -252,7 +254,7 @@ export function leermomentNodig(toestand: SessieToestand): boolean {
 export function raadvraagNodig(toestand: SessieToestand): boolean {
   const item = huidigLeeritem(toestand)
   if (!item || toestand.afgesloten || toestand.pogingenBijHuidige > 0 || toestand.vorm !== 'typen') return false
-  if (item.plek?.richting === 'aanwijzen') return false
+  if (item.plek?.richting === 'aanwijzen' || item.regel) return false
   if (toestand.hulp !== 'vrij opgehaald') return false
   return (
     isNieuwLeeritem(toestand, item.id) &&
@@ -319,6 +321,8 @@ export function beantwoord(
   const voorkennischeck = isNieuwLeeritem(toestand, item.id) && !toestand.pogingen.some((p) => p.leeritemId === item.id)
   const nieuweKans =
     !inToetsronde(toestand) &&
+    // Bij een regel volgt meteen de uitleg; nog eens kiezen uit dezelfde vier zou het antwoord weggeven.
+    !item.regel &&
     (oordeel === 'bijna' || (oordeel === 'fout' && !voorkennischeck)) &&
     toestand.vorm === 'typen' &&
     toestand.pogingenBijHuidige === 0 &&

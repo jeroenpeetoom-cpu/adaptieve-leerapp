@@ -24,6 +24,9 @@ import {
   leermomentNodig,
   nogTeGaan,
   optiesVoor,
+  maakRegelvraag,
+  regelMetId,
+  werkwoordenUitLijst,
   lijktIngesproken,
   vergelijkStap,
   type Voornemen,
@@ -57,6 +60,7 @@ import { Aanwijzen } from './Aanwijzen'
 import { KaartUitsnede } from './KaartUitsnede'
 import { Leermoment } from './Leermoment'
 import { Voorspellen } from './Voorspellen'
+import { RegelLes, RegelVraag } from './Regel'
 
 const TAALNAAM = { en: 'Engels', nl: 'Nederlands' } as const
 
@@ -95,6 +99,9 @@ interface Props {
   vorigeVoorspelling?: { voorspeld: number; uitkomst: number; van: number; variant: number } | null
   /** Een voornemen bij één leeritem uit een eerdere reflectie, om te laten zien als dat leeritem komt. */
   voornemen?: Voornemen | null
+  /** Regels waarvan de leerling de eerste les al heeft gehad. */
+  regelLessen?: string[]
+  onRegelLes?: (regelId: string) => void
 }
 
 /**
@@ -240,6 +247,8 @@ export function OefenSessie({
   kaarten,
   vorigeVoorspelling = null,
   voornemen = null,
+  regelLessen = [],
+  onRegelLes,
 }: Props) {
   const [toestand, setToestand] = useState(begintoestand)
   const [antwoord, setAntwoord] = useState('')
@@ -603,6 +612,60 @@ export function OefenSessie({
           </>
         )}
         {!leermoment && sterrenNaAntwoord}
+      </section>
+    )
+  }
+
+  // Een regel (spec regels): eerst één keer de les, daarna steeds een nieuwe zin om het begrip toe te passen.
+  const regel = item.regel ? regelMetId(item.regel.regelId) : undefined
+  if (item.regel && regel) {
+    const werkwoorden = werkwoordenUitLijst(
+      bronItems
+        .filter((i) => i.bronId === item.bronId && i.soort === 'woordpaar' && i.oefenrichting.van === 'en')
+        .map((i) => ({ woord: i.vraag, betekenis: i.toegestaneAntwoorden[0] })),
+    )
+    const lesGehad = regelLessen.includes(regel.id)
+    // Vast per plek in de sessie, zodat de zin na het antwoord en bij hervatten dezelfde blijft.
+    const vraag = maakRegelvraag(regel, item.regel.begrip, item.regel.richting, werkwoorden, `${toestand.sessieId}-${toestand.huidige}-${item.id}`)
+    return (
+      <section className="kaart sessie" ref={sessieRef}>
+        {bovenregel}
+        {toets && <Toetsbanner toestand={toestand} />}
+        {!lesGehad && !toets ? (
+          <RegelLes regel={regel} werkwoorden={werkwoorden} onKlaar={() => onRegelLes?.(regel.id)} />
+        ) : (
+          <>
+            <p className="vraaglabel">
+              <span className="chip">📐 {regel.titel}</span>
+              <span>{item.regel.richting === 'begrijpen' ? 'begrijpen' : 'toepassen'}</span>
+            </p>
+            <RegelVraag
+              regel={regel}
+              vraag={vraag}
+              laatste={laatste}
+              afgesloten={toestand.afgesloten}
+              bezig={bezig}
+              onKies={(id) => {
+                const b = regel.begrippen.find((x) => x.id === id)!
+                void verstuur(item.regel!.richting === 'begrijpen' ? b.betekenis : b.vorm, false, id === vraag.goed ? 'goed' : 'fout')
+              }}
+              onNietGeweten={() => void verstuur(null)}
+            />
+            {storing && (
+              <p className="feedback feedback-storing" role="alert">
+                {storing}
+              </p>
+            )}
+            {toestand.afgesloten && (
+              <>
+                {sterrenNaAntwoord}
+                <button className="knop knop-breed" onClick={() => void naarVolgende()} autoFocus>
+                  Volgende
+                </button>
+              </>
+            )}
+          </>
+        )}
       </section>
     )
   }

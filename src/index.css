@@ -1518,3 +1518,102 @@ select.invoer {
   font-weight: 700;
   margin: 1rem 0 0.75rem;
 }
+
+/* Regels (spec regels). Kleur verbindt in uitleg en feedback een begrip met zijn vakje. */
+.regelschema {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.75rem 0;
+}
+
+.regelschema-kop,
+.regelschema-rij {
+  display: grid;
+  grid-template-columns: 3.5rem 1fr 1fr;
+  gap: 0.35rem;
+  align-items: stretch;
+}
+
+.regelschema-kop strong {
+  text-align: center;
+  color: var(--gedempt);
+  font-size: 0.9rem;
+}
+
+.regelschema-rij > strong {
+  align-self: center;
+  color: var(--gedempt);
+  font-size: 0.9rem;
+}
+
+.regelvak {
+  border: 2px solid var(--rand-sterk);
+  border-radius: 10px;
+  padding: 0.4rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  background: var(--vlak);
+}
+
+.regelvak-0 {
+  border-color: var(--succes);
+}
+
+.regelvak-1 {
+  border-color: var(--herstel);
+}
+
+.regelvak-2 {
+  border-color: var(--hint);
+}
+
+.regelvak-3 {
+  border-color: var(--aandacht);
+}
+
+.regelvak.uitgelicht {
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+.regelvak-vorm {
+  font-weight: 700;
+}
+
+.regelvak-betekenis {
+  color: var(--gedempt);
+  font-size: 0.9rem;
+}
+
+.regelsituatie {
+  text-align: center;
+  font-size: 1.1rem;
+  margin: 0.5rem 0 0;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  background: var(--zacht);
+}
+
+.sessie .vraag-regel {
+  text-align: center;
+  font-size: 1.6rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.beslisstappen {
+  padding-left: 1.25rem;
+}
+
+.beslisvraag p {
+  margin: 0.75rem 0 0.25rem;
+}
+
+.optie.gekozen {
+  border-color: var(--actie);
+  background: var(--actie-zacht);
+}
+
+.regel-in-bron {
+  border-top: 1px solid var(--rand);
+  padding-top: 0.5rem;
+  margin-top: 0.5rem;
+}

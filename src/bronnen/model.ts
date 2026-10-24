@@ -20,6 +20,8 @@ export interface Bron {
   onderhoud?: boolean
   /** De toetsdag waarover de leerling al gereflecteerd heeft. */
   toetsGereflecteerd?: string
+  /** Regels uit de regelbibliotheek die bij deze bron horen, zoals "can-have-to". */
+  regels?: string[]
   aangemaakt: string
 }
 
@@ -57,6 +59,8 @@ export interface Woordpaar {
   twijfelBetekenis: Twijfel
   /** De leerling heeft een twijfelwoord bekeken. */
   bekeken: boolean
+  /** Dit woordpaar is een voorbeeldzin bij een regel en wordt niet meer als vertaalzin geoefend. */
+  regelvoorbeeld?: string
   volgorde: number
 }
 

@@ -1,4 +1,5 @@
 import type { Leeritem } from '../leerlogica'
+import { leeritemsVanRegels } from '../bronnen/leeritems'
 
 export const TESTBRON_ID = 'testbron-engels'
 
@@ -10,7 +11,7 @@ const woordparen: [string, string, string][] = [
   ['wp-river', 'river', 'rivier'],
 ]
 
-export const testLeeritems: Leeritem[] = woordparen.map(([woordpaarId, woord, betekenis]) => ({
+const woordItems: Leeritem[] = woordparen.map(([woordpaarId, woord, betekenis]) => ({
   id: `${woordpaarId}-en-nl`,
   soort: 'woordpaar',
   bronId: TESTBRON_ID,
@@ -20,3 +21,18 @@ export const testLeeritems: Leeritem[] = woordparen.map(([woordpaarId, woord, be
   vraag: woord,
   toegestaneAntwoorden: [betekenis],
 }))
+
+/** De testbron oefent ook de regel "Can or have to", zodat de begeleider de regelles kan bekijken. */
+export const testLeeritems: Leeritem[] = [
+  ...woordItems,
+  ...leeritemsVanRegels({
+    id: TESTBRON_ID,
+    naam: 'Testwoorden',
+    taal: 'en',
+    toetsdag: null,
+    oefenrichtingen: [],
+    afgerond: false,
+    aangemaakt: '',
+    regels: ['can-have-to'],
+  }),
+]

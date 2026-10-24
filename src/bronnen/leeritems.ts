@@ -1,10 +1,10 @@
-import { reflectieNodig, type BronInfo, type Leeritem } from '../leerlogica'
+import { reflectieNodig, regelMetId, type BronInfo, type Leeritem } from '../leerlogica'
 import type { Bron, Plek, Woordpaar } from './model'
 
 /** Leeritems van een bron: één per bevestigd woordpaar en oefenrichting. */
 export function leeritemsVan(bron: Bron, woordparen: Woordpaar[]): Leeritem[] {
   return woordparen
-    .filter((wp) => wp.bronId === bron.id && wp.bevestigd)
+    .filter((wp) => wp.bronId === bron.id && wp.bevestigd && !wp.regelvoorbeeld)
     .sort((a, b) => a.volgorde - b.volgorde)
     .flatMap((wp) =>
       bron.oefenrichtingen.map((richting) => ({
@@ -18,6 +18,31 @@ export function leeritemsVan(bron: Bron, woordparen: Woordpaar[]): Leeritem[] {
         toegestaneAntwoorden: [richting.naar === 'nl' ? wp.betekenis : wp.woord],
       })),
     )
+}
+
+/**
+ * Leeritems van de regels van een bron: per begrip twee, eerst begrijpen (Engelse zin, kies de betekenis),
+ * dan toepassen (situatie, kies de vorm). Beide horen bij hetzelfde begrip, zodat toepassen pas komt als
+ * begrijpen een keer gelukt is.
+ */
+export function leeritemsVanRegels(bron: Bron): Leeritem[] {
+  return (bron.regels ?? []).flatMap((regelId) => {
+    const regel = regelMetId(regelId)
+    if (!regel) return []
+    return regel.begrippen.flatMap((b) =>
+      (['begrijpen', 'toepassen'] as const).map((richting) => ({
+        id: `regel:${bron.id}:${regelId}:${b.id}:${richting}`,
+        soort: 'regel' as const,
+        bronId: bron.id,
+        woordpaarId: `regel:${bron.id}:${regelId}:${b.id}`,
+        bronversie: 1,
+        oefenrichting: richting === 'begrijpen' ? { van: 'en' as const, naar: 'nl' as const } : { van: 'nl' as const, naar: 'en' as const },
+        vraag: richting === 'begrijpen' ? b.vorm : b.betekenis,
+        toegestaneAntwoorden: [richting === 'begrijpen' ? b.betekenis : b.vorm],
+        regel: { regelId, begrip: b.id, richting },
+      })),
+    )
+  })
 }
 
 export function bronInfo(bron: Bron, vandaag: string): BronInfo {
@@ -75,5 +100,5 @@ export function leeritemsVanPlekken(bron: Bron, plekken: Plek[]): Leeritem[] {
 
 /** Alle leeritems van een bron, van welke soort ook. */
 export function leeritemsVanBron(bron: Bron, woordparen: Woordpaar[], plekken: Plek[]): Leeritem[] {
-  return bron.soort === 'topo' ? leeritemsVanPlekken(bron, plekken) : leeritemsVan(bron, woordparen)
+  return bron.soort === 'topo' ? leeritemsVanPlekken(bron, plekken) : [...leeritemsVan(bron, woordparen), ...leeritemsVanRegels(bron)]
 }

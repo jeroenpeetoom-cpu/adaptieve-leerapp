@@ -275,6 +275,7 @@ export function stelSessieSamen(
 /** Nederlands → vreemde taal en benoemen zijn moeilijker: de leerling moet het antwoord zelf maken. */
 export function isMoeilijkeRichting(item: Leeritem): boolean {
   if (item.plek) return item.plek.richting === 'benoemen'
+  if (item.regel) return item.regel.richting === 'toepassen'
   return item.oefenrichting.van === 'nl' && item.oefenrichting.naar !== 'nl'
 }
 
