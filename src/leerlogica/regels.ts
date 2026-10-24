@@ -14,6 +14,8 @@ export interface Begrip {
   emoji: string
   /** Het antwoord op elke beslisvraag, in dezelfde volgorde als `beslisvragen`. */
   antwoorden: string[]
+  /** Andere schrijfwijzen die bij typen ook goed zijn. */
+  varianten?: string[]
 }
 
 export interface Werkwoord {
@@ -52,9 +54,9 @@ export const REGELS: Regel[] = [
     ],
     begrippen: [
       { id: 'can', vorm: 'can', betekenis: 'mag of kan', situatie: 'Het mag', emoji: '✅', antwoorden: ['mogen', 'wel'] },
-      { id: 'cant', vorm: "can't", betekenis: 'mag niet', situatie: 'Het is verboden', emoji: '🚫', antwoorden: ['mogen', 'niet'] },
+      { id: 'cant', vorm: "can't", betekenis: 'mag niet', situatie: 'Het is verboden', emoji: '🚫', antwoorden: ['mogen', 'niet'], varianten: ['cannot', 'can not', 'cant'] },
       { id: 'have-to', vorm: 'have to', betekenis: 'moet', situatie: 'Het moet', emoji: '❗', antwoorden: ['moeten', 'wel'] },
-      { id: 'dont-have-to', vorm: "don't have to", betekenis: 'hoeft niet', situatie: 'Het hoeft niet', emoji: '😌', antwoorden: ['moeten', 'niet'] },
+      { id: 'dont-have-to', vorm: "don't have to", betekenis: 'hoeft niet', situatie: 'Het hoeft niet', emoji: '😌', antwoorden: ['moeten', 'niet'], varianten: ['do not have to', 'dont have to'] },
     ],
     valkuil: '"Don\'t have to" betekent niet "moet niet", maar "hoeft niet": het mag wel, het is alleen niet verplicht.',
     startvraag: { begrip: 'dont-have-to', zin: "You don't have to cook dinner." },
@@ -173,4 +175,39 @@ export function regelfeedback(regel: Regel, goedId: string, gekozenId: string): 
   const vraag = regel.beslisvragen[mis]
   const val = goed.id === 'dont-have-to' && gekozen.id === 'cant' ? ` ${regel.valkuil}` : ''
   return `${vraag.vraag} Hier is het "${goed.antwoorden[mis]}". Dus "${goed.vorm}": ${goed.betekenis}.${val}`
+}
+
+/**
+ * Hoeveel steun een regelvraag krijgt (spec regels, R2), afgebouwd op wat de leerling laat zien:
+ * - nog nooit goed: beide beslisvragen, het antwoord volgt daaruit;
+ * - één keer goed: alleen de eerste beslisvraag, dan kiezen uit wat overblijft;
+ * - daarna: direct kiezen uit alle begrippen;
+ * - toepassen, twee keer zonder hulp goed: de vorm zelf typen.
+ * Na een fout één stap terug. In de toetsronde nooit steun.
+ */
+export type Regelsteun = 'twee-vragen' | 'een-vraag' | 'kiezen' | 'typen'
+
+const STEUN: Regelsteun[] = ['twee-vragen', 'een-vraag', 'kiezen', 'typen']
+
+export function regelsteun(
+  richting: 'begrijpen' | 'toepassen',
+  pogingen: { oordeel: string; hulp: string; antwoordZelfToegevoegd?: boolean }[],
+  toetsvorm = false,
+): Regelsteun {
+  const goed = pogingen.filter((p) => p.oordeel === 'goed').length
+  const vrij = pogingen.filter((p) => p.oordeel === 'goed' && p.hulp === 'vrij opgehaald' && !p.antwoordZelfToegevoegd).length
+  let steun: Regelsteun = goed === 0 ? 'twee-vragen' : goed === 1 ? 'een-vraag' : richting === 'toepassen' && vrij >= 2 ? 'typen' : 'kiezen'
+  const laatste = pogingen.at(-1)
+  if (laatste && laatste.oordeel !== 'goed' && steun !== 'twee-vragen') steun = STEUN[STEUN.indexOf(steun) - 1]
+  if (toetsvorm) return steun === 'typen' ? 'typen' : 'kiezen'
+  return steun
+}
+
+/** Welk begrip bedoelde de leerling met dit getypte antwoord? Hoofdletters en leestekens tellen niet. */
+export function begripUitGetypt(regel: Regel, getypt: string): string | undefined {
+  const kaal = (t: string) => t.toLowerCase().replace(/[’']/g, "'").replace(/[^a-z' ]/g, '').replace(/\s+/g, ' ').trim()
+  const g = kaal(getypt)
+  // Langste vorm eerst, zodat "don't have to" niet als "have to" telt.
+  const opLengte = [...regel.begrippen].sort((a, b) => b.vorm.length - a.vorm.length)
+  return opLengte.find((b) => [b.vorm, ...(b.varianten ?? [])].some((v) => kaal(v) === g))?.id
 }

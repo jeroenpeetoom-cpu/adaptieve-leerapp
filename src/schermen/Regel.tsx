@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { maakRegelvraag, regelfeedback, type Poging, type Regel, type Regelvraag, type Werkwoord } from '../leerlogica'
+import { useState, type FormEvent } from 'react'
+import { begripUitGetypt, maakRegelvraag, regelfeedback, type Poging, type Regel, type Regelsteun, type Regelvraag, type Werkwoord } from '../leerlogica'
 import { Voorleesknop } from '../weergave/voorlezen'
 
 /** Het schema van een regel met twee beslisvragen: kolommen voor de eerste vraag, rijen voor de tweede. */
@@ -172,28 +172,73 @@ export function RegelLes({ regel, werkwoorden, onKlaar }: { regel: Regel; werkwo
 /** Wat de leerling koos, terug te vinden uit zijn antwoord (de vorm of de betekenis van een begrip). */
 export function gekozenBegrip(regel: Regel, poging: Poging | undefined): string | undefined {
   if (!poging?.antwoord) return undefined
-  return regel.begrippen.find((b) => b.vorm === poging.antwoord || b.betekenis === poging.antwoord)?.id
+  return regel.begrippen.find((b) => b.vorm === poging.antwoord || b.betekenis === poging.antwoord)?.id ?? begripUitGetypt(regel, poging.antwoord)
 }
 
-/** Een regelvraag in de sessie: kiezen uit de begrippen, met uitleg na het antwoord. */
+/**
+ * Een regelvraag in de sessie (spec regels, R2). De steun wordt afgebouwd: eerst beide beslisvragen, dan
+ * één, dan direct kiezen, en bij toepassen uiteindelijk de vorm zelf typen. Na het antwoord volgt uitleg.
+ */
 export function RegelVraag({
   regel,
   vraag,
+  steun,
   laatste,
   afgesloten,
   bezig,
   onKies,
+  onTyp,
   onNietGeweten,
 }: {
   regel: Regel
   vraag: Regelvraag
+  steun: Regelsteun
   laatste: Poging | undefined
   afgesloten: boolean
   bezig: boolean
-  onKies: (begripId: string) => void
+  /** Een gekozen begrip; `metSteun` als de beslisvragen hielpen. */
+  onKies: (begripId: string, metSteun: boolean) => void
+  onTyp: (tekst: string) => void
   onNietGeweten: () => void
 }) {
+  const [keuzes, setKeuzes] = useState<string[]>([])
+  const [getypt, setGetypt] = useState('')
   const gekozen = gekozenBegrip(regel, laatste)
+  const tekstVan = (id: string) => {
+    const b = regel.begrippen.find((x) => x.id === id)!
+    return vraag.richting === 'begrijpen' ? `${b.emoji} ${b.situatie}` : b.vorm
+  }
+
+  function kiesStap(i: number, optie: string) {
+    const nieuw = [...keuzes.slice(0, i), optie]
+    setKeuzes(nieuw)
+    if (steun === 'twee-vragen' && nieuw.length === regel.beslisvragen.length) {
+      const b = regel.begrippen.find((x) => x.antwoorden.every((a, j) => nieuw[j] === a))
+      if (b) onKies(b.id, true)
+    }
+  }
+
+  function typ(e: FormEvent) {
+    e.preventDefault()
+    if (getypt.trim()) onTyp(getypt)
+  }
+
+  const beslisvraag = (i: number) => {
+    const v = regel.beslisvragen[i]
+    return (
+      <div key={v.vraag} className="beslisvraag">
+        <p>{v.vraag}</p>
+        <div className="opties">
+          {v.opties.map((o) => (
+            <button key={o} className={`knop knop-rustig optie ${keuzes[i] === o ? 'gekozen' : ''}`} disabled={bezig} onClick={() => kiesStap(i, o)}>
+              {o}
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <>
       {vraag.situatie && <p className="regelsituatie">{vraag.situatie}</p>}
@@ -204,7 +249,10 @@ export function RegelVraag({
       {afgesloten && laatste ? (
         <div className={`feedback ${laatste.oordeel === 'goed' ? 'feedback-goed' : ''}`} role="status">
           {laatste.oordeel === 'goed' ? (
-            <p>Goed zo!</p>
+            <p>
+              {steun === 'kiezen' || steun === 'typen' ? 'Goed zo, helemaal zelf!' : 'Goed! Met de twee vragen kom je er steeds.'} "
+              {regel.begrippen.find((b) => b.id === vraag.goed)!.vorm}" = {regel.begrippen.find((b) => b.id === vraag.goed)!.betekenis}.
+            </p>
           ) : (
             <>
               <p>{gekozen ? regelfeedback(regel, vraag.goed, gekozen) : `Het is "${regel.begrippen.find((b) => b.id === vraag.goed)!.vorm}".`}</p>
@@ -212,16 +260,66 @@ export function RegelVraag({
             </>
           )}
         </div>
+      ) : steun === 'typen' ? (
+        <form onSubmit={typ}>
+          <label className="label" htmlFor="regelantwoord">
+            Typ wat er op de puntjes hoort
+          </label>
+          <input
+            id="regelantwoord"
+            className="invoer"
+            value={getypt}
+            onChange={(e) => setGetypt(e.target.value)}
+            autoComplete="off"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+            lang="en"
+            autoFocus
+          />
+          <button className="knop knop-breed" type="submit" disabled={bezig || getypt.trim() === ''}>
+            Controleer
+          </button>
+          <p className="tekstlinks">
+            <button className="link" type="button" disabled={bezig} onClick={onNietGeweten}>
+              Weet ik niet
+            </button>
+          </p>
+        </form>
       ) : (
         <>
-          <p className="label">{vraag.richting === 'begrijpen' ? 'Wat betekent dit?' : 'Welke vorm hoort op de puntjes?'}</p>
-          <div className={vraag.richting === 'begrijpen' ? 'opties-lijst' : 'opties'}>
-            {vraag.opties.map((o) => (
-              <button key={o.id} className="knop knop-rustig optie" disabled={bezig} onClick={() => onKies(o.id)} lang={vraag.richting === 'toepassen' ? 'en' : 'nl'}>
-                {o.tekst}
-              </button>
-            ))}
-          </div>
+          {steun === 'twee-vragen' && regel.beslisvragen.map((_, i) => (i <= keuzes.length ? beslisvraag(i) : null))}
+          {steun === 'een-vraag' && (
+            <>
+              {beslisvraag(0)}
+              {keuzes.length > 0 && (
+                <>
+                  <p className="label">Welke past?</p>
+                  <div className="opties">
+                    {regel.begrippen
+                      .filter((b) => b.antwoorden[0] === keuzes[0])
+                      .map((b) => (
+                        <button key={b.id} className="knop knop-rustig optie" disabled={bezig} onClick={() => onKies(b.id, true)} lang={vraag.richting === 'toepassen' ? 'en' : 'nl'}>
+                          {tekstVan(b.id)}
+                        </button>
+                      ))}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+          {steun === 'kiezen' && (
+            <>
+              <p className="label">{vraag.richting === 'begrijpen' ? 'Wat betekent dit?' : 'Welke vorm hoort op de puntjes?'}</p>
+              <div className={vraag.richting === 'begrijpen' ? 'opties-lijst' : 'opties'}>
+                {vraag.opties.map((o) => (
+                  <button key={o.id} className="knop knop-rustig optie" disabled={bezig} onClick={() => onKies(o.id, false)} lang={vraag.richting === 'toepassen' ? 'en' : 'nl'}>
+                    {o.tekst}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           <p className="tekstlinks">
             <button className="link" disabled={bezig} onClick={onNietGeweten}>
               Weet ik niet

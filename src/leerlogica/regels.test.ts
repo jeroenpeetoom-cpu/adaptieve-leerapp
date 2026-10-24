@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { maakRegelvraag, regelfeedback, regelMetId, stelRegelsVoor, werkwoordenUitLijst } from './index'
+import { begripUitGetypt, maakRegelvraag, regelfeedback, regelMetId, regelsteun, stelRegelsVoor, werkwoordenUitLijst } from './index'
 
 const regel = regelMetId('can-have-to')!
 
@@ -53,5 +53,34 @@ describe('regels', () => {
     expect(regelfeedback(regel, 'dont-have-to', 'cant')).toContain('mogen of om moeten')
     expect(regelfeedback(regel, 'dont-have-to', 'cant')).toContain('hoeft niet')
     expect(regelfeedback(regel, 'have-to', 'dont-have-to')).toContain('wel of niet')
+  })
+})
+
+describe('steun afbouwen', () => {
+  const p = (oordeel: string, hulp = 'vrij opgehaald') => ({ oordeel, hulp })
+
+  it('begint met beide beslisvragen, dan één, dan kiezen, en bij toepassen typen', () => {
+    expect(regelsteun('toepassen', [])).toBe('twee-vragen')
+    expect(regelsteun('toepassen', [p('goed', 'met hint')])).toBe('een-vraag')
+    expect(regelsteun('toepassen', [p('goed', 'met hint'), p('goed')])).toBe('kiezen')
+    expect(regelsteun('toepassen', [p('goed', 'met hint'), p('goed'), p('goed')])).toBe('typen')
+    expect(regelsteun('begrijpen', [p('goed'), p('goed'), p('goed')])).toBe('kiezen')
+  })
+
+  it('gaat na een fout één stap terug', () => {
+    expect(regelsteun('toepassen', [p('goed'), p('goed'), p('goed'), p('fout')])).toBe('kiezen')
+    expect(regelsteun('toepassen', [p('goed'), p('fout')])).toBe('twee-vragen')
+  })
+
+  it('geeft in de toetsronde geen steun', () => {
+    expect(regelsteun('toepassen', [], true)).toBe('kiezen')
+  })
+
+  it('herkent getypte vormen, ook zonder apostrof of voluit', () => {
+    expect(begripUitGetypt(regel, "Don't have to")).toBe('dont-have-to')
+    expect(begripUitGetypt(regel, 'dont have to')).toBe('dont-have-to')
+    expect(begripUitGetypt(regel, 'cannot')).toBe('cant')
+    expect(begripUitGetypt(regel, 'have to')).toBe('have-to')
+    expect(begripUitGetypt(regel, 'must')).toBeUndefined()
   })
 })

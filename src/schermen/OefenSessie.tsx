@@ -24,6 +24,8 @@ import {
   leermomentNodig,
   nogTeGaan,
   optiesVoor,
+  begripUitGetypt,
+  regelsteun,
   maakRegelvraag,
   regelMetId,
   werkwoordenUitLijst,
@@ -640,15 +642,26 @@ export function OefenSessie({
               <span>{item.regel.richting === 'begrijpen' ? 'begrijpen' : 'toepassen'}</span>
             </p>
             <RegelVraag
+              key={`${item.id}-${toestand.huidige}`}
               regel={regel}
               vraag={vraag}
+              steun={regelsteun(
+                item.regel.richting,
+                [...eerderePogingen.filter((p) => !toestand.pogingen.some((q) => q.id === p.id)), ...toestand.pogingen.slice(0, toestand.pogingen.length - toestand.pogingenBijHuidige)]
+                  .filter((p) => p.leeritemId === item.id && p.bronversie === item.bronversie)
+                  .sort((a, b) => a.tijdstip.localeCompare(b.tijdstip)),
+                toets,
+              )}
               laatste={laatste}
               afgesloten={toestand.afgesloten}
               bezig={bezig}
-              onKies={(id) => {
+              onKies={(id, metSteun) => {
                 const b = regel.begrippen.find((x) => x.id === id)!
-                void verstuur(item.regel!.richting === 'begrijpen' ? b.betekenis : b.vorm, false, id === vraag.goed ? 'goed' : 'fout')
+                // Met de beslisvragen als steun telt het als goed met hulp, niet als zelf teruggehaald.
+                const basis = metSteun ? vraagHulp(toestand, 'met hint') : toestand
+                void verstuur(item.regel!.richting === 'begrijpen' ? b.betekenis : b.vorm, false, id === vraag.goed ? 'goed' : 'fout', basis)
               }}
+              onTyp={(tekst) => void verstuur(tekst, false, begripUitGetypt(regel, tekst) === vraag.goed ? 'goed' : 'fout')}
               onNietGeweten={() => void verstuur(null)}
             />
             {storing && (
