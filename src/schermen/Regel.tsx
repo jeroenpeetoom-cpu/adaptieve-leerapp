@@ -1,9 +1,24 @@
 import { useState, type FormEvent } from 'react'
-import { begripUitGetypt, maakRegelvraag, maakZelfuitleg, regelfeedback, zelfuitlegNu, type Poging, type Regel, type Regelsteun, type Regelvraag, type Werkwoord } from '../leerlogica'
+import { begripUitGetypt, maakRegelvraag, maakZelfuitleg, regelfeedback, zelfuitlegNu, type Poging, type Regel, type Regelsteun, type Regelvraag, type Bronwoord } from '../leerlogica'
 import { Voorleesknop } from '../weergave/voorlezen'
 
 /** Het schema van een regel met twee beslisvragen: kolommen voor de eerste vraag, rijen voor de tweede. */
 export function Regelschema({ regel, uitgelicht }: { regel: Regel; uitgelicht?: string }) {
+  // Eén beslisvraag met veel antwoorden (zoals voorzetsels van tijd): een lijst, van vroeg naar laat.
+  if (regel.schema === 'lijst') {
+    return (
+      <ul className="regellijst" aria-label={`Schema: ${regel.titel}`}>
+        {regel.begrippen.map((b, i) => (
+          <li key={b.id} className={`regelvak regelvak-${i % 4} ${uitgelicht === b.id ? 'uitgelicht' : ''}`}>
+            <span className="regelvak-vorm">
+              {b.emoji} {b.vorm} <span className="regelvak-betekenis">= {b.betekenis}</span>
+            </span>
+            <span className="regelvak-betekenis">bij {b.antwoorden[0]}</span>
+          </li>
+        ))}
+      </ul>
+    )
+  }
   const [kolommen, rijen] = regel.beslisvragen
   return (
     <div className="regelschema" role="table" aria-label={`Schema: ${regel.titel}`}>
@@ -39,7 +54,7 @@ export function Regelschema({ regel, uitgelicht }: { regel: Regel; uitgelicht?: 
  * De eerste les bij een regel (spec regels): een startvraag op de valkuil, het schema met hardop voordoen,
  * één voorbeeld samen en één zelf met de beslisvragen als steun.
  */
-export function RegelLes({ regel, werkwoorden, onKlaar }: { regel: Regel; werkwoorden: Werkwoord[]; onKlaar: () => void }) {
+export function RegelLes({ regel, werkwoorden, onKlaar }: { regel: Regel; werkwoorden: Bronwoord[]; onKlaar: () => void }) {
   const [stap, setStap] = useState(0)
   const [gok, setGok] = useState<string | null>(null)
   const [keuzes, setKeuzes] = useState<string[]>([])

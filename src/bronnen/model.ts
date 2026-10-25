@@ -22,6 +22,8 @@ export interface Bron {
   toetsGereflecteerd?: string
   /** Regels uit de regelbibliotheek die bij deze bron horen, zoals "can-have-to". */
   regels?: string[]
+  /** Voorgestelde regels waarvan de begeleider zei dat ze er niet bij horen. */
+  regelsAfgewezen?: string[]
   aangemaakt: string
 }
 

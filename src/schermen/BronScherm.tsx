@@ -4,7 +4,7 @@ import { splits, splitsbareWoorden, voegSamen } from '../bronnen/bewerken'
 import { kanBevestigen, nogTeBekijken } from '../bronnen/leeritems'
 import type { Bron, Bronpagina, Woordpaar } from '../bronnen/model'
 import { controleerBestand, herken } from '../herkenning/herkenner'
-import { isInhoudelijkeWijziging, REGELS, regelMetId, stelRegelsVoor, type Strategie } from '../leerlogica'
+import { isInhoudelijkeWijziging, isRegelvoorbeeld, REGELS, regelMetId, stelRegelsVoor, type Regel, type Strategie } from '../leerlogica'
 import { Regelschema } from './Regel'
 import { echteDb } from '../opslag/database'
 import { verwijderBron } from '../opslag/verwijderen'
@@ -338,11 +338,11 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
    * Een regel toevoegen (spec regels): de zinnen van de lijst met een vorm van de regel worden voorbeelden en
    * geen vertaalzinnen meer; de leerling oefent voortaan het begrip toepassen.
    */
-  async function voegRegelToe(regelId: string) {
+  async function voegRegelToe(regelId: string, voorbeeldIds?: string[]) {
     if (!bron) return
     const regel = regelMetId(regelId)!
     await wijzigBron({ regels: [...new Set([...(bron.regels ?? []), regelId])] })
-    const voorbeelden = paren.filter((wp) => wp.bevestigd && regel.herken.test(wp.woord) && /[.?!]$|^[A-Z]/.test(wp.woord.trim()))
+    const voorbeelden = paren.filter((wp) => wp.bevestigd && (voorbeeldIds ? voorbeeldIds.includes(wp.id) : isRegelvoorbeeld(regel, wp.woord)))
     for (const wp of voorbeelden) await echteDb.woordparen.update(wp.id, { regelvoorbeeld: regelId })
     setParen((p) => p.map((wp) => (voorbeelden.some((v) => v.id === wp.id) ? { ...wp, regelvoorbeeld: regelId } : wp)))
   }
@@ -457,6 +457,18 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
           </p>
         )}
       </section>
+
+      {bevestigd.length > 0 && (
+        <RegelVoorstellen
+          voorstellen={stelRegelsVoor([
+            ...bevestigd.flatMap((wp) => [wp.woord, wp.betekenis]),
+            ...paginas.flatMap((p) => p.losseRegels),
+          ]).filter((r) => !(bron.regels ?? []).includes(r.id) && !(bron.regelsAfgewezen ?? []).includes(r.id))}
+          paren={bevestigd}
+          onToevoegen={(id, ids) => void voegRegelToe(id, ids)}
+          onAfwijzen={(id) => void wijzigBron({ regelsAfgewezen: [...(bron.regelsAfgewezen ?? []), id] })}
+        />
+      )}
 
       {paginas.length > 0 && (
         <section className="kaart">
@@ -683,38 +695,24 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
               </div>
             )
           })}
-          {(() => {
-            const voorgesteld = stelRegelsVoor(bevestigd.map((wp) => wp.woord)).filter((r) => !(bron.regels ?? []).includes(r.id))
-            const overig = REGELS.filter((r) => !(bron.regels ?? []).includes(r.id) && !voorgesteld.includes(r))
-            return (
-              <>
-                {voorgesteld.map((r) => (
-                  <div key={r.id} className="feedback feedback-bijna">
-                    <p>
-                      Deze lijst heeft zinnen met <strong>{r.begrippen.map((b) => b.vorm).join(', ')}</strong>. Wil je de regel{' '}
-                      <strong>{r.titel}</strong> toevoegen?
-                    </p>
-                    <button className="knop" onClick={() => void voegRegelToe(r.id)}>
-                      📐 Regel toevoegen
-                    </button>
-                  </div>
-                ))}
-                {overig.map((r) => (
-                  <button key={r.id} className="knop knop-rustig" onClick={() => void voegRegelToe(r.id)}>
-                    📐 {r.titel} toevoegen
-                  </button>
-                ))}
-              </>
-            )
-          })()}
+          {REGELS.filter((r) => !(bron.regels ?? []).includes(r.id)).map((r) => (
+            <button key={r.id} className="knop knop-rustig" onClick={() => void voegRegelToe(r.id)}>
+              📐 {r.titel} toevoegen
+            </button>
+          ))}
         </section>
       )}
 
       {bevestigd.length > 0 && (
         <section className="kaart">
           <h2>Bevestigde woorden</h2>
+          {bevestigd.some((wp) => wp.regelvoorbeeld) && (
+            <p className="gedempt">
+              {bevestigd.filter((wp) => wp.regelvoorbeeld).length} regels van het blad zijn voorbeelden bij een regel (zie 📐 Regels) en staan hier niet.
+            </p>
+          )}
           <ul className="woordenlijst">
-            {bevestigd.map((wp) => (
+            {bevestigd.filter((wp) => !wp.regelvoorbeeld).map((wp) => (
               <BevestigdWoordpaar
                 key={wp.id}
                 wp={wp}
@@ -801,6 +799,73 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
       <button className="link" onClick={onTerug}>
         ← Terug
       </button>
+    </>
+  )
+}
+
+/**
+ * Bovenaan het bronscherm: regels die op het blad staan (spec regels). De zinnen die voorbeeld worden staan
+ * erbij met een vinkje, zodat een gewone vertaalzin er niet per ongeluk bij komt.
+ */
+function RegelVoorstellen({
+  voorstellen,
+  paren,
+  onToevoegen,
+  onAfwijzen,
+}: {
+  voorstellen: Regel[]
+  paren: Woordpaar[]
+  onToevoegen: (regelId: string, voorbeeldIds: string[]) => void
+  onAfwijzen: (regelId: string) => void
+}) {
+  const [uit, setUit] = useState<Set<string>>(new Set())
+  if (voorstellen.length === 0) return null
+  return (
+    <>
+      {voorstellen.map((r) => {
+        const kandidaten = paren.filter((wp) => isRegelvoorbeeld(r, wp.woord))
+        return (
+          <section key={r.id} className="kaart regelvoorstel">
+            <h2>📐 Op dit blad staat een regel: {r.titel}</h2>
+            <p>
+              Die leert hij <strong>toepassen in steeds nieuwe zinnen</strong>, in plaats van losse woorden of zinnen te vertalen.
+            </p>
+            <Regelschema regel={r} />
+            {kandidaten.length > 0 && (
+              <>
+                <p className="gedempt">Deze regels van het blad worden voorbeelden bij de regel (geen vertaalvragen meer). Haal het vinkje weg bij een gewone zin.</p>
+                <ul className="voorbeeldkeuze">
+                  {kandidaten.map((wp) => (
+                    <li key={wp.id}>
+                      <label className="keuze">
+                        <input
+                          type="checkbox"
+                          checked={!uit.has(wp.id)}
+                          onChange={(e) => {
+                            const nieuw = new Set(uit)
+                            if (e.target.checked) nieuw.delete(wp.id)
+                            else nieuw.add(wp.id)
+                            setUit(nieuw)
+                          }}
+                        />
+                        {wp.woord} = {wp.betekenis}
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            <div className="knoppen">
+              <button className="knop" onClick={() => onToevoegen(r.id, kandidaten.filter((wp) => !uit.has(wp.id)).map((wp) => wp.id))}>
+                Klopt, oefen als regel
+              </button>
+              <button className="knop knop-rustig" onClick={() => onAfwijzen(r.id)}>
+                Nee, geen regel
+              </button>
+            </div>
+          </section>
+        )
+      })}
     </>
   )
 }

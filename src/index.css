@@ -1633,3 +1633,21 @@ select.invoer {
   border-color: var(--herstel);
   background: var(--herstel-zacht);
 }
+
+.regellijst {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.regelvoorstel {
+  border: 2px solid var(--actie);
+}
+
+.voorbeeldkeuze {
+  list-style: none;
+  padding: 0;
+  margin: 0.25rem 0;
+}

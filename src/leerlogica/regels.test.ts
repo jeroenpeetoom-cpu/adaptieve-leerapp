@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { begripUitGetypt, maakRegelvraag, maakZelfuitleg, regelfeedback, regelMetId, regelsteun, stelRegelsVoor, verwarbaarBegrip, werkwoordenUitLijst } from './index'
+import { begripUitGetypt, isRegelvoorbeeld, maakRegelvraag, maakZelfuitleg, regelfeedback, regelMetId, regelsteun, stelRegelsVoor, verwarbaarBegrip, werkwoordenUitLijst } from './index'
 
 const regel = regelMetId('can-have-to')!
 
@@ -27,7 +27,7 @@ describe('regels', () => {
   })
 
   it('maakt bij toepassen een situatie en een zin met een gat, met alle vormen als opties', () => {
-    const v = maakRegelvraag(regel, 'dont-have-to', 'toepassen', werkwoordenUitLijst(lijst), 'zaad-1')
+    const v = maakRegelvraag(regel, 'dont-have-to', 'toepassen', lijst, 'zaad-1')
     expect(v.zin).toContain('___')
     expect(v.situatie).toContain('Het hoeft niet')
     expect(v.opties.map((o) => o.tekst)).toEqual(['can', "can't", 'have to', "don't have to"])
@@ -37,13 +37,13 @@ describe('regels', () => {
 
   it('kiest het onderwerp dat bij my of your past', () => {
     for (let i = 0; i < 40; i++) {
-      const v = maakRegelvraag(regel, 'can', 'begrijpen', [{ en: 'live on my own', nl: 'op mezelf wonen' }], `z${i}`)
+      const v = maakRegelvraag(regel, 'can', 'begrijpen', [{ woord: 'live on my own', betekenis: 'op mezelf wonen' }], `z${i}`)
       if (v.zin.includes('my own')) expect(v.zin.startsWith('I ')).toBe(true)
     }
   })
 
   it('maakt elke keer een andere zin, maar dezelfde bij hetzelfde zaad', () => {
-    const ww = werkwoordenUitLijst(lijst)
+    const ww = lijst
     const zinnen = new Set(Array.from({ length: 20 }, (_, i) => maakRegelvraag(regel, 'can', 'begrijpen', ww, `z${i}`).zin))
     expect(zinnen.size).toBeGreaterThan(3)
     expect(maakRegelvraag(regel, 'can', 'begrijpen', ww, 'x').zin).toBe(maakRegelvraag(regel, 'can', 'begrijpen', ww, 'x').zin)
@@ -97,5 +97,52 @@ describe('zelfuitleg', () => {
     expect(z.opties.filter((o) => o.goed)).toHaveLength(1)
     expect(z.opties.find((o) => o.goed)!.tekst).toContain('moeten')
     expect(z.opties.some((o) => o.tekst.includes('altijd verboden'))).toBe(true)
+  })
+})
+
+describe('meer regels, en herkennen op het blad', () => {
+  // Woorden en kopjes zoals op de echte bladen van de leerling.
+  const voorzetsels = ['Voorzetsels van tijd', 'after', 'at', 'before', 'during', 'on', 'until', 'We can play together after lunch.']
+  const grammar = ['Grammar', 'It is ... / They are ...', 'It is red and a bit sour.', 'They are not sour.']
+
+  it('herkent voorzetsels van tijd aan het kopje en aan de losse woorden', () => {
+    expect(stelRegelsVoor(voorzetsels).map((r) => r.id)).toContain('voorzetsels-tijd')
+    expect(stelRegelsVoor(['after', 'before', 'until']).map((r) => r.id)).toContain('voorzetsels-tijd')
+    expect(stelRegelsVoor(['What are you good at?', 'Do you play football?']).map((r) => r.id)).not.toContain('voorzetsels-tijd')
+  })
+
+  it('herkent it is / they are aan het kopje', () => {
+    expect(stelRegelsVoor(grammar).map((r) => r.id)).toContain('it-is-they-are')
+  })
+
+  it('maakt bij voorzetsels een Nederlandse zin en een Engelse zin met een gat', () => {
+    const r = regelMetId('voorzetsels-tijd')!
+    const v = maakRegelvraag(r, 'at', 'toepassen', [], 'z')
+    expect(v.situatie).toMatch(/ om /)
+    expect(v.zin).toContain('___')
+    expect(v.heleZin).toMatch(/\bat\b/)
+  })
+
+  it('zet bij it is / they are de vorm met hoofdletter na het vraagteken, en kiest enkel- of meervoud', () => {
+    const r = regelMetId('it-is-they-are')!
+    const meer = maakRegelvraag(r, 'they-arent', 'toepassen', [{ woord: 'carrot', betekenis: 'wortel' }, { woord: 'crunchy', betekenis: 'knapperig' }], 'z')
+    expect(meer.heleZin).toMatch(/\? They aren't /)
+    expect(meer.situatie).toMatch(/zijn niet/)
+    const een = maakRegelvraag(r, 'it-is', 'toepassen', [], 'y')
+    expect(een.heleZin).toMatch(/\? It is /)
+    expect(een.situatie).toMatch(/ is /)
+  })
+
+  it('herkent getypte korte vormen', () => {
+    const r = regelMetId('it-is-they-are')!
+    expect(begripUitGetypt(r, "they're")).toBe('they-are')
+    expect(begripUitGetypt(r, "It's not")).toBe('it-isnt')
+  })
+
+  it('markeert de begrippen en de regelzinnen als voorbeeld, gewone woorden niet', () => {
+    const r = regelMetId('voorzetsels-tijd')!
+    expect(isRegelvoorbeeld(r, 'after')).toBe(true)
+    expect(isRegelvoorbeeld(r, 'Let\'s go swimming before dinner.')).toBe(true)
+    expect(isRegelvoorbeeld(r, 'surname')).toBe(false)
   })
 })

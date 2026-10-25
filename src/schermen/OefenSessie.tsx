@@ -28,7 +28,6 @@ import {
   regelsteun,
   maakRegelvraag,
   regelMetId,
-  werkwoordenUitLijst,
   lijktIngesproken,
   vergelijkStap,
   type Voornemen,
@@ -621,11 +620,10 @@ export function OefenSessie({
   // Een regel (spec regels): eerst één keer de les, daarna steeds een nieuwe zin om het begrip toe te passen.
   const regel = item.regel ? regelMetId(item.regel.regelId) : undefined
   if (item.regel && regel) {
-    const werkwoorden = werkwoordenUitLijst(
-      bronItems
-        .filter((i) => i.bronId === item.bronId && i.soort === 'woordpaar' && i.oefenrichting.van === 'en')
-        .map((i) => ({ woord: i.vraag, betekenis: i.toegestaneAntwoorden[0] })),
-    )
+    // Woorden uit de eigen lijst, zodat de nieuwe zinnen over zijn eigen leerstof gaan.
+    const werkwoorden = bronItems
+      .filter((i) => i.bronId === item.bronId && i.soort === 'woordpaar' && i.oefenrichting.van === 'en')
+      .map((i) => ({ woord: i.vraag, betekenis: i.toegestaneAntwoorden[0] }))
     const lesGehad = regelLessen.includes(regel.id)
     // Vast per plek in de sessie, zodat de zin na het antwoord en bij hervatten dezelfde blijft.
     const vraag = maakRegelvraag(regel, item.regel.begrip, item.regel.richting, werkwoorden, `${toestand.sessieId}-${toestand.huidige}-${item.id}`)
