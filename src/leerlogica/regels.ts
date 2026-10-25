@@ -245,10 +245,20 @@ const kaal = (t: string) => t.toLowerCase().replace(/[’']/g, "'").replace(/[^a
 export function stelRegelsVoor(teksten: string[]): Regel[] {
   return REGELS.filter((r) => {
     if (teksten.some((t) => r.herkenKopje.test(t))) return true
-    if (teksten.filter((t) => r.herken.test(t)).length >= 2) return true
+    // Minstens twee zinnen, met minstens twee verschillende begrippen: één los "can" in een gewone zin
+    // ("We can play together") is nog geen regel op het blad.
+    const zinnen = teksten.filter((t) => r.herken.test(t))
+    const begrippen = new Set(r.begrippen.filter((b) => zinnen.some((z) => bevatVorm(z, b))).map((b) => b.id))
+    if (zinnen.length >= 2 && begrippen.size >= 2) return true
     const vormen = new Set(r.begrippen.map((b) => kaal(b.vorm)))
     return new Set(teksten.map(kaal).filter((t) => vormen.has(t))).size >= 3
   })
+}
+
+/** Staat de vorm van dit begrip (of een andere schrijfwijze ervan) als losse woorden in de zin? */
+function bevatVorm(zin: string, b: Begrip): boolean {
+  const z = ` ${kaal(zin)} `
+  return [b.vorm, ...(b.varianten ?? [])].some((v) => z.includes(` ${kaal(v)} `))
 }
 
 /** Hoort dit woordpaar als voorbeeld bij de regel: een begrip zelf (after = na), of een zin met de regel? */

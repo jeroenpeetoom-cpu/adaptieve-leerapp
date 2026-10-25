@@ -111,6 +111,11 @@ describe('meer regels, en herkennen op het blad', () => {
     expect(stelRegelsVoor(['What are you good at?', 'Do you play football?']).map((r) => r.id)).not.toContain('voorzetsels-tijd')
   })
 
+  it('stelt geen regel voor bij alleen een los "can" in gewone zinnen', () => {
+    expect(stelRegelsVoor(['We can play together after lunch.', 'You can eat it with your hands.']).map((r) => r.id)).not.toContain('can-have-to')
+    expect(stelRegelsVoor(['I can play outside.', 'I have to do my homework.']).map((r) => r.id)).toContain('can-have-to')
+  })
+
   it('herkent it is / they are aan het kopje', () => {
     expect(stelRegelsVoor(grammar).map((r) => r.id)).toContain('it-is-they-are')
   })
