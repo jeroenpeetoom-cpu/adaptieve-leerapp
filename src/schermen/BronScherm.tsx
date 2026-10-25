@@ -342,7 +342,7 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
     if (!bron) return
     const regel = regelMetId(regelId)!
     await wijzigBron({ regels: [...new Set([...(bron.regels ?? []), regelId])] })
-    const voorbeelden = paren.filter((wp) => wp.bevestigd && (voorbeeldIds ? voorbeeldIds.includes(wp.id) : isRegelvoorbeeld(regel, wp.woord)))
+    const voorbeelden = paren.filter((wp) => (voorbeeldIds ? voorbeeldIds.includes(wp.id) : wp.bevestigd && isRegelvoorbeeld(regel, wp.woord)))
     for (const wp of voorbeelden) await echteDb.woordparen.update(wp.id, { regelvoorbeeld: regelId })
     setParen((p) => p.map((wp) => (voorbeelden.some((v) => v.id === wp.id) ? { ...wp, regelvoorbeeld: regelId } : wp)))
   }
@@ -458,13 +458,14 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
         )}
       </section>
 
-      {bevestigd.length > 0 && (
+      {/* Al tijdens het controleren, zodat de regel meteen goed staat als de woorden bevestigd worden. */}
+      {paren.length > 0 && (
         <RegelVoorstellen
           voorstellen={stelRegelsVoor([
-            ...bevestigd.flatMap((wp) => [wp.woord, wp.betekenis]),
+            ...paren.flatMap((wp) => [wp.woord, wp.betekenis]),
             ...paginas.flatMap((p) => p.losseRegels),
           ]).filter((r) => !(bron.regels ?? []).includes(r.id) && !(bron.regelsAfgewezen ?? []).includes(r.id))}
-          paren={bevestigd}
+          paren={paren}
           onToevoegen={(id, ids) => void voegRegelToe(id, ids)}
           onAfwijzen={(id) => void wijzigBron({ regelsAfgewezen: [...(bron.regelsAfgewezen ?? []), id] })}
         />
@@ -570,6 +571,7 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
               const twijfel = wp.twijfelWoord !== 'geen' || wp.twijfelBetekenis !== 'geen'
               return (
                 <li key={wp.id} id={`woordpaar-${wp.id}`} className={twijfel && !wp.bekeken ? 'met-twijfel' : ''}>
+                  {wp.regelvoorbeeld && <p className="gedempt">📐 Voorbeeld bij de regel: wordt niet als vertaalzin geoefend.</p>}
                   <div className="controle-velden">
                     <label>
                       <span className="klein">Engels</span> <TwijfelLabel twijfel={wp.bekeken ? 'geen' : wp.twijfelWoord} />
@@ -671,7 +673,7 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
         </section>
       )}
 
-      {bevestigd.length > 0 && (
+      {(bevestigd.length > 0 || (bron.regels ?? []).length > 0) && (
         <section className="kaart">
           <h2>📐 Regels</h2>
           <p className="gedempt">
