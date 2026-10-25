@@ -1,3 +1,5 @@
+import type { Minivraag } from '../schermen/Uitlegstap'
+
 // De gereedschapskist (spec leren-leren, S2): per aanpak wat hij doet, wanneer hij past, welke stappen je
 // zet en hoe je controleert of hij geholpen heeft. Ophalen en gespreid herhalen doet de app al bij elke
 // vraag; de leerling leert ze hier ook als eigen gereedschap kennen.
@@ -13,6 +15,9 @@ export interface Strategiekaart {
   controle: string
   /** Kort hardop voordoen waarom deze aanpak past. */
   hardop: string
+  /** Mini-vragen bij het voordoen: wanneer past hij, en hoe controleer je het. */
+  hardopVraag?: Minivraag
+  controleVraag?: Minivraag
 }
 
 export const STRATEGIEKAARTEN: Record<Gereedschap, Strategiekaart> = {
@@ -40,8 +45,26 @@ export const STRATEGIEKAARTEN: Record<Gereedschap, Strategiekaart> = {
     wat: 'Je bedenkt een gek plaatje dat het woord aan de betekenis koppelt.',
     wanneer: 'Bij lastige woorden of namen die je steeds vergeet.',
     stappen: ['Zoek iets in het woord dat ergens op lijkt.', 'Maak er een gek plaatje van, met de betekenis erin.', 'Test jezelf daarna zonder aan het plaatje te denken.'],
-    controle: 'Weet je het woord ook zonder het plaatje? Dan heb je het echt geleerd.',
-    hardop: 'Dit zijn losse woorden die ik steeds vergeet, dus ik maak er een gek plaatje bij. Daarna test ik mezelf zonder plaatje.',
+    controle: 'Weet je het woord ook **zonder het plaatje**? Dan heb je het echt geleerd.',
+    hardop: 'Dit zijn losse woorden die ik **steeds vergeet**, dus ik maak er een gek plaatje bij. Daarna test ik mezelf zonder plaatje.',
+    hardopVraag: {
+      vraag: 'Wanneer maak je een beeld?',
+      opties: [
+        { tekst: 'Bij elk woord, ook de makkelijke', goed: false },
+        { tekst: 'Bij woorden die je steeds vergeet', goed: true },
+        { tekst: 'Alleen bij lange woorden', goed: false },
+      ],
+      hint: 'Kijk naar het gemarkeerde stukje.',
+    },
+    controleVraag: {
+      vraag: 'Wanneer weet je dat het werkt?',
+      opties: [
+        { tekst: 'Als het plaatje grappig is', goed: false },
+        { tekst: 'Als je het één keer goed had', goed: false },
+        { tekst: 'Als je het woord ook zonder plaatje weet', goed: true },
+      ],
+      hint: 'Kijk naar het gemarkeerde stukje.',
+    },
   },
   geheugenroute: {
     emoji: '🗺️',
@@ -49,8 +72,26 @@ export const STRATEGIEKAARTEN: Record<Gereedschap, Strategiekaart> = {
     wat: 'Je legt dingen in gedachten op plekken die je goed kent, in een vaste volgorde.',
     wanneer: 'Bij een rijtje dat je in volgorde moet kennen, of veel woorden tegelijk.',
     stappen: ['Kies een paar plekken in je huis, in een vaste volgorde.', 'Leg op elke plek één woord, met een gek beeld.', 'Loop in gedachten je route langs en noem de woorden.'],
-    controle: 'Kun je de woorden ook noemen zonder de route te lopen? Dan zitten ze erin.',
-    hardop: 'Ik moet een heel rijtje onthouden, dus ik maak een route. Daarna test ik mezelf zonder te kijken.',
+    controle: 'Kun je de woorden ook noemen **zonder de route** te lopen? Dan zitten ze erin.',
+    hardop: 'Ik moet een heel **rijtje** onthouden, dus ik maak een route. Daarna test ik mezelf zonder te kijken.',
+    hardopVraag: {
+      vraag: 'Wanneer is een route handig?',
+      opties: [
+        { tekst: 'Bij een rijtje of veel woorden tegelijk', goed: true },
+        { tekst: 'Bij één heel makkelijk woord', goed: false },
+        { tekst: 'Alleen bij rekenen', goed: false },
+      ],
+      hint: 'Kijk naar het gemarkeerde woord.',
+    },
+    controleVraag: {
+      vraag: 'Wanneer zitten de woorden erin?',
+      opties: [
+        { tekst: 'Als je de route mooi vindt', goed: false },
+        { tekst: 'Als je de woorden ook zonder route kunt noemen', goed: true },
+        { tekst: 'Als je veel plekken hebt', goed: false },
+      ],
+      hint: 'Kijk naar het gemarkeerde stukje.',
+    },
   },
   schema: {
     emoji: '📐',
@@ -83,7 +124,7 @@ export function StrategieKaart({ id, status, open = false }: { id: Gereedschap; 
         ))}
       </ol>
       <p>
-        <strong>Werkt het?</strong> {k.controle}
+        <strong>Werkt het?</strong> {k.controle.replaceAll('**', '')}
       </p>
       {status && <p className="gedempt">{status}</p>}
     </details>

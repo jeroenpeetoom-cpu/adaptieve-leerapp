@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Leeritem, PlekGegevens, Strategie } from '../leerlogica'
 import type { Geheugenbeeld, Kaart } from '../bronnen/model'
 import { MAX_PLEKKEN, MIN_PLEKKEN, type RouteStand } from '../bronnen/routes'
+import { Uitlegstap, type Minivraag } from './Uitlegstap'
 import { GEREEDSCHAP, KEUZEREDENEN, reactieOpReden, STRATEGIEKAARTEN, StrategieKaart, type Keuzereden } from '../weergave/strategiekaarten'
 import { Voorleesknop } from '../weergave/voorlezen'
 import { KaartUitsnede } from './KaartUitsnede'
@@ -60,48 +61,106 @@ interface Props {
   onKlaar: (beeld: Omit<Geheugenbeeld, 'id' | 'aangemaakt'> | null) => void
 }
 
-const VOORDOEN_TOPO: { titel: string; tekst: string }[] = [
+type Voordoestap = { titel: string; tekst: string; vraag?: Minivraag }
+
+// Elke stap is kort, met het kernwoord gemarkeerd, en heeft een mini-vraag: pas na een goed antwoord gaat het
+// verder, zodat het kind de uitleg leest en meteen gebruikt (spec layout, uitleg verwerken).
+const VOORDOEN_TOPO: Voordoestap[] = [
   {
     titel: 'Zo werkt beelden koppelen bij topo',
-    tekst: 'De plek zie je op de kaart. Voor de naam bedenk je een plaatje in je hoofd dat je aan de naam laat denken. Hoe gekker, hoe beter je het onthoudt.',
+    tekst: 'De plek zie je op de kaart. Voor de **naam** bedenk je een gek plaatje dat je aan die naam laat denken.',
+    vraag: {
+      vraag: 'Waar bedenk je een plaatje bij?',
+      opties: [
+        { tekst: 'Bij de kleur van de kaart', goed: false },
+        { tekst: 'Bij de naam van de plek', goed: true },
+        { tekst: 'Bij het land ernaast', goed: false },
+      ],
+      hint: 'Kijk naar het gemarkeerde woord.',
+    },
   },
   {
     titel: 'Een voorbeeld',
-    tekst: 'Luik ligt aan de Maas. Stel je een luik in de grond voor, waar de Maas doorheen stroomt. Zie je de rivier? Dan denk je aan Luik.',
+    tekst: 'Luik ligt aan de Maas. Stel je een **luik in de grond** voor, waar de Maas doorheen stroomt.',
+    vraag: {
+      vraag: 'Welk plaatje helpt bij Luik?',
+      opties: [
+        { tekst: 'Een luik in de grond', goed: true },
+        { tekst: 'Een grote toren', goed: false },
+        { tekst: 'Een boot op zee', goed: false },
+      ],
+      hint: 'Kijk naar het gemarkeerde stukje.',
+    },
   },
   {
     titel: 'Nu jij',
-    tekst: 'Bedenk je eigen plaatje bij de naam en beschrijf het in een paar woorden. Straks helpt het je om de naam weer te weten.',
+    tekst: 'Bedenk je eigen plaatje bij de naam en beschrijf het in een paar woorden.',
   },
 ]
 
-const VOORDOEN: Record<Strategie, { titel: string; tekst: string }[]> = {
+const VOORDOEN: Record<Strategie, Voordoestap[]> = {
   'beelden koppelen': [
     {
       titel: 'Zo werkt beelden koppelen',
-      tekst: 'Je bedenkt bij een nieuw woord een plaatje in je hoofd dat je aan de betekenis laat denken. Hoe gekker, hoe beter je het onthoudt.',
+      tekst: 'Bij een nieuw woord bedenk je een plaatje dat je aan de betekenis laat denken. Hoe **gekker**, hoe beter je het onthoudt.',
+      vraag: {
+        vraag: 'Welk plaatje onthoud je het best?',
+        opties: [
+          { tekst: 'Een gewoon plaatje', goed: false },
+          { tekst: 'Een gek plaatje', goed: true },
+          { tekst: 'Een plaatje zonder het woord erin', goed: false },
+        ],
+        hint: 'Kijk naar het gemarkeerde woord.',
+      },
     },
     {
       titel: 'Een voorbeeld',
-      tekst: 'Bridge betekent brug. Stel je voor dat er een brug ligt tussen twee kussens op de bank, en dat je eroverheen loopt.',
+      tekst: 'Bridge betekent brug. Stel je een **brug tussen twee kussens** op de bank voor, en je loopt eroverheen.',
+      vraag: {
+        vraag: 'Waar ligt de brug in dit voorbeeld?',
+        opties: [
+          { tekst: 'Over een rivier', goed: false },
+          { tekst: 'In de keuken', goed: false },
+          { tekst: 'Tussen twee kussens op de bank', goed: true },
+        ],
+        hint: 'Kijk naar het gemarkeerde stukje.',
+      },
     },
     {
       titel: 'Nu jij',
-      tekst: 'Bedenk je eigen plaatje en beschrijf het in een paar woorden. Straks, als je het woord niet meer weet, helpt je eigen plaatje je op weg.',
+      tekst: 'Bedenk je eigen plaatje en beschrijf het in een paar woorden. Straks helpt het je op weg.',
     },
   ],
   geheugenroute: [
     {
       titel: 'Zo werkt een geheugenroute',
-      tekst: 'Je kiest een paar plekken in je huis die je goed kent, in de volgorde waarin je erlangs loopt. Bijvoorbeeld: voordeur, kapstok, bank en tafel.',
+      tekst: 'Je kiest een paar plekken in je huis die je **goed kent**, in de **volgorde** waarin je erlangs loopt.',
+      vraag: {
+        vraag: 'Welke plekken kies je?',
+        opties: [
+          { tekst: 'Plekken die ik goed ken, in een vaste volgorde', goed: true },
+          { tekst: 'Plekken waar ik bijna nooit kom', goed: false },
+          { tekst: 'Steeds andere plekken', goed: false },
+        ],
+        hint: 'Kijk naar de gemarkeerde woorden.',
+      },
     },
     {
       titel: 'Een voorbeeld',
-      tekst: 'Op elke plek leg je in gedachten één woord, met een gek beeld. Bij de voordeur ligt een brug tussen twee kussens (bridge = brug). Aan de kapstok hangt een wolk als jas (cloud = wolk).',
+      tekst: 'Op elke plek leg je één woord met een gek beeld. Bij de **voordeur** ligt een brug tussen twee kussens (bridge = brug).',
+      vraag: {
+        vraag: 'Welk woord ligt bij de voordeur?',
+        opties: [
+          { tekst: 'cloud (wolk)', goed: false },
+          { tekst: 'bridge (brug)', goed: true },
+          { tekst: 'key (sleutel)', goed: false },
+        ],
+        hint: 'Kijk wat er bij het gemarkeerde woord ligt.',
+      },
     },
     {
       titel: 'Nu jij',
-      tekst: 'Later loop je in gedachten je route langs, en kom je de woorden weer tegen. Kies eerst je plekken.',
+      tekst: 'Later loop je in gedachten je route langs en kom je de woorden weer tegen. Kies eerst je plekken.',
     },
   ],
 }
@@ -286,30 +345,29 @@ export function Leermoment({
   const basis = topo && strategie === 'beelden koppelen' ? VOORDOEN_TOPO : VOORDOEN[strategie]
   // Kort hardop voordoen waarom de aanpak past, en vóór "Nu jij" hoe je controleert of hij werkt (S2).
   const kaart = STRATEGIEKAARTEN[strategie]
-  const stappen = [
-    { titel: 'Ik denk even hardop', tekst: kaart.hardop },
+  const stappen: Voordoestap[] = [
+    { titel: 'Ik denk even hardop', tekst: kaart.hardop, vraag: kaart.hardopVraag },
     ...basis.slice(0, -1),
-    { titel: 'Zo controleer je het', tekst: kaart.controle },
+    { titel: 'Zo controleer je het', tekst: kaart.controle, vraag: kaart.controleVraag },
     ...basis.slice(-1),
   ]
   if (!voorgedaan.includes(strategie) && stap < stappen.length) {
+    const huidig = stappen[stap]
     return (
       <div className="leermoment">
-        <p className="gedempt">
-          Stap {stap + 1} van {stappen.length}
-        </p>
-        <h3>{stappen[stap].titel}</h3>
-        <p>{stappen[stap].tekst}</p>
-        <button
-          className="knop"
-          autoFocus
-          onClick={() => {
+        <Uitlegstap
+          key={stap}
+          stap={stap}
+          totaal={stappen.length}
+          titel={huidig.titel}
+          tekst={huidig.tekst}
+          vraag={huidig.vraag}
+          knop={stap === stappen.length - 1 ? 'Ik probeer het' : 'Verder'}
+          onVerder={() => {
             if (stap === stappen.length - 1) onVoorgedaan(strategie)
             setStap(stap + 1)
           }}
-        >
-          {stap === stappen.length - 1 ? 'Ik probeer het' : 'Verder'}
-        </button>
+        />
       </div>
     )
   }

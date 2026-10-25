@@ -257,6 +257,8 @@ export function OefenSessie({
   const [bezig, setBezig] = useState(false)
   const [hulpOpen, setHulpOpen] = useState(false)
   const invoerRef = useRef<HTMLInputElement>(null)
+  /** Bij een regel na een fout: de plek in de sessie waarvoor het kind het goede vakje al aantikte. */
+  const [regeluitlegKlaar, setRegeluitlegKlaar] = useState<string | null>(null)
   const sessieRef = useRef<HTMLElement>(null)
 
   // Bij elk nieuw leeritem naar de bovenkant van de vraag, en pas daarna het invulveld selecteren zonder
@@ -662,13 +664,14 @@ export function OefenSessie({
               }}
               onTyp={(tekst) => void verstuur(tekst, false, begripUitGetypt(regel, tekst) === vraag.goed ? 'goed' : 'fout')}
               onNietGeweten={() => void verstuur(null)}
+              onUitlegKlaar={() => setRegeluitlegKlaar(`${toestand.sessieId}-${toestand.huidige}`)}
             />
             {storing && (
               <p className="feedback feedback-storing" role="alert">
                 {storing}
               </p>
             )}
-            {toestand.afgesloten && (
+            {toestand.afgesloten && (laatste?.oordeel === 'goed' || toets || regeluitlegKlaar === `${toestand.sessieId}-${toestand.huidige}`) && (
               <>
                 {sterrenNaAntwoord}
                 <button className="knop knop-breed" onClick={() => void naarVolgende()} autoFocus>

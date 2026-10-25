@@ -1,19 +1,27 @@
 import { useState, type FormEvent } from 'react'
 import { begripUitGetypt, maakRegelvraag, maakZelfuitleg, regelfeedback, zelfuitlegNu, type Poging, type Regel, type Regelsteun, type Regelvraag, type Bronwoord } from '../leerlogica'
 import { Voorleesknop } from '../weergave/voorlezen'
+import { Uitlegstap } from './Uitlegstap'
 
 /** Het schema van een regel met twee beslisvragen: kolommen voor de eerste vraag, rijen voor de tweede. */
-export function Regelschema({ regel, uitgelicht }: { regel: Regel; uitgelicht?: string }) {
+export function Regelschema({ regel, uitgelicht, onKies }: { regel: Regel; uitgelicht?: string; onKies?: (begripId: string) => void }) {
   // Eén beslisvraag met veel antwoorden (zoals voorzetsels van tijd): een lijst, van vroeg naar laat.
   if (regel.schema === 'lijst') {
     return (
       <ul className="regellijst" aria-label={`Schema: ${regel.titel}`}>
         {regel.begrippen.map((b, i) => (
-          <li key={b.id} className={`regelvak regelvak-${i % 4} ${uitgelicht === b.id ? 'uitgelicht' : ''}`}>
-            <span className="regelvak-vorm">
-              {b.emoji} {b.vorm} <span className="regelvak-betekenis">= {b.betekenis}</span>
-            </span>
-            <span className="regelvak-betekenis">bij {b.antwoorden[0]}</span>
+          <li key={b.id}>
+            <button
+              type="button"
+              className={`regelvak regelvak-${i % 4} ${uitgelicht === b.id ? 'uitgelicht' : ''}`}
+              disabled={!onKies}
+              onClick={() => onKies?.(b.id)}
+            >
+              <span className="regelvak-vorm">
+                {b.emoji} {b.vorm} <span className="regelvak-betekenis">= {b.betekenis}</span>
+              </span>
+              <span className="regelvak-betekenis">bij {b.antwoorden[0]}</span>
+            </button>
           </li>
         ))}
       </ul>
@@ -36,12 +44,19 @@ export function Regelschema({ regel, uitgelicht }: { regel: Regel; uitgelicht?: 
           {kolommen.opties.map((kolom) => {
             const b = regel.begrippen.find((x) => x.antwoorden[0] === kolom && x.antwoorden[1] === rij)!
             return (
-              <div key={kolom} role="cell" className={`regelvak regelvak-${regel.begrippen.indexOf(b)} ${uitgelicht === b.id ? 'uitgelicht' : ''}`}>
+              <button
+                type="button"
+                key={kolom}
+                role="cell"
+                className={`regelvak regelvak-${regel.begrippen.indexOf(b)} ${uitgelicht === b.id ? 'uitgelicht' : ''}`}
+                disabled={!onKies}
+                onClick={() => onKies?.(b.id)}
+              >
                 <span className="regelvak-vorm">
                   {b.emoji} {b.vorm}
                 </span>
                 <span className="regelvak-betekenis">{b.betekenis}</span>
-              </div>
+              </button>
             )
           })}
         </div>
@@ -51,17 +66,24 @@ export function Regelschema({ regel, uitgelicht }: { regel: Regel; uitgelicht?: 
 }
 
 /**
- * De eerste les bij een regel (spec regels): een startvraag op de valkuil, het schema met hardop voordoen,
- * één voorbeeld samen en één zelf met de beslisvragen als steun.
+ * De eerste les bij een regel (spec regels, en uitleg verwerken): een startvraag op de valkuil, dan in kleine
+ * stappen het schema, de beslisvragen en de valkuil, elk met een mini-vraag, één voorbeeld samen en één zelf.
  */
 export function RegelLes({ regel, werkwoorden, onKlaar }: { regel: Regel; werkwoorden: Bronwoord[]; onKlaar: () => void }) {
   const [stap, setStap] = useState(0)
   const [gok, setGok] = useState<string | null>(null)
   const [keuzes, setKeuzes] = useState<string[]>([])
+  const [getikt, setGetikt] = useState<string | null>(null)
+  const [onthuld, setOnthuld] = useState(0)
   const start = regel.begrippen.find((b) => b.id === regel.startvraag.begrip)!
   const samen = maakRegelvraag(regel, regel.begrippen[0].id, 'toepassen', werkwoorden, 'les-samen')
   const zelf = maakRegelvraag(regel, start.id, 'toepassen', werkwoorden, 'les-zelf')
   const zelfAntwoord = regel.begrippen.find((b) => b.antwoorden.every((a, i) => keuzes[i] === a))
+  // Voor het schema: tik het begrip dat het vaakst verward wordt met het startbegrip.
+  const doel = regel.begrippen.find((b) => b.id === (regel.valkuilBij.find(([g]) => g === start.id)?.[1] ?? regel.begrippen[1].id))!
+  const [valGoed, valMis] = (regel.valkuilBij[0] ?? [start.id, doel.id]).map((id) => regel.begrippen.find((b) => b.id === id)!)
+  const TOTAAL = 6
+  const volgende = () => setStap((s) => s + 1)
 
   return (
     <div className="leermoment regelles">
@@ -70,9 +92,14 @@ export function RegelLes({ regel, werkwoorden, onKlaar }: { regel: Regel; werkwo
       </p>
 
       {stap === 0 && (
-        <>
+        <div className="uitlegstap">
+          <div className="stippen" aria-hidden="true">
+            {Array.from({ length: TOTAAL }, (_, i) => (
+              <span key={i} className={i === 0 ? 'stip-aan' : ''}>●</span>
+            ))}
+          </div>
           <h3>Raad eerst eens</h3>
-          <p className="vraag-klein" lang="en">
+          <p className="uitleg-tekst" lang="en">
             Wat betekent: <strong>{regel.startvraag.zin}</strong> <Voorleesknop tekst={regel.startvraag.zin} taal="en" />
           </p>
           {!gok ? (
@@ -86,57 +113,131 @@ export function RegelLes({ regel, werkwoorden, onKlaar }: { regel: Regel; werkwo
           ) : (
             <>
               <p className="feedback">
-                {gok === start.id
-                  ? 'Goed! Dat is precies het lastige stukje.'
-                  : `Bijna iedereen denkt dat eerst. Het betekent: ${start.betekenis}. ${regel.valkuil}`}
+                {gok === start.id ? 'Goed! Dat is precies het lastige stukje.' : `Bijna iedereen denkt dat eerst. Het betekent: ${start.betekenis}.`}
               </p>
-              <button className="knop knop-breed" autoFocus onClick={() => setStap(1)}>
+              <button className="knop knop-breed" autoFocus onClick={volgende}>
                 Verder
               </button>
             </>
           )}
-        </>
+        </div>
       )}
 
       {stap === 1 && (
-        <>
-          <h3>Zo zit het in elkaar</h3>
-          <Regelschema regel={regel} />
-          <p className="steuntje">
-            <strong>Ik denk even hardop:</strong> {regel.hardop}
-          </p>
-          <p className="gedempt">📐 Nieuw in je gereedschapskist: schema met beslisvragen. Handig bij elke regel met woorden die op elkaar lijken.</p>
-          <button className="knop knop-breed" autoFocus onClick={() => setStap(2)}>
-            Verder
-          </button>
-        </>
+        <Uitlegstap
+          key="schema"
+          stap={1}
+          totaal={TOTAAL}
+          titel="Zo zit de regel in elkaar"
+          tekst={`Elk vakje is één begrip, met wat het betekent. Tik op het vakje dat **${doel.betekenis}** betekent.`}
+          opdracht={(klaar) => (
+            <>
+              <Regelschema
+                regel={regel}
+                uitgelicht={getikt === doel.id ? doel.id : undefined}
+                onKies={(id) => {
+                  setGetikt(id)
+                  if (id === doel.id) klaar()
+                }}
+              />
+              {getikt && getikt !== doel.id && <p className="feedback feedback-bijna">💡 Kijk naar de kleine tekst onder elk woord. Probeer het nog eens.</p>}
+            </>
+          )}
+          onVerder={volgende}
+        />
       )}
 
       {stap === 2 && (
-        <>
-          <h3>Eén samen</h3>
-          <p className="regelsituatie">{samen.situatie}</p>
-          <p className="vraag-klein" lang="en">
-            {samen.zin}
-          </p>
-          <ol className="beslisstappen">
-            {regel.beslisvragen.map((v, i) => (
-              <li key={v.vraag}>
-                {v.vraag} <strong>{regel.begrippen[0].antwoorden[i]}</strong>
-              </li>
-            ))}
-          </ol>
-          <p className="feedback feedback-goed">
-            Dus: <strong lang="en">{samen.heleZin}</strong>
-          </p>
-          <button className="knop knop-breed" autoFocus onClick={() => setStap(3)}>
-            Nu jij
-          </button>
-        </>
+        <Uitlegstap
+          key="vragen"
+          stap={2}
+          totaal={TOTAAL}
+          titel="Zo kies je"
+          beeld={<Regelschema regel={regel} />}
+          tekst={`Ik vraag mezelf eerst: **${regel.beslisvragen[0].vraag}**${regel.beslisvragen[1] ? ` Dan: **${regel.beslisvragen[1].vraag}**` : ''}`}
+          vraag={{
+            vraag: 'Welke vraag stel je jezelf eerst?',
+            opties: [
+              { tekst: 'Welk woord ken ik al?', goed: false },
+              { tekst: regel.beslisvragen[0].vraag, goed: true },
+              { tekst: 'Hoe lang is de zin?', goed: false },
+            ],
+            hint: 'Kijk naar het eerste gemarkeerde stukje.',
+          }}
+          onVerder={volgende}
+        />
       )}
 
       {stap === 3 && (
-        <>
+        <Uitlegstap
+          key="valkuil"
+          stap={3}
+          totaal={TOTAAL}
+          titel="Pas op voor de valkuil"
+          beeld={<Regelschema regel={regel} uitgelicht={valGoed.id} />}
+          tekst={regel.valkuil.replace(valGoed.vorm, `**${valGoed.vorm}**`)}
+          vraag={{
+            vraag: `Wat betekent "${valGoed.vorm}"?`,
+            opties: [
+              { tekst: valMis.betekenis, goed: false },
+              { tekst: valGoed.betekenis, goed: true },
+            ],
+            hint: `Kijk naar het oplichtende vakje: "${valGoed.vorm}".`,
+          }}
+          onVerder={volgende}
+        />
+      )}
+
+      {stap === 4 && (
+        <Uitlegstap
+          key="samen"
+          stap={4}
+          totaal={TOTAAL}
+          titel="Eén samen"
+          beeld={
+            <>
+              <p className="regelsituatie">{samen.situatie}</p>
+              <p className="vraag-klein" lang="en">
+                {onthuld >= regel.beslisvragen.length ? samen.heleZin : samen.zin}
+              </p>
+            </>
+          }
+          tekst="Tik op elke vraag om te zien wat ik antwoord."
+          opdracht={(klaar) => (
+            <ol className="beslisstappen">
+              {regel.beslisvragen.map((v, i) => (
+                <li key={v.vraag}>
+                  {v.vraag}{' '}
+                  {i < onthuld ? (
+                    <strong>{regel.begrippen[0].antwoorden[i]}</strong>
+                  ) : (
+                    <button
+                      className="knop knop-rustig"
+                      disabled={i !== onthuld}
+                      onClick={() => {
+                        setOnthuld(i + 1)
+                        if (i + 1 === regel.beslisvragen.length) klaar()
+                      }}
+                    >
+                      ?
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
+          knop="Nu jij"
+          onVerder={volgende}
+        />
+      )}
+
+      {stap === 5 && (
+        <div className="uitlegstap">
+          <div className="stippen" aria-hidden="true">
+            {Array.from({ length: TOTAAL }, (_, i) => (
+              <span key={i} className="stip-aan">●</span>
+            ))}
+          </div>
           <h3>Nu jij</h3>
           <p className="regelsituatie">{zelf.situatie}</p>
           <p className="vraag-klein" lang="en">
@@ -174,12 +275,13 @@ export function RegelLes({ regel, werkwoorden, onKlaar }: { regel: Regel; werkwo
                   </>
                 )}
               </p>
+              <p className="gedempt">📐 Nieuw in je gereedschapskist: schema met beslisvragen.</p>
               <button className="knop knop-breed" autoFocus onClick={onKlaar}>
                 Aan de slag
               </button>
             </>
           )}
-        </>
+        </div>
       )}
     </div>
   )
@@ -206,6 +308,7 @@ export function RegelVraag({
   onKies,
   onTyp,
   onNietGeweten,
+  onUitlegKlaar,
 }: {
   regel: Regel
   vraag: Regelvraag
@@ -219,10 +322,13 @@ export function RegelVraag({
   onKies: (begripId: string, metSteun: boolean) => void
   onTyp: (tekst: string) => void
   onNietGeweten: () => void
+  /** Na een fout: het kind heeft het goede vakje aangetikt en mag verder. */
+  onUitlegKlaar?: () => void
 }) {
   const [keuzes, setKeuzes] = useState<string[]>([])
   const [getypt, setGetypt] = useState('')
   const [uitleg, setUitleg] = useState<number | null>(null)
+  const [vakGetikt, setVakGetikt] = useState<string | null>(null)
   const gekozen = gekozenBegrip(regel, laatste)
   const tekstVan = (id: string) => {
     const b = regel.begrippen.find((x) => x.id === id)!
@@ -307,7 +413,17 @@ export function RegelVraag({
           {laatste.oordeel !== 'goed' && (
             <>
               <p>{gekozen ? regelfeedback(regel, vraag.goed, gekozen) : `Het is "${regel.begrippen.find((b) => b.id === vraag.goed)!.vorm}".`}</p>
-              <Regelschema regel={regel} uitgelicht={vraag.goed} />
+              {/* Niet alleen lezen: het kind tikt zelf het goede vakje aan voordat het verder kan. */}
+              <p className="minivraag-vraag">🤔 Tik op het vakje dat hier past.</p>
+              <Regelschema
+                regel={regel}
+                uitgelicht={vakGetikt === vraag.goed ? vraag.goed : undefined}
+                onKies={(id) => {
+                  setVakGetikt(id)
+                  if (id === vraag.goed) onUitlegKlaar?.()
+                }}
+              />
+              {vakGetikt && vakGetikt !== vraag.goed && <p className="feedback feedback-bijna">💡 Lees de uitleg hierboven nog eens. Probeer het opnieuw.</p>}
             </>
           )}
         </div>

@@ -1651,3 +1651,63 @@ select.invoer {
   padding: 0;
   margin: 0.25rem 0;
 }
+
+/* Uitlegstap: één idee per scherm, kernwoord gemarkeerd, mini-vraag (spec layout, uitleg verwerken). */
+.uitlegstap h3 {
+  margin: 0.5rem 0 0.75rem;
+  font-size: 1.35rem;
+}
+
+.stippen {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+  color: var(--rand-sterk);
+  font-size: 0.8rem;
+}
+
+.stippen .stip-aan {
+  color: var(--actie);
+}
+
+.uitleg-beeld {
+  margin: 0.5rem 0 0.75rem;
+}
+
+.uitleg-tekst {
+  font-size: 1.15rem;
+  line-height: 1.6;
+  margin: 0.5rem 0 0.75rem;
+}
+
+mark.kern {
+  background: var(--hint-zacht);
+  color: var(--tekst);
+  border-bottom: 2px solid var(--hint);
+  padding: 0 0.15rem;
+  border-radius: 3px;
+}
+
+.minivraag {
+  border-top: 1px solid var(--rand);
+  padding-top: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.minivraag-vraag {
+  font-weight: 700;
+  margin: 0.5rem 0;
+}
+
+button.regelvak {
+  font: inherit;
+  color: var(--tekst);
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+}
+
+button.regelvak:disabled {
+  cursor: default;
+  opacity: 1;
+}
