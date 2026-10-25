@@ -21,4 +21,16 @@ describe('herstelacties', () => {
       betekenis: 'Wat doe jij graag in je vrije tijd?',
     })
   })
+
+  it('voegt een zin die op twee regels doorloopt samen: links bij links, rechts bij rechts', () => {
+    expect(
+      voegSamen(
+        { woord: "It's nice being young because you have", betekenis: 'Het is leuk om jong te zijn, omdat je dan veel' },
+        { woord: 'a lot of free time.', betekenis: 'vrije tijd hebt.' },
+      ),
+    ).toEqual({
+      woord: "It's nice being young because you have a lot of free time.",
+      betekenis: 'Het is leuk om jong te zijn, omdat je dan veel vrije tijd hebt.',
+    })
+  })
 })

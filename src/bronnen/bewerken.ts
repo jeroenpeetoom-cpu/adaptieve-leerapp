@@ -22,12 +22,14 @@ export function splits(paar: Paar, plek: number): Paar {
 }
 
 /**
- * Voegt een paar samen met het volgende: het woord blijft, en alles van het volgende paar komt bij de
- * betekenis. Handig als woord en betekenis als twee losse regels herkend zijn.
+ * Voegt een paar samen met het volgende. Heeft het volgende paar twee kanten, dan loopt een zin op de
+ * volgende regel door: links bij links (Engels) en rechts bij rechts (Nederlands). Heeft het maar één kant,
+ * dan is het een losse betekenis of het eind van een afgebroken betekenis: die komt bij de betekenis.
  */
 export function voegSamen(eerste: Paar, volgende: Paar): Paar {
-  return {
-    woord: eerste.woord.trim(),
-    betekenis: [eerste.betekenis, volgende.woord, volgende.betekenis].map((t) => t.trim()).filter(Boolean).join(' '),
+  const plak = (...delen: string[]) => delen.map((t) => t.trim()).filter(Boolean).join(' ')
+  if (volgende.betekenis.trim() !== '') {
+    return { woord: plak(eerste.woord, volgende.woord), betekenis: plak(eerste.betekenis, volgende.betekenis) }
   }
+  return { woord: eerste.woord.trim(), betekenis: plak(eerste.betekenis, volgende.woord) }
 }
