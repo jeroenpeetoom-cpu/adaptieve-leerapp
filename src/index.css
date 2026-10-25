@@ -1711,3 +1711,12 @@ button.regelvak:disabled {
   cursor: default;
   opacity: 1;
 }
+
+/* Meegroeiend invoerveld: lange zinnen lopen door op een volgende regel. */
+.groeiveld {
+  display: block;
+  resize: none;
+  overflow: hidden;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}

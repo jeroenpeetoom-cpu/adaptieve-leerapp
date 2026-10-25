@@ -6,6 +6,7 @@ import type { Bron, Bronpagina, Woordpaar } from '../bronnen/model'
 import { controleerBestand, herken } from '../herkenning/herkenner'
 import { isInhoudelijkeWijziging, isRegelvoorbeeld, REGELS, regelMetId, stelRegelsVoor, type Regel, type Strategie } from '../leerlogica'
 import { Regelschema } from './Regel'
+import { Groeiveld } from './Groeiveld'
 import { echteDb } from '../opslag/database'
 import { verwijderBron } from '../opslag/verwijderen'
 import { legStrategieVast } from '../opslag/strategie'
@@ -40,11 +41,11 @@ function BevestigdWoordpaar({ wp, onBewaar, onVerwijder }: { wp: Woordpaar; onBe
       <div className="controle-velden">
         <label>
           <span className="klein">Engels</span>
-          <input className="invoer" value={woord} lang="en" autoCapitalize="off" spellCheck={false} onChange={(e) => setWoord(e.target.value)} />
+          <Groeiveld value={woord} lang="en" onChange={(e) => setWoord(e.target.value)} />
         </label>
         <label>
           <span className="klein">Nederlands</span>
-          <input className="invoer" value={betekenis} lang="nl" autoCapitalize="off" spellCheck={false} onChange={(e) => setBetekenis(e.target.value)} />
+          <Groeiveld value={betekenis} lang="nl" onChange={(e) => setBetekenis(e.target.value)} />
         </label>
       </div>
       {inhoudelijk && (
@@ -575,25 +576,11 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
                   <div className="controle-velden">
                     <label>
                       <span className="klein">Engels</span> <TwijfelLabel twijfel={wp.bekeken ? 'geen' : wp.twijfelWoord} />
-                      <input
-                        className="invoer"
-                        value={wp.woord}
-                        lang="en"
-                        autoCapitalize="off"
-                        spellCheck={false}
-                        onChange={(e) => void wijzig(wp, { woord: e.target.value, bekeken: true })}
-                      />
+                      <Groeiveld value={wp.woord} lang="en" onChange={(e) => void wijzig(wp, { woord: e.target.value, bekeken: true })} />
                     </label>
                     <label>
                       <span className="klein">Nederlands</span> <TwijfelLabel twijfel={wp.bekeken ? 'geen' : wp.twijfelBetekenis} />
-                      <input
-                        className="invoer"
-                        value={wp.betekenis}
-                        lang="nl"
-                        autoCapitalize="off"
-                        spellCheck={false}
-                        onChange={(e) => void wijzig(wp, { betekenis: e.target.value, bekeken: true })}
-                      />
+                      <Groeiveld value={wp.betekenis} lang="nl" onChange={(e) => void wijzig(wp, { betekenis: e.target.value, bekeken: true })} />
                     </label>
                   </div>
                   <div className="knoppen">
