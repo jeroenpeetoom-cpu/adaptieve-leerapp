@@ -1009,19 +1009,35 @@ select.invoer {
   transform: translate(-50%, -50%);
   border-radius: 999px;
   border: 3px solid var(--succes);
-  background: var(--succes-zacht);
+  /* Doorzichtig: de kaart onder de ring moet zichtbaar blijven, juist daar moet de leerling kijken. */
+  background: color-mix(in srgb, var(--succes) 15%, transparent);
+  box-sizing: border-box;
   pointer-events: none;
   animation: doel 1.2s ease-in-out infinite alternate;
 }
 
+/* Een maat per soort plek: een stad is een stip, een gebied een vlak. */
 .doel-stad {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.doel-rivier,
+.doel-water {
   width: 2.2rem;
   height: 2.2rem;
 }
 
-.doelpunt:not(.doel-stad) {
-  width: 5rem;
-  height: 5rem;
+.doel-gebergte {
+  width: 2.8rem;
+  height: 2.8rem;
+}
+
+.doel-gebied,
+.doel-land,
+.doel-zee {
+  width: 3.4rem;
+  height: 3.4rem;
 }
 
 @keyframes doel {
