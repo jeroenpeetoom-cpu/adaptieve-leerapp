@@ -3,6 +3,13 @@
 // leerstof wordt gedeeld: nooit pogingen, beelden, routes, namen of andere gegevens van het kind.
 import type { Bron, Kaart, Plek, Woordpaar } from '../bronnen/model'
 import type { Database } from './database'
+import groep from './groep.json'
+
+/**
+ * De groep die elke app vanzelf volgt (spec delen, beslissing 5): wie de app via de gewone link opent, krijgt
+ * de gedeelde bronnen zonder iets in te stellen. Dezelfde code gebruikt scripts/deel-bron.mjs.
+ */
+export const GROEPSCODE: string = groep.code
 
 export interface Deelbestand {
   formaat: 'woordexpeditie-bron'
@@ -128,8 +135,10 @@ export async function haalGedeeldeBronnen(db: Database, code: string, basis: str
     return ontsleutel(new Uint8Array(await antwoord.arrayBuffer()), code)
   }
   const index = JSON.parse(await haal('index.bin')) as Indexregel[]
+  const verwijderd = new Set(await db.leesMeta<string[]>('gedeeldVerwijderd', []))
   const nieuw: string[] = []
   for (const regel of index) {
+    if (verwijderd.has(regel.id)) continue
     const bestaand = await db.bronnen.get(regel.id)
     if (bestaand && (!bestaand.gedeeld || bestaand.gedeeld >= regel.gedeeldOp)) continue
     const uitkomst = await importeerDeelbestand(db, JSON.parse(await haal(regel.bestand)) as Deelbestand)

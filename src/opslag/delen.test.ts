@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Database } from './database'
+import { verwijderBron } from './verwijderen'
 import { importeerDeelbestand, maakDeelbestand, ontsleutel, versleutel, groepsmap, type Deelbestand } from './delen'
 
 // Twee databases tegelijk: die van de begeleider ('echt') en die van het kind ('test').
@@ -58,5 +59,14 @@ describe('bronnen delen', () => {
     await metBron(db)
     const deel = await maakDeelbestand(db, 'b1', '2026-10-31T10:00:00Z')
     expect(await importeerDeelbestand(db, deel)).toBe('al aanwezig')
+  })
+
+  it('onthoudt een verwijderde gedeelde bron, zodat die niet terugkomt', async () => {
+    const ouder = nieuweDb()
+    await metBron(ouder)
+    const kind = nieuweDb('test')
+    await importeerDeelbestand(kind, await maakDeelbestand(ouder, 'b1', '2026-10-31T10:00:00Z'))
+    await verwijderBron(kind, 'b1')
+    expect(await kind.leesMeta<string[]>('gedeeldVerwijderd', [])).toEqual(['b1'])
   })
 })

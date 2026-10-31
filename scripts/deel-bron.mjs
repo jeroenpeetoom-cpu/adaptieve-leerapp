@@ -1,15 +1,16 @@
 // Zet een gedeelde bron versleuteld bij de app (spec delen).
-// Gebruik: node scripts/deel-bron.mjs <bron.json> <groepscode>
-// De groepscode komt nooit in de repository: alleen de versleutelde bestanden in public/gedeeld/<map>/.
+// Gebruik: node scripts/deel-bron.mjs <bron.json> [groepscode]
+// Zonder groepscode: de groep die elke app vanzelf volgt (src/opslag/groep.json).
 // Dezelfde versleuteling staat in src/opslag/delen.ts; wijzig ze altijd op beide plekken.
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 
-const [, , pad, code] = process.argv
-if (!pad || !code) {
-  console.error('Gebruik: node scripts/deel-bron.mjs <bron.json> <groepscode>')
+const [, , pad, codeArg] = process.argv
+if (!pad) {
+  console.error('Gebruik: node scripts/deel-bron.mjs <bron.json> [groepscode]')
   process.exit(1)
 }
+const code = codeArg ?? JSON.parse(readFileSync(new URL('../src/opslag/groep.json', import.meta.url), 'utf8')).code
 
 const ZOUT = new TextEncoder().encode('woordexpeditie-gedeeld-v1')
 const RONDES = 150_000

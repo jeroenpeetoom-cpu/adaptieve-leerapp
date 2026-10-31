@@ -5,7 +5,7 @@ import type { Bron, Plek, Woordpaar } from '../bronnen/model'
 import { kalenderdag, STANDAARD_INSTELLINGEN } from '../leerlogica'
 import { echteDb } from '../opslag/database'
 import { verwijderBron } from '../opslag/verwijderen'
-import { haalGedeeldeBronnen, importeerDeelbestand, type Deelbestand } from '../opslag/delen'
+import { GROEPSCODE, haalGedeeldeBronnen } from '../opslag/delen'
 import { leesPunten } from '../opslag/punten'
 import { PuntenBalk } from './Punten'
 import { Oefenroute } from './Oefenroute'
@@ -37,26 +37,6 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
   const [reflectieVoor, setReflectieVoor] = useState<string | null>(null)
 
   const [nieuwVanGroep, setNieuwVanGroep] = useState<string[]>([])
-  const [bestandMelding, setBestandMelding] = useState<string | null>(null)
-
-  async function openBestand(bestand: File) {
-    try {
-      const deel = JSON.parse(await bestand.text()) as Deelbestand
-      if (deel.formaat !== 'woordexpeditie-bron') throw new Error('geen bron')
-      const uitkomst = await importeerDeelbestand(echteDb, deel)
-      setBestandMelding(
-        uitkomst === 'nieuw'
-          ? `"${deel.bron.naam}" staat klaar om te oefenen.`
-          : uitkomst === 'bijgewerkt'
-            ? `"${deel.bron.naam}" is bijgewerkt; je voortgang blijft staan.`
-            : `"${deel.bron.naam}" staat er al.`,
-      )
-      await laad()
-    } catch {
-      setBestandMelding('Dit bestand kan ik niet openen. Kies een bestand dat met "Bron downloaden om te delen" is gemaakt.')
-    }
-  }
-
   const laad = useCallback(async () => {
     setBronnen((await echteDb.bronnen.toArray()).sort((a, b) => b.aangemaakt.localeCompare(a.aangemaakt)))
     setParen(await echteDb.woordparen.toArray())
@@ -73,10 +53,8 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
   // Gedeelde bronnen van de groep vanzelf ophalen (spec delen); zonder internet of groep gebeurt er niets.
   useEffect(() => {
     void (async () => {
-      const code = await echteDb.leesMeta('groepscode', '')
-      if (!code) return
       try {
-        const nieuw = await haalGedeeldeBronnen(echteDb, code, import.meta.env.BASE_URL)
+        const nieuw = await haalGedeeldeBronnen(echteDb, GROEPSCODE, import.meta.env.BASE_URL)
         if (nieuw.length > 0) {
           setNieuwVanGroep(nieuw)
           await laad()
@@ -194,21 +172,6 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
             <button className="knop" onClick={onNieuweBron}>
               + Nieuwe bron (woordenlijst of kaart)
             </button>
-            {/* Een gedeelde bron rechtstreeks openen, bijvoorbeeld een bestand dat via WhatsApp binnenkwam (spec delen). */}
-            <label className="knop knop-rustig bestandknop">
-              📥 Bron openen uit bestand
-              <input
-                type="file"
-                accept=".json,.txt,application/json,text/plain"
-                hidden
-                onChange={(e) => {
-                  const bestand = e.target.files?.[0]
-                  e.target.value = ''
-                  if (bestand) void openBestand(bestand)
-                }}
-              />
-            </label>
-            {bestandMelding && <p className="feedback">{bestandMelding}</p>}
           </section>
         )}
       />

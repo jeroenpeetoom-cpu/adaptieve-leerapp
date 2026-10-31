@@ -1740,9 +1740,3 @@ button.regelvak:disabled {
 .deelknop {
   margin-top: 0.75rem;
 }
-
-.bestandknop {
-  display: inline-flex;
-  align-items: center;
-  margin-top: 0.75rem;
-}

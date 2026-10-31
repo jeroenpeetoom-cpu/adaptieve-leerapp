@@ -4,7 +4,6 @@ import { leesBackup, maakBackup, OngeldigeBackup, zetBackupTerug } from '../opsl
 import { isBlijvend, vraagBlijvendeOpslag } from '../opslag/blijvend'
 import { STANDAARD_INSTELLINGEN } from '../leerlogica'
 import { echteDb } from '../opslag/database'
-import { haalGedeeldeBronnen } from '../opslag/delen'
 import { isGeluidUit, zetGeluidUit } from '../weergave/voorlezen'
 import { ProfielFormulier } from './Profiel'
 import { leesContrast, leesWeergave, zetContrast, zetWeergave, type Contrast, type Weergave } from '../weergave/weergave'
@@ -25,8 +24,6 @@ export function Instellingen({ onTerug, onGewist }: { onTerug: () => void; onGew
   const [geluidUit, setGeluidUit] = useState(isGeluidUit)
   const [weergave, setWeergave] = useState<Weergave>(leesWeergave)
   const [contrast, setContrast] = useState<Contrast>(leesContrast)
-  const [groepscode, setGroepscode] = useState('')
-  const [groepMelding, setGroepMelding] = useState<string | null>(null)
   const [sessieMinuten, setSessieMinuten] = useState(STANDAARD_INSTELLINGEN.sessieMinuten)
   const importRef = useRef<HTMLInputElement>(null)
 
@@ -35,22 +32,9 @@ export function Instellingen({ onTerug, onGewist }: { onTerug: () => void; onGew
     setBlijvend(await isBlijvend())
     setLaatsteBackup(await echteDb.leesMeta<string | null>('laatsteBackup', null))
     setSessieMinuten(await echteDb.leesMeta('sessieMinuten', STANDAARD_INSTELLINGEN.sessieMinuten))
-    setGroepscode(await echteDb.leesMeta('groepscode', ''))
   }, [])
 
-  /** De groepscode bewaren en meteen kijken of er gedeelde bronnen zijn (spec delen). */
-  async function bewaarGroep() {
-    const code = groepscode.trim()
-    await echteDb.schrijfMeta('groepscode', code)
-    if (!code) return setGroepMelding('Geen groep meer: er komen geen gedeelde bronnen meer bij.')
-    setGroepMelding('Even kijken bij je groep…')
-    try {
-      const nieuw = await haalGedeeldeBronnen(echteDb, code, import.meta.env.BASE_URL)
-      setGroepMelding(nieuw.length > 0 ? `Gelukt! Nieuw: ${nieuw.join(', ')}.` : 'Gekoppeld. Er zijn (nog) geen nieuwe bronnen.')
-    } catch {
-      setGroepMelding('Deze code ken ik niet, of er is geen internet. Controleer de code en probeer het opnieuw.')
-    }
-  }
+
 
   useEffect(() => {
     void laad()
@@ -187,32 +171,6 @@ export function Instellingen({ onTerug, onGewist }: { onTerug: () => void; onGew
           Extra duidelijk contrast
         </label>
         <p className="gedempt">Licht of donker volgt de instelling van je telefoon. Wat je leert en hoe het telt, blijft hetzelfde.</p>
-      </section>
-
-      <section className="kaart">
-        <h2>👪 Bronnen van je groep</h2>
-        <p className="gedempt">
-          Met een groepscode krijg je bronnen die een ouder heeft klaargezet vanzelf in de app. Alleen de woorden, regels en kaarten
-          komen binnen; je voortgang blijft op deze telefoon.
-        </p>
-        <label className="label" htmlFor="groepscode">
-          Groepscode
-        </label>
-        <input
-          id="groepscode"
-          className="invoer"
-          value={groepscode}
-          onChange={(e) => setGroepscode(e.target.value)}
-          autoCapitalize="off"
-          autoCorrect="off"
-          spellCheck={false}
-        />
-        <div className="knoppen">
-          <button className="knop" onClick={() => void bewaarGroep()}>
-            Koppelen
-          </button>
-        </div>
-        {groepMelding && <p className="feedback">{groepMelding}</p>}
       </section>
 
       <section className="kaart">

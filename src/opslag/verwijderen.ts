@@ -21,6 +21,11 @@ export async function verwijderBron(db: Database, bronId: string): Promise<void>
     await db.bronpaginas.where('bronId').equals(bronId).delete()
     await db.plekken.where('bronId').equals(bronId).delete()
     await db.kaarten.where('bronId').equals(bronId).delete()
+    // Een gedeelde bron die het kind weghaalt, komt niet bij de volgende keer openen weer terug.
+    if ((await db.bronnen.get(bronId))?.gedeeld) {
+      const weg = await db.leesMeta<string[]>('gedeeldVerwijderd', [])
+      await db.schrijfMeta('gedeeldVerwijderd', [...new Set([...weg, bronId])])
+    }
     await db.bronnen.delete(bronId)
 
     // Een gepauzeerde sessie met leeritems van deze bron is niet meer te hervatten.
