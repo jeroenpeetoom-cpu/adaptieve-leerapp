@@ -10,25 +10,36 @@ export function DeelKnop({ bronId, naam }: { bronId: string; naam: string }) {
   const [melding, setMelding] = useState<string | null>(null)
 
   async function deel() {
-    const deel = await maakDeelbestand(echteDb, bronId, new Date().toISOString())
-    const bestandsnaam = `bron-${naam.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.json`
-    const bestand = new File([JSON.stringify(deel)], bestandsnaam, { type: 'application/json' })
-    if (navigator.canShare?.({ files: [bestand] })) {
-      try {
-        await navigator.share({ files: [bestand], title: `Bron: ${naam}` })
-      } catch (fout) {
-        if ((fout as Error).name === 'AbortError') return
-        throw fout
+    setMelding('Bestand maken…')
+    try {
+      const deel = await maakDeelbestand(echteDb, bronId, new Date().toISOString())
+      const bestandsnaam = `bron-${naam.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.json`
+      const inhoud = JSON.stringify(deel)
+      // Android deelt een .json-bestand niet altijd; als tekstbestand lukt het wel. Lukt delen niet, dan
+      // downloaden we het gewoon, en in elk geval zeggen we wat er gebeurde.
+      const alsTekst = new File([inhoud], bestandsnaam, { type: 'text/plain' })
+      if (navigator.canShare?.({ files: [alsTekst] })) {
+        try {
+          await navigator.share({ files: [alsTekst], title: `Bron: ${naam}` })
+          setMelding('Gedeeld. Zet het bestand in het gesprek met de beheerder; daarna komt de bron vanzelf bij de groep.')
+          return
+        } catch (fout) {
+          if ((fout as Error).name === 'AbortError') return setMelding(null)
+          // Delen mislukte: hieronder downloaden.
+        }
       }
-    } else {
-      const url = URL.createObjectURL(bestand)
+      const url = URL.createObjectURL(new Blob([inhoud], { type: 'application/json' }))
       const a = document.createElement('a')
       a.href = url
       a.download = bestandsnaam
+      document.body.appendChild(a)
       a.click()
-      URL.revokeObjectURL(url)
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 10_000)
+      setMelding(`Gedownload als "${bestandsnaam}" (in je Downloads). Stuur dat bestand naar de beheerder.`)
+    } catch (fout) {
+      setMelding(`Dat lukte niet: ${(fout as Error).message}. Probeer het nog eens.`)
     }
-    setMelding('Bestand gemaakt. Stuur het naar de beheerder; daarna komt de bron vanzelf bij de groep.')
   }
 
   return (
