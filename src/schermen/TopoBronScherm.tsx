@@ -3,6 +3,7 @@ import type { Bron, Kaart, Plek, Plekrichting, Rechthoek } from '../bronnen/mode
 import { controleerBestand, herkenMeermaals, voorbereiden } from '../herkenning/herkenner'
 import { echteDb } from '../opslag/database'
 import { verwijderBron } from '../opslag/verwijderen'
+import { DeelKnop } from './DeelKnop'
 import { koppelAfkortingen } from '../topo/afkortingen'
 import { dekAf, grijswaarden, naarJpeg } from '../topo/kaartbeeld'
 import { klikVast, omrekeningUit, reken, vindStippen, type Punt } from '../topo/uitlijnen'
@@ -702,6 +703,8 @@ export function TopoBronScherm({ bronId, onTerug }: { bronId: string; onTerug: (
         </div>
         {bron.afgerond && <p className="gedempt">Deze bron is afgerond: de plekken komen niet meer terug. Je voortgang is bewaard.</p>}
         {bron.onderhoud && !bron.afgerond && <p className="gedempt">🧠 Blijven onthouden: af en toe komt er een plek uit deze bron langs.</p>}
+        {bron.gedeeld && <p className="gedempt">👪 Deze bron komt van je groep.</p>}
+        {!bron.gedeeld && <DeelKnop bronId={bronId} naam={bron.naam} />}
       </section>
 
       <section className="kaart">

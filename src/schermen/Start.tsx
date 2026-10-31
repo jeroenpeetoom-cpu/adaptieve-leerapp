@@ -5,6 +5,7 @@ import type { Bron, Plek, Woordpaar } from '../bronnen/model'
 import { kalenderdag, STANDAARD_INSTELLINGEN } from '../leerlogica'
 import { echteDb } from '../opslag/database'
 import { verwijderBron } from '../opslag/verwijderen'
+import { haalGedeeldeBronnen } from '../opslag/delen'
 import { leesPunten } from '../opslag/punten'
 import { PuntenBalk } from './Punten'
 import { Oefenroute } from './Oefenroute'
@@ -35,6 +36,8 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
   /** De bron waarvoor de leerling nu de reflectie na de toets doet. */
   const [reflectieVoor, setReflectieVoor] = useState<string | null>(null)
 
+  const [nieuwVanGroep, setNieuwVanGroep] = useState<string[]>([])
+
   const laad = useCallback(async () => {
     setBronnen((await echteDb.bronnen.toArray()).sort((a, b) => b.aangemaakt.localeCompare(a.aangemaakt)))
     setParen(await echteDb.woordparen.toArray())
@@ -46,6 +49,23 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
 
   useEffect(() => {
     void laad()
+  }, [laad])
+
+  // Gedeelde bronnen van de groep vanzelf ophalen (spec delen); zonder internet of groep gebeurt er niets.
+  useEffect(() => {
+    void (async () => {
+      const code = await echteDb.leesMeta('groepscode', '')
+      if (!code) return
+      try {
+        const nieuw = await haalGedeeldeBronnen(echteDb, code, import.meta.env.BASE_URL)
+        if (nieuw.length > 0) {
+          setNieuwVanGroep(nieuw)
+          await laad()
+        }
+      } catch {
+        // Geen internet of de groep is (nog) leeg: de volgende keer opnieuw.
+      }
+    })()
   }, [laad])
 
   if (bronnen === null) return null
@@ -76,6 +96,11 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
   return (
     <>
       {!bezig && <p className="groet">Hoi {leerling.bijnaam}!</p>}
+      {!bezig && nieuwVanGroep.length > 0 && (
+        <p className="feedback feedback-goed" role="status">
+          📥 Nieuw van je groep: {nieuwVanGroep.join(', ')}
+        </p>
+      )}
       {!bezig && punten !== null && <PuntenBalk punten={punten} />}
       <Oefenroute
         db={echteDb}

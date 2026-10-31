@@ -1736,3 +1736,7 @@ button.regelvak:disabled {
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
+
+.deelknop {
+  margin-top: 0.75rem;
+}

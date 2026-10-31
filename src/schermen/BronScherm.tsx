@@ -7,6 +7,7 @@ import { controleerBestand, herken } from '../herkenning/herkenner'
 import { isInhoudelijkeWijziging, isRegelvoorbeeld, REGELS, regelMetId, stelRegelsVoor, type Regel, type Strategie } from '../leerlogica'
 import { Regelschema } from './Regel'
 import { Groeiveld } from './Groeiveld'
+import { DeelKnop } from './DeelKnop'
 import { echteDb } from '../opslag/database'
 import { verwijderBron } from '../opslag/verwijderen'
 import { legStrategieVast } from '../opslag/strategie'
@@ -770,6 +771,8 @@ export function BronScherm({ bronId, onTerug }: { bronId: string; onTerug: () =>
         </div>
         {bron.afgerond && <p className="gedempt">Deze bron is afgerond: de woorden komen niet meer terug. Je voortgang is bewaard.</p>}
         {bron.onderhoud && !bron.afgerond && <p className="gedempt">🧠 Blijven onthouden: af en toe komt er een woord uit deze bron langs.</p>}
+        {bron.gedeeld && <p className="gedempt">👪 Deze bron komt van je groep.</p>}
+        {bevestigd.length > 0 && !bron.gedeeld && <DeelKnop bronId={bronId} naam={bron.naam} />}
       </section>
 
       <section className="kaart">

@@ -24,6 +24,8 @@ export interface Bron {
   regels?: string[]
   /** Voorgestelde regels waarvan de begeleider zei dat ze er niet bij horen. */
   regelsAfgewezen?: string[]
+  /** Deze bron komt van de groep (spec delen): wanneer de versie gedeeld is. */
+  gedeeld?: string
   aangemaakt: string
 }
 
