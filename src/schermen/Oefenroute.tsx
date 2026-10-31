@@ -184,11 +184,18 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     if (s.repetitie.length > 0) delen.push(`${s.repetitie.length} voor de generale repetitie`)
     if (s.toetsvorm.length > 0) delen.unshift(`📝 toetsronde met ${s.toetsvorm.length}`)
     if (s.herhalingen.length > 0) delen.push(`${s.herhalingen.length} ${s.herhalingen.length === 1 ? 'herhaling' : 'herhalingen'}`)
-    if (s.nieuw.length > 0) delen.push(`${s.nieuw.length} ${s.nieuw.length === 1 ? 'nieuw woord' : 'nieuwe woorden'}`)
+    const plekken = s.nieuw.every((i) => i.soort === 'plek')
+    if (s.nieuw.length > 0)
+      delen.push(`${s.nieuw.length} ${s.nieuw.length === 1 ? (plekken ? 'nieuwe plek' : 'nieuw woord') : plekken ? 'nieuwe plekken' : 'nieuwe woorden'}`)
     return `${delen.join(', ')} · ongeveer ${s.minuten} ${s.minuten === 1 ? 'minuut' : 'minuten'}`
   }
   const langerMelding = (s: typeof samenstelling) =>
-    s.tekort ? (
+    s.tekort && s.tekortReden === 'aantal' ? (
+      <p className="feedback" role="note">
+        📅 Er komt een toets aan en er is nog veel nieuw. Meer dan {s.nieuw.length} nieuwe tegelijk is te veel om te onthouden: vandaag deze, de
+        volgende keer de rest. Oefen dus elke dag.
+      </p>
+    ) : s.tekort ? (
       <p className="feedback" role="note">
         📅 Er komt een toets aan, en niet alles past meer in de tijd. Een extra rondje helpt, of begin de volgende keer eerder.
       </p>

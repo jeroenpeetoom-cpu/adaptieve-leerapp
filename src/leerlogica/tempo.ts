@@ -34,6 +34,10 @@ export function duurNieuw(tempo: Tempo, antwoord: string): number {
   return (tempo.nieuwSec + (tempo.terugkans ?? 0) * tempo.herhalingSec) * lengtefactor(antwoord)
 }
 
+/** Ondergrenzen voor het gemeten tempo, in seconden. */
+const MIN_HERHALING_SEC = 8
+const MIN_NIEUW_SEC = 30
+
 /** Pas met zoveel metingen vervangt het eigen tempo de schatting. */
 const MIN_METINGEN = 5
 /** Alleen de laatste metingen tellen, zodat het tempo meegroeit. */
@@ -71,11 +75,13 @@ export function berekenTempo(pogingen: Poging[], instellingen: Instellingen): Te
     if (sec <= 0 || sec > instellingen.pauzeGrensSec) continue
     ;(eerste ? nieuw : herhaling).push(sec)
   }
-  const schat = (metingen: number[], schatting: number) =>
-    metingen.length >= MIN_METINGEN ? gemiddelde(metingen.slice(-LAATSTE_METINGEN)) : schatting
+  // Ondergrens: een nieuw leeritem met uitleg duurt nooit maar een paar tellen, ook al gaat tikken op een
+  // kaart snel. Te lage metingen maakten de schatting onbruikbaar ("30 nieuwe plekken in 4 minuten").
+  const schat = (metingen: number[], schatting: number, minimaal: number) =>
+    Math.max(minimaal, metingen.length >= MIN_METINGEN ? gemiddelde(metingen.slice(-LAATSTE_METINGEN)) : schatting)
   return {
-    herhalingSec: schat(herhaling, instellingen.schattingHerhalingSec),
-    nieuwSec: schat(nieuw, instellingen.schattingNieuwSec),
+    herhalingSec: schat(herhaling, instellingen.schattingHerhalingSec, MIN_HERHALING_SEC),
+    nieuwSec: schat(nieuw, instellingen.schattingNieuwSec, MIN_NIEUW_SEC),
     terugkans: nieuwTotaal >= MIN_METINGEN ? nieuwNietGoed / nieuwTotaal : SCHATTING_TERUGKANS,
   }
 }

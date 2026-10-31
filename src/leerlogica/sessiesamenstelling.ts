@@ -43,6 +43,8 @@ export interface Samenstelling {
   langer: boolean
   /** Een toets vraagt meer dan er vandaag in het maximum past; de rest schuift door. */
   tekort: boolean
+  /** Waarom niet alles past: de tijd, of het maximum aantal nieuwe leeritems per sessie. */
+  tekortReden?: 'tijd' | 'aantal'
 }
 
 /** Deel van een sessie van 15 minuten dat de laatste ronde mag gebruiken; de rest blijft voor ander werk. */
@@ -155,6 +157,7 @@ export function stelSessieSamen(
   const budget = Math.min(instellingen.sessieMinuten * 60, maximum)
   let gebruikt = 0
   let tekort = false
+  let tekortReden: 'tijd' | 'aantal' | undefined
 
   // 1. Generale repetitie.
   const repetitie: Leeritem[] = []
@@ -218,6 +221,7 @@ export function stelSessieSamen(
       const voor = nieuw.length
       if (!voegNieuwToe(item, maximum)) {
         tekort = true
+        tekortReden = nieuw.length >= instellingen.maxNieuwPerSessie ? 'aantal' : 'tijd'
         break
       }
       if (nieuw.length > voor) {
@@ -269,7 +273,7 @@ export function stelSessieSamen(
 
   const minuten = Math.ceil(gebruikt / 60)
   const voorrang = toetsNieuw.map((i) => i.id)
-  return { repetitie, herhalingen, nieuw, toetsvorm, voorrang, minuten, langer: gebruikt > budget + 30, tekort }
+  return { repetitie, herhalingen, nieuw, toetsvorm, voorrang, minuten, langer: gebruikt > budget + 30, tekort, tekortReden: tekort ? (tekortReden ?? 'tijd') : undefined }
 }
 
 /** Nederlands → vreemde taal en benoemen zijn moeilijker: de leerling moet het antwoord zelf maken. */

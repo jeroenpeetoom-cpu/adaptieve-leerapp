@@ -107,7 +107,7 @@ describe('planning voor een toets', () => {
     // 52 leeritems over 4 dagen zou 13 per dag vragen (20 minuten); er passen er 10.
     const s = samen(reeks(52), [], [bron({ toetsdag: '2026-10-08' })], '2026-10-01')
     expect(s.nieuw).toHaveLength(10)
-    expect(s).toMatchObject({ minuten: 15, tekort: true })
+    expect(s).toMatchObject({ minuten: 15, tekort: true, tekortReden: 'tijd' })
     expect(samen(reeks(50), [], [bron({ toetsdag: '2026-10-03' })], '2026-10-01').nieuw).toHaveLength(10)
   })
 
@@ -274,5 +274,14 @@ describe('vangnet vóór de toets', () => {
     const s = samen([...oud, ...reeks(10, 'n')], pogingen, [bron({ toetsdag: '2026-10-20' })], '2026-10-10')
     expect(s.nieuw.length).toBeGreaterThan(0)
     expect(s.voorrang.length).toBe(s.nieuw.length)
+  })
+})
+
+describe('melding bij een tekort', () => {
+  it('zegt dat het maximum aantal nieuwe is bereikt, niet dat de tijd op is', () => {
+    const snel: Tempo = { herhalingSec: 5, nieuwSec: 5 }
+    const s = stelSessieSamen(reeks(80), [], [bron({ toetsdag: '2026-10-03' })], '2026-10-01', STANDAARD_INSTELLINGEN, snel)
+    expect(s.nieuw).toHaveLength(STANDAARD_INSTELLINGEN.maxNieuwPerSessie)
+    expect(s).toMatchObject({ tekort: true, tekortReden: 'aantal' })
   })
 })

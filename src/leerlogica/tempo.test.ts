@@ -37,6 +37,11 @@ describe('tempo', () => {
     expect(tempo(pogingen).nieuwSec).toBe(45)
   })
 
+  it('schat een nieuw leeritem nooit sneller dan een halve minuut, ook als tikken snel gaat', () => {
+    const pogingen = Array.from({ length: 8 }, (_, i) => poging(i * 5, `k${i}`))
+    expect(tempo(pogingen).nieuwSec).toBe(30)
+  })
+
   it('meet hoe vaak een nieuw leeritem niet goed ging', () => {
     const pogingen = Array.from({ length: 10 }, (_, i) => ({ ...poging(i * 30, `m${i}`), oordeel: i < 6 ? ('niet geweten' as const) : ('goed' as const) }))
     expect(tempo(pogingen).terugkans).toBe(0.6)
@@ -44,11 +49,11 @@ describe('tempo', () => {
 
   it('telt pauzes en de tijd tussen twee sessies niet mee', () => {
     const pogingen = [
-      ...Array.from({ length: 6 }, (_, i) => poging(i * 15, `a${i}`)), // 5 metingen van 15 s (nieuw)
+      ...Array.from({ length: 6 }, (_, i) => poging(i * 40, `a${i}`)), // 5 metingen van 40 s (nieuw)
       poging(10_000, 'x'), // lange pauze
       poging(20_000, 'y', 's2'), // andere sessie
     ]
-    expect(tempo(pogingen).nieuwSec).toBe(15)
+    expect(tempo(pogingen).nieuwSec).toBe(40)
   })
 })
 
