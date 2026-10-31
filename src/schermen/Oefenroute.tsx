@@ -241,7 +241,10 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
         })
     // Hooguit één paar om te vergelijken, niet bij een vrijwillige extra (spec leren-leren, S5).
     if (!maximaal) {
-      const bronItems = bronId === null ? leeritems : leeritems.filter((i) => i.bronId === bronId)
+      // Alleen bronnen die meedoen: een afgeronde bron, of een die op de reflectie na de toets wacht, hoort
+      // ook niet via een vergelijkpaar in de sessie te komen.
+      const doetMee = new Set(bronnen.filter((b) => !b.afgerond && !b.wachtOpReflectie).map((b) => b.bronId))
+      const bronItems = leeritems.filter((i) => doetMee.has(i.bronId) && (bronId === null || i.bronId === bronId))
       const paar = kiesVergelijking(bronItems, pogingen, vergelijkingen, nu(), (kaartId) => {
         const k = kaarten[kaartId]
         return k ? k.hoogte / k.breedte : 1
