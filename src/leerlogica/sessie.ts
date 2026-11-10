@@ -57,8 +57,37 @@ export interface SessieToestand {
   afronding?: boolean
   /** De voorspelling aan het begin; null als de leerling hem oversloeg. */
   voorspelling?: Voorspelling | null
+  /** Het plan dat de leerling halverwege koos (check-in); null als hij oversloeg. */
+  checkin?: string | null
   /** Een paar dat samen terugkomt om het verschil te zien; `start` is de plek van het eerste in de wachtrij. */
   vergelijking?: Vergelijking & { start: number }
+}
+
+/** Vanaf zoveel geplande vragen komt er halverwege een check-in. */
+export const CHECKIN_VANAF = 6
+
+/**
+ * Halverwege de sessie even stilstaan (spec leren-leren, beslissing 3): één keer, niet in de toetsronde en
+ * niet in een vrijwillige extra zonder tijdslimiet.
+ */
+export function checkinNodig(toestand: SessieToestand): boolean {
+  const gepland = toestand.aantalGepland ?? toestand.leeritems.length
+  if (toestand.checkin !== undefined || gepland < CHECKIN_VANAF || toestand.budgetSec === undefined) return false
+  if (inToetsronde(toestand) || toestand.afgesloten || toestand.pogingenBijHuidige > 0) return false
+  const start = toestand.toetsronde ?? 0
+  return toestand.huidige >= start + Math.floor((gepland - start) / 2) && toestand.huidige < gepland
+}
+
+/** Hoeveel leeritems in deze sessie tot nu toe bij de eerste poging niet goed gingen. */
+export function lastigTotNu(toestand: SessieToestand): number {
+  const eerste = new Map<string, Poging>()
+  for (const p of toestand.pogingen) if (!eerste.has(p.leeritemId)) eerste.set(p.leeritemId, p)
+  return [...eerste.values()].filter((p) => p.oordeel !== 'goed').length
+}
+
+/** Legt het plan van de check-in vast; null betekent overgeslagen. */
+export function checkIn(toestand: SessieToestand, plan: string | null): SessieToestand {
+  return { ...toestand, checkin: plan }
 }
 
 /** Zet een vergelijkpaar direct na elkaar aan het eind van de wachtrij (spec leren-leren, S5). */

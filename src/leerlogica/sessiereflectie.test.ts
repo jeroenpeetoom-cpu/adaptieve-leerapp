@@ -33,4 +33,10 @@ describe('reflectie na de sessie', () => {
     expect(uitkomstVoornemen(voornemen, sessie(false))).toBe('nog-niet')
     expect(uitkomstVoornemen({ ...voornemen, itemId: 'ander' }, sessie(true))).toBeNull()
   })
+
+  it('stelt eens per week een vraag over leren buiten de app of zelfvertrouwen, afwisselend', () => {
+    expect(kiesSessiereflectie(sessie(false), null, 'Europe/Amsterdam', null).variant).toBe('buiten')
+    expect(kiesSessiereflectie(sessie(false), null, 'Europe/Amsterdam', { variant: 'buiten', dagenGeleden: 8 }).variant).toBe('vertrouwen')
+    expect(kiesSessiereflectie(sessie(false), null, 'Europe/Amsterdam', { variant: 'buiten', dagenGeleden: 3 }).variant).toBe('misging')
+  })
 })

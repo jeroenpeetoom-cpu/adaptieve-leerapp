@@ -7,6 +7,9 @@ import {
   mengVolgorde,
   leermomentNodig,
   raad,
+  checkIn,
+  checkinNodig,
+  lastigTotNu,
   actieveTijdSec,
   afrondenNodig,
   rondAf,
@@ -403,5 +406,29 @@ describe('tijd bijhouden en afronden', () => {
     t = beantwoord(t, { pogingId: 'p1', antwoord: 'fout', tijdstip: op(10) }).toestand
     t = volgende(t)
     expect(t.leeritems.map((i) => i.id)).toEqual(['a', 'b', 'c'])
+  })
+})
+
+describe('check-in halverwege', () => {
+  const w = (id: string): Leeritem => ({ id, soort: 'woordpaar', bronId: 'b', woordpaarId: `wp-${id}`, bronversie: 1, oefenrichting: { van: 'en', naar: 'nl' }, vraag: id, toegestaneAntwoorden: [`${id}-nl`] })
+  const T = '2026-11-10T10:00:00.000Z'
+  const start = (n: number, budgetSec?: number) => startSessie('s', Array.from({ length: n }, (_, i) => w(`w${i}`)), [], {}, 0, { gestart: T, budgetSec })
+  const verder = (t: SessieToestand, k: number) => {
+    for (let i = 0; i < k; i++) t = volgende(beantwoord(t, { pogingId: `p${i}`, antwoord: i % 2 ? `w${i}-nl` : 'mis', tijdstip: T }).toestand)
+    return t
+  }
+
+  it('komt halverwege, één keer', () => {
+    let t = start(8, 600)
+    expect(checkinNodig(verder(t, 3))).toBe(false)
+    t = verder(t, 4)
+    expect(checkinNodig(t)).toBe(true)
+    expect(lastigTotNu(t)).toBe(2)
+    expect(checkinNodig(checkIn(t, 'beeld'))).toBe(false)
+  })
+
+  it('niet bij korte sessies of een vrijwillige extra', () => {
+    expect(checkinNodig(verder(start(4, 600), 2))).toBe(false)
+    expect(checkinNodig(verder(start(8), 4))).toBe(false)
   })
 })

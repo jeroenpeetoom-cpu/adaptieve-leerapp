@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   isKlaar,
   mengVolgorde,
+  dagenTussen,
   kalenderdag,
   nogTeGaan,
   startSessie,
@@ -78,6 +79,8 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
   /** De sessie waarvoor de leerling de afsluitende reflectie al heeft gedaan of overgeslagen. */
   const [reflectieGedaan, setReflectieGedaan] = useState<string | null>(null)
   const [regelLessen, setRegelLessen] = useState<string[]>([])
+  const [checkinVariant, setCheckinVariant] = useState(0)
+  const [weekvraag, setWeekvraag] = useState<{ variant: 'buiten' | 'vertrouwen'; tijdstip: string } | null>(null)
   const [vergelijkingen, setVergelijkingen] = useState<{ a: string; b: string; tijdstip: string }[]>([])
   const [vorigeVoorspelling, setVorigeVoorspelling] = useState<{ voorspeld: number; uitkomst: number; van: number; variant: number } | null>(null)
   /** De bron die de leerling koos om te oefenen; null is alles samen. "Nog een rondje" blijft daarbij. */
@@ -103,6 +106,8 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     setReflectieVariant(await db.leesMeta<Reflectievariant | null>('reflectieVariant', null))
     setVoornemen(await db.leesMeta<Voornemen | null>('voornemen', null))
     setRegelLessen(await db.leesMeta<string[]>('regelLessen', []))
+    setCheckinVariant(await db.leesMeta<number>('checkinVariant', 0))
+    setWeekvraag(await db.leesMeta<{ variant: 'buiten' | 'vertrouwen'; tijdstip: string } | null>('weekvraag', null))
     setVergelijkingen(await db.leesMeta<{ a: string; b: string; tijdstip: string }[]>('vergelijkingen', []))
     setStrategiePerBron(await db.leesMeta<Record<string, Strategie | 'geen'>>('strategiePerBron', {}))
     setVoorgedaan(await db.leesMeta<Strategie[]>('voorgedaan', []))
@@ -286,6 +291,11 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     await db.sessies.update(sessieId, { reflectie: `${vraag.vraag} ${kaal}` })
     await db.schrijfMeta('reflectieVariant', vraag.variant)
     setReflectieVariant(vraag.variant)
+    if (vraag.variant === 'buiten' || vraag.variant === 'vertrouwen') {
+      const nieuw = { variant: vraag.variant, tijdstip: nu() }
+      await db.schrijfMeta('weekvraag', nieuw)
+      setWeekvraag(nieuw)
+    }
     if (vraag.variant === 'hielp') {
       const reflectie = { tekst: kaal, tijdstip: nu() }
       await db.schrijfMeta('laatsteReflectie', reflectie)
@@ -343,7 +353,12 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
                   toestand,
                   erbij: puntenBijStart.current ? puntenErbij(puntenBijStart.current, na) : null,
                   totaal: na.totaal,
-                  reflectievraag: kiesSessiereflectie(toestand, reflectieVariant, instellingen.tijdzone),
+                  reflectievraag: kiesSessiereflectie(
+                    toestand,
+                    reflectieVariant,
+                    instellingen.tijdzone,
+                    weekvraag ? { variant: weekvraag.variant, dagenGeleden: dagenTussen(kalenderdag(weekvraag.tijdstip, instellingen.tijdzone), vandaag) } : null,
+                  ),
                 }),
               )
           }
@@ -372,6 +387,7 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
           vorigeVoorspelling={vorigeVoorspelling}
           voornemen={voornemen}
           regelLessen={regelLessen}
+          checkinVariant={checkinVariant}
           onRegelLes={(regelId) => {
             const nieuw = [...new Set([...regelLessen, regelId])]
             setRegelLessen(nieuw)

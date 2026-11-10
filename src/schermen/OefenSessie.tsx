@@ -24,6 +24,11 @@ import {
   leermomentNodig,
   nogTeGaan,
   optiesVoor,
+  checkIn,
+  checkinNodig,
+  checkinVraag,
+  CHECKIN_PLANNEN,
+  lastigTotNu,
   begripUitGetypt,
   regelsteun,
   maakRegelvraag,
@@ -103,6 +108,8 @@ interface Props {
   /** Regels waarvan de leerling de eerste les al heeft gehad. */
   regelLessen?: string[]
   onRegelLes?: (regelId: string) => void
+  /** Welke formulering van de check-in de vorige keer gesteld is, voor variatie. */
+  checkinVariant?: number
 }
 
 /**
@@ -250,6 +257,7 @@ export function OefenSessie({
   voornemen = null,
   regelLessen = [],
   onRegelLes,
+  checkinVariant = 0,
 }: Props) {
   const [toestand, setToestand] = useState(begintoestand)
   const [antwoord, setAntwoord] = useState('')
@@ -301,6 +309,43 @@ export function OefenSessie({
             {storing}
           </p>
         )}
+      </section>
+    )
+  }
+
+  // Halverwege even stilstaan met het eigen bewijs, en een plan kiezen (spec leren-leren, beslissing 3).
+  if (checkinNodig(toestand)) {
+    const lastig = lastigTotNu(toestand)
+    const gedaan = new Set(toestand.pogingen.map((p) => p.leeritemId)).size
+    const kies = async (plan: string | null) => {
+      const nieuw = checkIn(toestand, plan)
+      setBezig(true)
+      try {
+        await db.slaSessieOp(nieuw, false, nu())
+        await db.schrijfMeta('checkinVariant', checkinVariant + 1)
+      } finally {
+        setBezig(false)
+      }
+      setToestand(nieuw)
+    }
+    return (
+      <section className="kaart sessie" ref={sessieRef}>
+        <p className="vraaglabel">
+          <span className="chip">⏸️ even stilstaan</span>
+        </p>
+        <p className="reflectie-vraag">{checkinVraag(checkinVariant, lastig, gedaan)}</p>
+        <div className="opties-lijst">
+          {CHECKIN_PLANNEN.filter((p) => lastig > 0 || p.id !== 'beeld').map((p) => (
+            <button key={p.id} className="knop knop-rustig optie" disabled={bezig} onClick={() => void kies(p.id)}>
+              {p.tekst}
+            </button>
+          ))}
+        </div>
+        <p className="tekstlinks">
+          <button className="link" disabled={bezig} onClick={() => void kies(null)}>
+            Overslaan
+          </button>
+        </p>
       </section>
     )
   }
@@ -544,6 +589,11 @@ export function OefenSessie({
           </p>
         )
       })()}
+      {toestand.checkin && toestand.checkin !== 'doorgaan' && (
+        <p className="voornemen" role="note">
+          📌 Je plan: {CHECKIN_PLANNEN.find((p) => p.id === toestand.checkin)?.tekst.replace(/^\P{L}+/u, '').toLowerCase()}
+        </p>
+      )}
       {voornemen?.itemId === item.id && !toestand.afgesloten && (
         <p className="voornemen" role="note">
           📌 Je nam je voor: {voornemen.stap}.
@@ -554,7 +604,17 @@ export function OefenSessie({
   const sterrenNaAntwoord = toestand.afgesloten && (
     <Sterrenkaart totaal={toestand.leeritems.length} gedaan={toestand.huidige + 1} codewoorden={codewoorden} sprong={vondCodewoord} />
   )
-  const leermoment = leermomentNodig(toestand)
+  // Plan uit de check-in: na een fout bij een woord meteen een beeld maken (de app voert het plan echt uit).
+  const extraBeeld =
+    toestand.checkin === 'beeld' &&
+    toestand.afgesloten &&
+    !!laatste &&
+    laatste.oordeel !== 'goed' &&
+    item.soort === 'woordpaar' &&
+    !geheugenbeelden[item.id] &&
+    !inToetsronde(toestand) &&
+    !leermomentNodig(toestand)
+  const leermoment = leermomentNodig(toestand) || extraBeeld
 
   async function leermomentKlaar(nieuwBeeld: Omit<Geheugenbeeld, 'id' | 'aangemaakt'> | null) {
     let volgendeToestand = toestand
@@ -771,7 +831,7 @@ export function OefenSessie({
         <Leermoment
           key={item.id}
           item={item}
-          strategie={strategiePerBron[item.bronId]}
+          strategie={extraBeeld ? 'beelden koppelen' : strategiePerBron[item.bronId]}
           voorgedaan={voorgedaan}
           route={routeVoor(item.bronId)}
           routenaam={routenaamVoor(item.bronId)}

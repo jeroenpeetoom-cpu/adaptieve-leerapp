@@ -4,7 +4,7 @@ import type { SessieToestand } from './sessie'
 import { gebruikteAanpakken, type Keuze } from './toetsreflectie'
 import type { Leeritem } from './types'
 
-export type Reflectievariant = 'misging' | 'hielp' | 'verraste'
+export type Reflectievariant = 'misging' | 'hielp' | 'verraste' | 'buiten' | 'vertrouwen'
 
 export interface Sessiereflectievraag {
   variant: Reflectievariant
@@ -37,6 +37,42 @@ export const VERRASSINGEN: Keuze[] = [
   { id: 'niets', tekst: '🙂 Niets bijzonders' },
 ]
 
+/** Eens per week: leren buiten de app (transfer) of zelfvertrouwen en omgaan met fouten. */
+export const BUITEN_DE_APP: Keuze[] = [
+  { id: 'ophalen', tekst: '🧠 Ja: zelf iets ophalen zonder te kijken (bijvoorbeeld voor een andere toets)' },
+  { id: 'beeld', tekst: '🖼️ Ja: een beeld bedacht om iets te onthouden' },
+  { id: 'elke-dag', tekst: '📅 Ja: elke dag een beetje geoefend (bijvoorbeeld bij sport of muziek)' },
+  { id: 'nog-niet', tekst: '🤔 Nog niet, maar ik ga het proberen' },
+]
+
+export const BETER_GEWORDEN: Keuze[] = [
+  { id: 'zonder-hulp', tekst: '⭐ Dingen weten zonder hulp' },
+  { id: 'spelling', tekst: '🔤 Woorden goed spellen' },
+  { id: 'toepassen', tekst: '📐 Een regel toepassen in een nieuwe zin' },
+  { id: 'rustig', tekst: '😌 Rustig blijven als iets fout gaat' },
+]
+
+/** Plannen bij de check-in halverwege; "beeld" voert de app ook echt uit. */
+export const CHECKIN_PLANNEN: Keuze[] = [
+  { id: 'beeld', tekst: '🖼️ Bij een woord dat misgaat meteen een beeld maken' },
+  { id: 'nadenken', tekst: '🧠 Eerst goed nadenken voordat ik "Weet ik niet" tik' },
+  { id: 'letters', tekst: '🔤 Beter op de letters letten' },
+  { id: 'doorgaan', tekst: '✅ Zo doorgaan, het gaat goed' },
+]
+
+/** De check-invraag, met het eigen bewijs, in een paar formuleringen. */
+export function checkinVraag(variant: number, lastig: number, totaal: number): string {
+  if (lastig === 0) return ['Halverwege, en alles ging goed! Hoe pak je de rest aan?', 'Je bent op de helft en nog niets ging mis. Wat is je plan?', 'Tot nu toe alles goed. Blijf je het zo doen?'][variant % 3]
+  return [
+    `Halverwege! Bij ${lastig} ${lastig === 1 ? 'vraag' : 'vragen'} ging het nog mis. Wat doe je bij de volgende lastige?`,
+    `Even stilstaan: ${lastig} van de ${totaal} gingen nog niet goed. Wat ga je anders doen?`,
+    `Je bent op de helft. ${lastig === 1 ? 'Eén vraag was' : `${lastig} vragen waren`} lastig. Hoe pak je de rest aan?`,
+  ][variant % 3]
+}
+
+/** Na zoveel dagen komt de weekvraag weer. */
+export const WEEKVRAAG_NA_DAGEN = 7
+
 /** Het eerste leeritem dat bij de eerste poging in deze sessie niet goed ging. */
 export function misgegaan(sessie: SessieToestand): Leeritem | undefined {
   const gezien = new Set<string>()
@@ -52,7 +88,21 @@ export function misgegaan(sessie: SessieToestand): Leeritem | undefined {
  * Kiest de reflectievraag voor na de sessie: een andere variant dan de vorige keer, en "misging" alleen als
  * er iets misging (dan is er bewijs om naar te kijken).
  */
-export function kiesSessiereflectie(sessie: SessieToestand, vorige: Reflectievariant | null, tijdzone: string): Sessiereflectievraag {
+export function kiesSessiereflectie(
+  sessie: SessieToestand,
+  vorige: Reflectievariant | null,
+  tijdzone: string,
+  /** De vorige weekvraag, als die er was, om af te wisselen en eens per week te stellen. */
+  weekvraag?: { variant: 'buiten' | 'vertrouwen'; dagenGeleden: number } | null,
+): Sessiereflectievraag {
+  // Eens per week: leren buiten de app of zelfvertrouwen, afwisselend (spec leren-leren, beslissing 3).
+  // undefined: onbekend, dan geen weekvraag; null: nog nooit gesteld.
+  if (weekvraag !== undefined && (weekvraag === null || weekvraag.dagenGeleden >= WEEKVRAAG_NA_DAGEN)) {
+    const variant = weekvraag?.variant === 'buiten' ? 'vertrouwen' : 'buiten'
+    return variant === 'buiten'
+      ? { variant, vraag: 'Heb je deze week buiten de app ook een van je aanpakken gebruikt?', keuzes: BUITEN_DE_APP }
+      : { variant, vraag: 'Waar ben je deze week beter in geworden?', keuzes: BETER_GEWORDEN }
+  }
   const fout = misgegaan(sessie)
   const volgorde: Reflectievariant[] = ['misging', 'hielp', 'verraste']
   const mogelijk = volgorde.filter((v) => (v !== 'misging' || fout) && v !== vorige)
