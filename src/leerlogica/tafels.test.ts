@@ -7,6 +7,10 @@ import {
   sommenVanTafel,
   tafelstand,
   trucVoor,
+  trucopties,
+  lastigsteSom,
+  uitkomstTafelvoornemen,
+  tafelplanVraag,
   volgendeLimiet,
   type Tafelpoging,
   type Tafeluitkomst,
@@ -136,6 +140,7 @@ describe('trucs', () => {
     expect(trucVoor(som(6, 4)).soort).toBe('dubbel-dubbel')
     expect(trucVoor(som(7, 8)).soort).toBe('drie-keer-dubbel')
     expect(trucVoor(som(7, 6)).soort).toBe('vijf-plus')
+    expect(trucVoor(som(6, 7)).soort).toBe('vijf-plus')
     expect(trucVoor(som(7, 7)).uitleg).toContain('35 + 14 = 49')
     expect(trucVoor(som(3, 10)).soort).toBe('nul-erachter')
   })
@@ -156,5 +161,32 @@ describe('bewijs na de ronde', () => {
   })
   it('ontleedt een som', () => {
     expect(ontleed('7x8')).toEqual({ id: '7x8', a: 7, b: 8, uitkomst: 56 })
+  })
+})
+
+describe('zelf een truc kiezen en een plan maken', () => {
+  it('geeft drie trucs, waarvan er minstens één past en de andere bij een andere tafel horen', () => {
+    for (const [a, b] of [[7, 9], [6, 8], [3, 4], [7, 7], [2, 10]]) {
+      const opties = trucopties(som(a, b), undefined, vast(a * b))
+      expect(opties).toHaveLength(3)
+      expect(opties.some((o) => o.past)).toBe(true)
+      for (const o of opties.filter((o) => !o.past)) expect([a, b]).not.toContain(o.hoortBij)
+      expect(new Set(opties.map((o) => o.truc.soort)).size).toBe(3)
+    }
+  })
+  it('laat 7 × 9 met keer 10 min één keer en met keer 5 plus keer 2 uitrekenen', () => {
+    const passend = trucopties(som(7, 9), undefined, vast(3)).filter((o) => o.past).map((o) => o.truc.soort)
+    expect(passend.sort()).toEqual(['tien-min', 'vijf-twee'])
+  })
+  it('kiest de lastigste som van de ronde en kijkt later of het plan werkte', () => {
+    const alle = [...instap([]), poging('7x8', 'te laat', 10000, 2, { rondeId: 'r' }), poging('6x2', 'fout', 3000, 2, { rondeId: 'r' })]
+    expect(lastigsteSom(alle, 'r')?.id).toBe('7x8')
+    const voornemen = { som: '7x8', plan: 'truc', tijdstip: '2026-11-02T20:00:00.000Z' }
+    expect(uitkomstTafelvoornemen(voornemen, alle)).toBeNull()
+    const later = [...alle, poging('7x8', 'goed', 4000, 3)]
+    expect(uitkomstTafelvoornemen(voornemen, later)?.uitkomst).toBe('gelukt')
+  })
+  it('wisselt de vraag na de ronde', () => {
+    expect(tafelplanVraag(0, som(7, 8))).not.toBe(tafelplanVraag(1, som(7, 8)))
   })
 })

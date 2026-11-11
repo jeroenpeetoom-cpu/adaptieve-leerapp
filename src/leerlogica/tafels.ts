@@ -19,8 +19,10 @@ export interface Tafelpoging {
   rondeId: string
   /** Hoort bij de instapronde: kijken wat de leerling al kan. */
   instap?: boolean
-  /** De truc die de leerling na een fout of te laat zag (strategie, apart van kennis). */
+  /** De truc die de leerling na een fout of te laat koos (strategie, apart van kennis). */
   truc?: string
+  /** Paste de gekozen truc bij de som? */
+  trucPaste?: boolean
 }
 
 /** De volgorde waarin tafels erbij komen: eerst de makkelijke, de lastigste het laatst. */
@@ -206,11 +208,19 @@ function dagenTussen(van: string, tot: string, tijdzone: string): number {
  * Een gewone ronde uit de actieve tafels: sommen die nog niet vlot gaan het vaakst, nieuwe sommen ook, beheerste
  * sommen af en toe (gespreid). De eerste keer is het de instapronde.
  */
-export function kiesRonde(stand: Tafelstand, nu: string, tijdzone: string, toeval: Toeval, aantal = SOMMEN_PER_RONDE): { sommen: Som[]; instap: boolean } {
+export function kiesRonde(
+  stand: Tafelstand,
+  nu: string,
+  tijdzone: string,
+  toeval: Toeval,
+  aantal = SOMMEN_PER_RONDE,
+  /** Sommen die er zeker in moeten, zoals de som waar de leerling een plan voor maakte. */
+  voorrang: string[] = [],
+): { sommen: Som[]; instap: boolean } {
   if (!stand.instapGedaan) return { sommen: instapronde(toeval), instap: true }
   const kandidaten = stand.actief.flatMap((b) => sommenVanTafel(b)).map((s) => stand.sommen.get(s.id)!)
-  const gekozen: Som[] = []
-  const pool = kandidaten.map((st) => ({ st, w: gewicht(st, nu, tijdzone) }))
+  const gekozen: Som[] = voorrang.filter((id) => stand.sommen.has(id)).map(ontleed)
+  const pool = kandidaten.filter((st) => !voorrang.includes(st.som.id)).map((st) => ({ st, w: gewicht(st, nu, tijdzone) }))
   while (gekozen.length < aantal && pool.length > 0) {
     const totaal = pool.reduce((t, k) => t + k.w, 0)
     let r = toeval() * totaal
@@ -224,7 +234,7 @@ export function kiesRonde(stand: Tafelstand, nu: string, tijdzone: string, toeva
   return { sommen: doorElkaar(schud(gekozen, toeval)), instap: false }
 }
 
-export type Trucsoort = 'blijft' | 'nul-erachter' | 'omdraaien' | 'dubbel' | 'dubbel-dubbel' | 'drie-keer-dubbel' | 'helft-van-tien' | 'tien-min' | 'vijf-plus' | 'twee-plus'
+export type Trucsoort = 'blijft' | 'nul-erachter' | 'omdraaien' | 'dubbel' | 'dubbel-dubbel' | 'drie-keer-dubbel' | 'helft-van-tien' | 'tien-min' | 'vijf-plus' | 'vijf-twee' | 'twee-plus'
 
 export interface Truc {
   soort: Trucsoort
@@ -232,24 +242,12 @@ export interface Truc {
   uitleg: string
 }
 
-/**
- * Een truc die bij deze som past (strategieontwikkeling): de leerling ziet hoe je een som die je nog niet weet
- * uitrekent vanuit wat je wel weet. Omdraaien eerst, als de omgekeerde som al vlot gaat.
- */
-export function trucVoor(s: Som, stand?: Tafelstand): Truc {
-  const { a, b, uitkomst } = s
-  if (a === 1 || b === 1) return { soort: 'blijft', naam: 'Keer 1', uitleg: `Keer 1 verandert niets: ${a} × ${b} = ${uitkomst}.` }
-  if (a === 10 || b === 10) {
-    const n = a === 10 ? b : a
-    return { soort: 'nul-erachter', naam: 'Keer 10', uitleg: `Keer 10: zet een 0 achter ${n}. Dat is ${uitkomst}.` }
-  }
-  const om = stand?.sommen.get(`${b}x${a}`)
-  if (a !== b && om?.vlot) return { soort: 'omdraaien', naam: 'Omdraaien', uitleg: `Draai hem om: ${b} × ${a} weet je al. Dat is ook ${uitkomst}.` }
-  // Kies de tafel waar de handigste truc bij hoort, en reken met het andere getal.
-  const voorkeur = [2, 5, 9, 4, 3, 6, 8, 7]
-  const t = voorkeur.find((x) => x === a || x === b)!
-  const n = t === b ? a : b
+function trucMet(t: number, n: number, uitkomst: number): Truc {
   switch (t) {
+    case 1:
+      return { soort: 'blijft', naam: 'Keer 1', uitleg: `Keer 1 verandert niets: het blijft ${uitkomst}.` }
+    case 10:
+      return { soort: 'nul-erachter', naam: 'Keer 10', uitleg: `Keer 10: zet een 0 achter ${n}. Dat is ${uitkomst}.` }
     case 2:
       return { soort: 'dubbel', naam: 'Dubbel', uitleg: `Keer 2 is het dubbele: ${n} + ${n} = ${uitkomst}.` }
     case 5:
@@ -265,8 +263,112 @@ export function trucVoor(s: Som, stand?: Tafelstand): Truc {
     case 6:
       return { soort: 'vijf-plus', naam: 'Keer 5, één keer erbij', uitleg: `Keer 6 is keer 5 plus één keer: ${n * 5} + ${n} = ${uitkomst}.` }
     default:
-      return { soort: 'vijf-plus', naam: 'Keer 5 plus keer 2', uitleg: `Keer 7 is keer 5 plus keer 2: ${n * 5} + ${n * 2} = ${uitkomst}.` }
+      return { soort: 'vijf-twee', naam: 'Keer 5 plus keer 2', uitleg: `Keer 7 is keer 5 plus keer 2: ${n * 5} + ${n * 2} = ${uitkomst}.` }
   }
+}
+
+/** Alle trucs die bij deze som werken: via het ene of het andere getal, of door om te draaien. */
+export function trucsVoor(s: Som, stand?: Tafelstand): Truc[] {
+  const { a, b, uitkomst } = s
+  const uit: Truc[] = []
+  const om = stand?.sommen.get(`${b}x${a}`)
+  if (a !== b && om?.vlot) uit.push({ soort: 'omdraaien', naam: 'Omdraaien', uitleg: `Draai hem om: ${b} × ${a} weet je al. Dat is ook ${uitkomst}.` })
+  // De handigste truc eerst.
+  const voorkeur = [1, 10, 2, 5, 9, 4, 3, 6, 8, 7]
+  for (const t of voorkeur) {
+    if (t === b) uit.push(trucMet(t, a, uitkomst))
+    else if (t === a) uit.push(trucMet(t, b, uitkomst))
+  }
+  return uit.filter((t, i) => uit.findIndex((x) => x.soort === t.soort) === i)
+}
+
+/**
+ * De handigste truc voor deze som (strategieontwikkeling): hoe je een som die je nog niet weet uitrekent vanuit
+ * wat je wel weet. Omdraaien eerst, als de omgekeerde som al vlot gaat.
+ */
+export function trucVoor(s: Som, stand?: Tafelstand): Truc {
+  return trucsVoor(s, stand)[0]
+}
+
+export interface Trucoptie {
+  truc: Truc
+  /** Werkt deze truc bij deze som? */
+  past: boolean
+  /** Bij een truc die niet past: bij welke tafel hij wel hoort. */
+  hoortBij?: number
+}
+
+const TAFEL_VAN_TRUC: [Trucsoort, number][] = [
+  ['dubbel', 2],
+  ['helft-van-tien', 5],
+  ['tien-min', 9],
+  ['dubbel-dubbel', 4],
+  ['drie-keer-dubbel', 8],
+  ['twee-plus', 3],
+  ['vijf-plus', 6],
+  ['vijf-twee', 7],
+]
+
+/**
+ * Drie trucs om uit te kiezen na een fout (spec tafels, beslissing 6): de leerling kiest zelf welke truc bij de
+ * som past en gebruikt hem. Hooguit twee die passen, de rest hoort bij een andere tafel.
+ */
+export function trucopties(s: Som, stand: Tafelstand | undefined, toeval: Toeval): Trucoptie[] {
+  const passend = trucsVoor(s, stand).filter((t) => t.soort !== 'blijft' && t.soort !== 'nul-erachter').slice(0, 2)
+  const goed = passend.length > 0 ? passend : trucsVoor(s, stand).slice(0, 1)
+  const soorten = new Set(goed.map((t) => t.soort))
+  const anders = schud(
+    TAFEL_VAN_TRUC.filter(([soort, t]) => !soorten.has(soort) && t !== s.a && t !== s.b),
+    toeval,
+  )
+    .slice(0, 3 - goed.length)
+    .map(([, t]) => ({ truc: trucMet(t, s.a, t * s.a), past: false, hoortBij: t }))
+  return schud([...goed.map((truc) => ({ truc, past: true })), ...anders], toeval)
+}
+
+/** Een voornemen na de ronde bij één som die misging; de app kijkt de volgende keer of het werkte. */
+export interface Tafelvoornemen {
+  som: string
+  plan: string
+  tijdstip: string
+}
+
+/** De plannen om uit te kiezen, met de truc en het omdraaien voor deze som erin. */
+export function tafelplannen(s: Som, stand?: Tafelstand): { id: string; tekst: string }[] {
+  const truc = trucsVoor(s, stand).find((t) => t.soort !== 'omdraaien') ?? trucVoor(s, stand)
+  const plannen = [{ id: 'truc', tekst: `🧰 De truc gebruiken: ${truc.naam.toLowerCase()}` }]
+  if (s.a !== s.b) plannen.push({ id: 'omdraaien', tekst: `🔄 Omdraaien: ${s.b} × ${s.a}` })
+  plannen.push({ id: 'hardop', tekst: `🗣️ Een paar keer hardop zeggen: ${s.a} × ${s.b} = ${s.uitkomst}` })
+  plannen.push({ id: 'rustig', tekst: '🧠 Eerst rustig rekenen in plaats van gokken' })
+  return plannen
+}
+
+/** De vraag na de ronde, in een paar formuleringen: nooit twee keer achter elkaar dezelfde. */
+export function tafelplanVraag(variant: number, s: Som): string {
+  const som = `${s.a} × ${s.b}`
+  return [
+    `Bij ${som} ging het nog mis. Wat doe je de volgende keer?`,
+    `${som} was lastig. Hoe pak je hem de volgende keer aan?`,
+    `Welk plan kies je voor ${som}? Die komt de volgende ronde terug.`,
+  ][variant % 3]
+}
+
+/** De som die het meest misging in deze ronde: eerst fout of te laat, en het langzaamst. */
+export function lastigsteSom(alle: Tafelpoging[], rondeId: string): Som | undefined {
+  const eerste = new Map<string, Tafelpoging>()
+  for (const p of alle) if (p.rondeId === rondeId && !p.instap && !eerste.has(p.som)) eerste.set(p.som, p)
+  const mis = [...eerste.values()].filter((p) => p.uitkomst !== 'goed').sort((x, y) => y.tijdMs - x.tijdMs)
+  return mis[0] ? ontleed(mis[0].som) : undefined
+}
+
+/** Hoe het voornemen afliep, als de som na het voornemen langskwam: binnen de tijd goed, of nog niet. */
+export function uitkomstTafelvoornemen(voornemen: Tafelvoornemen | null, alle: Tafelpoging[]): { uitkomst: 'gelukt' | 'nog-niet'; poging: Tafelpoging } | null {
+  if (!voornemen) return null
+  const poging = alle
+    .filter((p) => p.som === voornemen.som && p.tijdstip > voornemen.tijdstip)
+    .sort((x, y) => x.tijdstip.localeCompare(y.tijdstip))[0]
+  if (!poging) return null
+  return { uitkomst: poging.uitkomst === 'goed' ? 'gelukt' : 'nog-niet', poging }
 }
 
 export interface Rondebewijs {

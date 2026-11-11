@@ -1842,3 +1842,8 @@ button.regelvak:disabled {
   font-size: 0.85rem;
   margin: 0.25rem 0 0;
 }
+
+.tafelplanvraag {
+  font-size: 1.4rem;
+  margin: 0.25rem 0 1rem;
+}

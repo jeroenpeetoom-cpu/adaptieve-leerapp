@@ -1,16 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   kiesRonde,
+  lastigsteSom,
   rondebewijs,
   somstatus,
   STANDAARD_INSTELLINGEN,
+  tafelplannen,
+  tafelplanVraag,
   tafelstand,
+  trucopties,
   trucVoor,
+  uitkomstTafelvoornemen,
   type Som,
   type Tafelpoging,
   type Tafelstand,
   type Tafeluitkomst,
-  type Truc,
+  type Tafelvoornemen,
+  type Trucoptie,
 } from '../leerlogica'
 import type { Database } from '../opslag/database'
 
@@ -58,11 +64,19 @@ interface Beurt {
 
 export function TafelScherm({ db, onTerug, onBezig }: { db: Database; onTerug: () => void; onBezig?: (bezig: boolean) => void }) {
   const [pogingen, setPogingen] = useState<Tafelpoging[] | null>(null)
-  const [ronde, setRonde] = useState<{ id: string; beurten: Beurt[]; instap: boolean } | null>(null)
-  const [klaar, setKlaar] = useState<{ id: string; instap: boolean } | null>(null)
+  const [ronde, setRonde] = useState<{ id: string; beurten: Beurt[]; instap: boolean; voornemen: Tafelvoornemen | null } | null>(null)
+  const [klaar, setKlaar] = useState<{ id: string; instap: boolean; voornemen: Tafelvoornemen | null } | null>(null)
+  const [voornemen, setVoornemen] = useState<Tafelvoornemen | null>(null)
+  const [planVariant, setPlanVariant] = useState(0)
+  /** Na de ronde: de som waar de leerling een plan voor kiest (spec tafels, beslissing 6). */
+  const [planVoor, setPlanVoor] = useState<Som | null>(null)
 
   useEffect(() => {
-    void db.tafelpogingen.toArray().then(setPogingen)
+    void (async () => {
+      setVoornemen(await db.leesMeta<Tafelvoornemen | null>('tafelvoornemen', null))
+      setPlanVariant(await db.leesMeta('tafelplanVariant', 0))
+      setPogingen(await db.tafelpogingen.toArray())
+    })()
   }, [db])
   useEffect(() => {
     onBezig?.(ronde !== null)
@@ -72,9 +86,31 @@ export function TafelScherm({ db, onTerug, onBezig }: { db: Database; onTerug: (
   if (!pogingen || !stand) return null
 
   function start() {
-    const keuze = kiesRonde(stand!, nu(), TZ, Math.random)
+    const keuze = kiesRonde(stand!, nu(), TZ, Math.random, undefined, voornemen ? [voornemen.som] : [])
     setKlaar(null)
-    setRonde({ id: crypto.randomUUID(), beurten: keuze.sommen.map((som) => ({ som })), instap: keuze.instap })
+    setRonde({ id: crypto.randomUUID(), beurten: keuze.sommen.map((som) => ({ som })), instap: keuze.instap, voornemen })
+  }
+
+  async function rondeKlaar() {
+    const r = ronde!
+    setRonde(null)
+    setKlaar({ id: r.id, instap: r.instap, voornemen: r.voornemen })
+    const alle = await db.tafelpogingen.toArray()
+    // Een plan dat nu getest is, is klaar; wat ervan kwam staat in het bewijs.
+    if (r.voornemen && uitkomstTafelvoornemen(r.voornemen, alle)) {
+      await db.schrijfMeta('tafelvoornemen', null)
+      setVoornemen(null)
+    }
+    if (!r.instap) setPlanVoor(lastigsteSom(alle, r.id) ?? null)
+  }
+
+  async function kiesPlan(tekst: string) {
+    const nieuw = { som: planVoor!.id, plan: tekst, tijdstip: nu() }
+    await db.schrijfMeta('tafelvoornemen', nieuw)
+    await db.schrijfMeta('tafelplanVariant', planVariant + 1)
+    setVoornemen(nieuw)
+    setPlanVariant(planVariant + 1)
+    setPlanVoor(null)
   }
 
   if (ronde) {
@@ -85,18 +121,38 @@ export function TafelScherm({ db, onTerug, onBezig }: { db: Database; onTerug: (
         stand={stand}
         onPoging={async (p) => {
           await db.tafelpogingen.put(p)
-          setPogingen((oud) => [...(oud ?? []), p])
+          setPogingen((oud) => [...(oud ?? []).filter((x) => x.id !== p.id), p])
         }}
-        onKlaar={() => {
-          setKlaar({ id: ronde.id, instap: ronde.instap })
-          setRonde(null)
-        }}
+        onKlaar={() => void rondeKlaar()}
       />
     )
   }
 
+  // Eerst het plan, bovenaan en alleen: een vraag onder het bewijs wordt overgeslagen.
+  if (planVoor) {
+    return (
+      <section className="kaart tafels">
+        <p className="voortgang">Ronde klaar · nog één vraag</p>
+        <h2 className="tafelplanvraag">{tafelplanVraag(planVariant, planVoor)}</h2>
+        <div className="opties-lijst">
+          {tafelplannen(planVoor, stand).map((p) => (
+            <button key={p.id} className="knop knop-rustig optie" onClick={() => void kiesPlan(p.tekst)}>
+              {p.tekst}
+            </button>
+          ))}
+        </div>
+        <button className="link" onClick={() => setPlanVoor(null)}>
+          Nu niet
+        </button>
+      </section>
+    )
+  }
+
   const bewijs = klaar ? rondebewijs(pogingen, klaar.id, TZ) : null
-  const trucs = klaar ? [...new Set(pogingen.filter((p) => p.rondeId === klaar.id && p.truc).map((p) => p.truc!))] : []
+  const gekozen = klaar ? pogingen.filter((p) => p.rondeId === klaar.id && p.truc) : []
+  const goedGekozen = gekozen.filter((p) => p.trucPaste).length
+  const planUitkomst = klaar?.voornemen ? uitkomstTafelvoornemen(klaar.voornemen, pogingen) : null
+  const planSom = klaar?.voornemen?.som.replace('x', ' × ')
   const beheerst = [...stand.sommen.values()].filter((s) => s.beheerst).length
 
   return (
@@ -107,6 +163,14 @@ export function TafelScherm({ db, onTerug, onBezig }: { db: Database; onTerug: (
           <p>
             <strong>Ronde klaar!</strong> {bewijs.goed} van de {bewijs.totaal} goed, {bewijs.opDoel} binnen 3 seconden.
           </p>
+          {planUitkomst && planUitkomst.poging.rondeId === klaar!.id && (
+            <p>
+              📌 Je plan bij {planSom} ({klaar!.voornemen!.plan.replace(/^\S+\s/, '').toLowerCase()}):{' '}
+              {planUitkomst.uitkomst === 'gelukt'
+                ? `het werkte, binnen ${sec(planUitkomst.poging.tijdMs)} goed!`
+                : 'nog niet gelukt. Hij komt terug, probeer het nog eens.'}
+            </p>
+          )}
           {bewijs.sneller > 0 && (
             <p>
               ⚡ {bewijs.sneller} {bewijs.sneller === 1 ? 'som ging' : 'sommen gingen'} sneller dan de vorige keer.
@@ -117,8 +181,20 @@ export function TafelScherm({ db, onTerug, onBezig }: { db: Database; onTerug: (
           {klaar?.instap && stand.snel.length > 0 && (
             <p>Deze tafels kon je al vlot: {stand.snel.join(', ')}. Daar ga je meteen sneller mee verder.</p>
           )}
-          {trucs.length > 0 && <p>🧰 Trucs die je zag: {trucs.join(', ')}. Probeer ze de volgende keer zelf.</p>}
+          {gekozen.length > 0 && (
+            <p>
+              🧰 Je koos {gekozen.length === 1 ? 'één keer' : `${gekozen.length} keer`} zelf een truc
+              {goedGekozen === gekozen.length
+                ? ', en die paste elke keer.'
+                : goedGekozen === 0
+                  ? '. Tip: kijk eerst welke getallen in de som staan. Bij die tafels hoort de truc.'
+                  : `; ${goedGekozen} keer paste hij meteen.`}
+            </p>
+          )}
         </div>
+      )}
+      {voornemen && !planUitkomst && (
+        <p className="voornemen">📌 Je plan voor {voornemen.som.replace('x', ' × ')}: {voornemen.plan.replace(/^\S+\s/, '').toLowerCase()}. Die som komt de volgende ronde.</p>
       )}
       {!stand.instapGedaan ? (
         <p>
@@ -142,13 +218,32 @@ export function TafelScherm({ db, onTerug, onBezig }: { db: Database; onTerug: (
   )
 }
 
+const sec = (ms: number) => {
+  const n = Math.max(1, Math.round(ms / 1000))
+  return n === 1 ? '1 seconde' : `${n} seconden`
+}
+
+/** Een uitleg met het antwoord als vraagteken: de leerling rekent het met de truc zelf uit. */
+function zonderAntwoord(uitleg: string, uitkomst: number): string {
+  return uitleg.replace(new RegExp(`${uitkomst}\\.$`), '?')
+}
+
+interface Na {
+  uitkomst: Tafeluitkomst
+  poging: Tafelpoging
+  opties: Trucoptie[]
+  gekozen: number | null
+  /** De leerling vroeg om het antwoord. */
+  getoond: boolean
+}
+
 function Ronde({
   ronde,
   stand,
   onPoging,
   onKlaar,
 }: {
-  ronde: { id: string; beurten: Beurt[]; instap: boolean }
+  ronde: { id: string; beurten: Beurt[]; instap: boolean; voornemen: Tafelvoornemen | null }
   stand: Tafelstand
   onPoging: (p: Tafelpoging) => Promise<void>
   onKlaar: () => void
@@ -156,8 +251,8 @@ function Ronde({
   const [beurten, setBeurten] = useState(ronde.beurten)
   const [index, setIndex] = useState(0)
   const [invoer, setInvoer] = useState('')
-  /** Na een fout of te laat: het goede antwoord en een truc; de leerling typt het goede antwoord over. */
-  const [na, setNa] = useState<{ uitkomst: Tafeluitkomst; truc: Truc } | null>(null)
+  /** Na een fout of te laat: zelf een truc kiezen, die gebruiken en het antwoord typen (spec tafels, beslissing 6). */
+  const [na, setNa] = useState<Na | null>(null)
   const begin = useRef(0)
   const veld = useRef<HTMLInputElement>(null)
   const beurt = beurten[index]
@@ -171,30 +266,34 @@ function Ronde({
   }
 
   function beoordeel(uitkomst: Tafeluitkomst, antwoord: string) {
-    const tijdMs = Math.round(performance.now() - begin.current)
-    const truc = uitkomst === 'goed' ? undefined : trucVoor(beurt.som, stand)
-    void onPoging({
+    const poging: Tafelpoging = {
       id: `${ronde.id}-${index}`,
       som: beurt.som.id,
       antwoord,
       uitkomst,
-      tijdMs,
+      tijdMs: Math.round(performance.now() - begin.current),
       limietSec,
       tijdstip: nu(),
       rondeId: ronde.id,
       instap: ronde.instap || undefined,
-      truc: truc && !ronde.instap ? truc.naam : undefined,
-    })
-    if (uitkomst === 'goed') return volgende()
+    }
+    void onPoging(poging)
     // In de instapronde geen uitleg tussendoor: alleen kijken wat er al zit.
-    if (ronde.instap) return volgende()
+    if (uitkomst === 'goed' || ronde.instap) return volgende()
     if (!beurt.terug && !beurten.slice(index + 1).some((b) => b.som.id === beurt.som.id)) {
       const kopie = [...beurten]
       kopie.splice(Math.min(index + 1 + TERUG_NA, kopie.length), 0, { som: beurt.som, terug: true })
       setBeurten(kopie)
     }
     setInvoer('')
-    setNa({ uitkomst, truc: truc! })
+    setNa({ uitkomst, poging, opties: trucopties(beurt.som, stand, Math.random), gekozen: null, getoond: false })
+  }
+
+  function kies(i: number) {
+    const optie = na!.opties[i]
+    void onPoging({ ...na!.poging, truc: optie.truc.naam, trucPaste: optie.past })
+    setNa({ ...na!, gekozen: i })
+    window.setTimeout(() => veld.current?.focus(), 0)
   }
 
   // De tijd loopt vanaf het moment dat de som verschijnt.
@@ -213,6 +312,11 @@ function Ronde({
 
   if (!beurt) return null
   const goedAntwoord = String(beurt.som.uitkomst)
+  const somTekst = `${beurt.som.a} × ${beurt.som.b}`
+  const gekozen = na && na.gekozen !== null ? na.opties[na.gekozen] : null
+  const handigste = trucVoor(beurt.som, stand).soort
+  const passend = na?.opties.find((o) => o.past && o.truc.soort === handigste) ?? na?.opties.find((o) => o.past)
+  const metPlan = !na && ronde.voornemen?.som === beurt.som.id
 
   function typ(waarde: string) {
     const schoon = waarde.replace(/\D/g, '')
@@ -228,20 +332,45 @@ function Ronde({
       <p className="voortgang">
         {ronde.instap ? 'Kijken wat je al kunt' : 'Tafels'} · {Math.min(index + 1, beurten.length)} van {beurten.length}
       </p>
+      {metPlan && <p className="voornemen">📌 Je plan: {ronde.voornemen!.plan.replace(/^\S+\s/, '').toLowerCase()}</p>}
       <p className="vraag tafelsom" aria-live="polite">
-        {beurt.som.a} × {beurt.som.b} {na ? `= ${goedAntwoord}` : ''}
+        {somTekst} {na?.getoond ? `= ${goedAntwoord}` : ''}
       </p>
       {!na ? (
         <div className="tafeltijd" aria-hidden="true">
           <span key={`${index}`} style={{ animationDuration: `${limietSec}s` }} />
         </div>
+      ) : !gekozen ? (
+        <div className="feedback feedback-bijna" role="status">
+          <p>{na.uitkomst === 'te laat' ? 'Nog even oefenen.' : 'Nog niet goed.'} Welke truc helpt bij {somTekst}?</p>
+          <div className="opties-lijst">
+            {na.opties.map((o, i) => (
+              <button key={o.truc.soort} className="knop knop-rustig optie" onClick={() => kies(i)}>
+                🧰 {o.truc.naam}
+              </button>
+            ))}
+          </div>
+        </div>
       ) : (
         <div className="feedback feedback-bijna" role="status">
-          <p>{na.uitkomst === 'te laat' ? 'Nog even oefenen.' : 'Bijna.'} Het is {goedAntwoord}.</p>
-          <p className="tafeltruc">
-            🧰 <strong>{na.truc.naam}:</strong> {na.truc.uitleg}
+          {gekozen.past ? (
+            <p className="tafeltruc">
+              ✓ Die past! {zonderAntwoord(gekozen.truc.uitleg, beurt.som.uitkomst)}
+            </p>
+          ) : (
+            <>
+              <p>Die truc hoort bij keer {gekozen.hoortBij}. Hier past {passend!.truc.naam.toLowerCase()}:</p>
+              <p className="tafeltruc">{zonderAntwoord(passend!.truc.uitleg, beurt.som.uitkomst)}</p>
+            </>
+          )}
+          <p className="gedempt">
+            {na.getoond ? `Typ ${goedAntwoord} en je gaat verder.` : 'Reken hem uit en typ het antwoord.'} Deze som komt zo nog een keer.
           </p>
-          <p className="gedempt">Typ {goedAntwoord} en je gaat verder. Deze som komt zo nog een keer.</p>
+          {!na.getoond && (
+            <button className="link" onMouseDown={(e) => e.preventDefault()} onClick={() => setNa({ ...na, getoond: true })}>
+              Laat het antwoord zien
+            </button>
+          )}
         </div>
       )}
       <input
