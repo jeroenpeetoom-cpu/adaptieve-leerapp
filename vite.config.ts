@@ -23,7 +23,6 @@ export default defineConfig({
         start_url: '/adaptieve-leerapp/',
         scope: '/adaptieve-leerapp/',
         display: 'standalone',
-        orientation: 'any',
         background_color: '#0b1026',
         theme_color: '#0b1026',
       },
