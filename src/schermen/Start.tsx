@@ -23,9 +23,10 @@ interface Props {
   onNieuweBron: () => void
   onOpenBron: (bronId: string, topo: boolean) => void
   onTestfunctie: () => void
+  onTafels: () => void
 }
 
-export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onOpenBron, onTestfunctie }: Props) {
+export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onOpenBron, onTestfunctie, onTafels }: Props) {
   const [bronnen, setBronnen] = useState<Bron[] | null>(null)
   const [paren, setParen] = useState<Woordpaar[]>([])
   const [plekken, setPlekken] = useState<Plek[]>([])
@@ -177,6 +178,12 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
       />
       {!bezig && (
         <>
+          <section className="kaart">
+            <button className="bron-knop" onClick={onTafels}>
+              <strong>✖️ Tafels oefenen</strong>
+              <span className="gedempt">Elke som een beetje sneller, tot 3 seconden.</span>
+            </button>
+          </section>
           {backupNodig && (
             <p className="feedback" role="note">
               {laatsteBackup ? 'Je laatste back-up is meer dan een week oud.' : 'Je hebt nog geen back-up gemaakt.'}{' '}

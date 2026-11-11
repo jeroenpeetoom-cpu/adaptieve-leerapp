@@ -1740,3 +1740,105 @@ button.regelvak:disabled {
 .deelknop {
   margin-top: 0.75rem;
 }
+
+/* Tafels (spec tafels): een rustige tijdbalk zonder alarm; te laat is "nog even oefenen". */
+.tafelsom {
+  text-align: center;
+  font-size: 3rem;
+  margin: 0.5rem 0;
+}
+
+.tafeltijd {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--zacht);
+  overflow: hidden;
+  margin: 0 0 1rem;
+}
+
+.tafeltijd > span {
+  display: block;
+  height: 100%;
+  background: var(--actie);
+  transform-origin: left;
+  animation-name: tafeltijd;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes tafeltijd {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.tafelinvoer {
+  text-align: center;
+  font-size: 2rem;
+}
+
+.tafeltruc {
+  background: var(--hint-zacht);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+}
+
+.tafelbewijs p {
+  margin: 0.25rem 0;
+}
+
+.tafelraster {
+  margin: 1rem 0 0.5rem;
+  display: grid;
+  gap: 3px;
+}
+
+.tafelrij {
+  display: grid;
+  grid-template-columns: 2.2rem repeat(10, 1fr);
+  gap: 3px;
+}
+
+.tafelrij-dicht {
+  opacity: 0.45;
+}
+
+.tafelrij-kop {
+  font-weight: 700;
+  font-size: 0.85rem;
+  align-self: center;
+  white-space: nowrap;
+}
+
+.tafelcel {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  background: var(--zacht);
+  color: var(--gedempt);
+}
+
+.tafelcel-bezig {
+  background: var(--aandacht-zacht);
+  color: var(--aandacht);
+}
+
+.tafelcel-vlot {
+  background: var(--succes-zacht);
+  color: var(--succes);
+}
+
+.tafelcel-beheerst {
+  background: var(--succes);
+  color: var(--op-kleur);
+}
+
+.tafellegenda {
+  font-size: 0.85rem;
+  margin: 0.25rem 0 0;
+}
