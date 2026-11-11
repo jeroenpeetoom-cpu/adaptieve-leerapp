@@ -128,6 +128,13 @@ export function Oefenroute({ db, bronnamen = {}, leeritems: basis, bronnen, nu, 
     void laad()
   }, [laad])
 
+  // Een gedeelde bron kan binnenkomen nadat dit scherm al geladen is; haal dan ook de kaarten opnieuw op.
+  const kaartIds = [...new Set(basis.flatMap((i) => (i.plek ? [i.plek.kaartId] : [])))].sort().join(',')
+  useEffect(() => {
+    if (!kaartIds) return
+    void db.kaarten.toArray().then((k) => setKaarten(Object.fromEntries(k.map((x) => [x.id, x]))))
+  }, [db, kaartIds])
+
   const vandaag = kalenderdag(nu(), instellingen.tijdzone)
 
   // Door de leerling toegevoegde toegestane antwoorden gelden voortaan bij het leeritem.

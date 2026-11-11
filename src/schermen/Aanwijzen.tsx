@@ -107,6 +107,7 @@ export function Aanwijzen({ item, kaart, vorm, hulp, afgesloten, laatste, leermo
 
   return (
     <>
+      <div className="sessie-antwoord">
       <p className="vraag vraag-kaart">
         Waar ligt {item.vraag}? <Voorleesknop tekst={`Waar ligt ${item.vraag}?`} taal="nl" />
       </p>
@@ -156,6 +157,8 @@ export function Aanwijzen({ item, kaart, vorm, hulp, afgesloten, laatste, leermo
           </button>
         </div>
       )}
+      </div>
+      <div className="sessie-vraag">
       <div className="zoomknoppen" role="group" aria-label="Zoomen">
         <button type="button" className="icoonknop" aria-label="Uitzoomen" disabled={index <= 0} onClick={() => zoomNaar(ZOOMSTAPPEN[index - 1])}>
           −
@@ -202,7 +205,7 @@ export function Aanwijzen({ item, kaart, vorm, hulp, afgesloten, laatste, leermo
           ))}
         </div>
       </div>
-
+      </div>
     </>
   )
 }

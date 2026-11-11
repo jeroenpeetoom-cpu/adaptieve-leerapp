@@ -1847,3 +1847,104 @@ button.regelvak:disabled {
   font-size: 1.4rem;
   margin: 0.25rem 0 1rem;
 }
+
+/*
+ * Liggend (spec layout, beslissing 13): op het oefenscherm staat de vraag (of de kaart) links en het antwoord
+ * rechts, zodat alles zonder scrollen in beeld is. Staand verandert er niets: de blokken tellen dan niet mee.
+ */
+.sessie-boven,
+.sessie-vraag,
+.sessie-antwoord {
+  display: contents;
+}
+
+@media (orientation: landscape) and (min-width: 640px) {
+  .start:has(.sessie-twee) {
+    max-width: 72rem;
+  }
+
+  .sessie-twee {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    column-gap: 1.75rem;
+    align-items: start;
+  }
+
+  .sessie-twee > * {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+
+  .sessie-twee > .sessie-boven,
+  .sessie-twee > .toetsbanner,
+  .sessie-twee > .feedback-storing,
+  .sessie-twee > .codewoord-melding,
+  .sessie-twee > .voortgang {
+    order: 0;
+  }
+
+  .sessie-twee > .sessie-boven {
+    display: block;
+  }
+
+  .sessie-twee > .sessie-vraag {
+    display: block;
+    grid-column: 1;
+    order: 1;
+  }
+
+  .sessie-twee > .sessie-antwoord {
+    display: block;
+    grid-column: 2;
+    order: 2;
+  }
+
+  .sessie-twee .sessie-vraag .vraag-groot,
+  .sessie-twee .sessie-vraag .tafelsom {
+    margin-top: 1.5rem;
+  }
+
+  /* De kaart mag de hele hoogte gebruiken. */
+  .sessie-twee .kaartvenster-passend {
+    height: calc(100dvh - 18.5rem);
+    margin-top: 0;
+  }
+
+  .sessie-twee {
+    --uitsnede-hoogte: calc(100dvh - 21rem);
+  }
+}
+
+/* Een liggende telefoon is laag: titel en witruimte weg tijdens het oefenen. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .start:has(.sessie-twee) {
+    padding-top: 0.25rem;
+  }
+
+  .start:has(.sessie-twee) > h1,
+  .start:has(.sessie-twee) > .versie {
+    display: none;
+  }
+
+  .sessie-twee.kaart {
+    margin: 0.25rem 0;
+    padding: 0.75rem 1rem;
+  }
+
+  .sessie-twee .missie {
+    display: none;
+  }
+
+  .sessie-twee .sessie-vraag .vraag-groot,
+  .sessie-twee .sessie-vraag .tafelsom {
+    margin-top: 0.5rem;
+  }
+
+  .sessie-twee .kaartvenster-passend {
+    height: calc(100dvh - 9.5rem);
+  }
+
+  .sessie-twee {
+    --uitsnede-hoogte: calc(100dvh - 12.5rem);
+  }
+}

@@ -328,19 +328,23 @@ function Ronde({
   }
 
   return (
-    <section className="kaart tafelronde">
+    <section className="kaart tafelronde sessie-twee">
       <p className="voortgang">
         {ronde.instap ? 'Kijken wat je al kunt' : 'Tafels'} · {Math.min(index + 1, beurten.length)} van {beurten.length}
       </p>
+      <div className="sessie-vraag">
       {metPlan && <p className="voornemen">📌 Je plan: {ronde.voornemen!.plan.replace(/^\S+\s/, '').toLowerCase()}</p>}
       <p className="vraag tafelsom" aria-live="polite">
         {somTekst} {na?.getoond ? `= ${goedAntwoord}` : ''}
       </p>
-      {!na ? (
+      {!na && (
         <div className="tafeltijd" aria-hidden="true">
           <span key={`${index}`} style={{ animationDuration: `${limietSec}s` }} />
         </div>
-      ) : !gekozen ? (
+      )}
+      </div>
+      <div className="sessie-antwoord">
+      {!na ? null : !gekozen ? (
         <div className="feedback feedback-bijna" role="status">
           <p>{na.uitkomst === 'te laat' ? 'Nog even oefenen.' : 'Nog niet goed.'} Welke truc helpt bij {somTekst}?</p>
           <div className="opties-lijst">
@@ -394,6 +398,7 @@ function Ronde({
       <button className="link" onClick={onKlaar}>
         ✓ Klaar voor nu
       </button>
+      </div>
     </section>
   )
 }

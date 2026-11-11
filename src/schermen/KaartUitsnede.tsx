@@ -35,7 +35,7 @@ export function KaartUitsnede({ kaart, plek, naam }: { kaart: Kaart; plek: PlekG
           backgroundPosition: `${posX}% ${posY}%`,
           aspectRatio: `${1 / venster}`,
           // De hele kaart past altijd in het scherm, zodat de vraag erboven zichtbaar blijft.
-          width: `min(100%, calc(42dvh / ${venster}))`,
+          width: `min(100%, calc(var(--uitsnede-hoogte, 42dvh) / ${venster}))`,
           marginInline: 'auto',
         }}
         role="img"

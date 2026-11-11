@@ -545,7 +545,7 @@ export function OefenSessie({
   const goedGegokt = toestand.geraden?.[item.id] === true && !laatste && !toestand.afgesloten
   // Tijdens het antwoorden één smalle regel; de sterrenkaart komt pas na het antwoord (spec layout, beslissing 2).
   const bovenregel = (
-    <>
+    <div className="sessie-boven">
       {toestand.afronding && (
         <p className="afrondmelding" role="status">
           ⏱ Bijna klaar: nog {nogTeGaan(toestand)} {nogTeGaan(toestand) === 1 ? 'vraag' : 'vragen'}, dan zit je missie erop.
@@ -599,7 +599,7 @@ export function OefenSessie({
           📌 Je nam je voor: {voornemen.stap}.
         </p>
       )}
-    </>
+    </div>
   )
   const sterrenNaAntwoord = toestand.afgesloten && (
     <Sterrenkaart totaal={toestand.leeritems.length} gedaan={toestand.huidige + 1} codewoorden={codewoorden} sprong={vondCodewoord} />
@@ -635,7 +635,7 @@ export function OefenSessie({
   if (item.soort === 'plek' && item.plek && item.plek.richting === 'aanwijzen') {
     const kaart = kaarten[item.plek.kaartId]
     return (
-      <section className="kaart sessie" ref={sessieRef}>
+      <section className={`kaart sessie ${kaart && !leermoment ? 'sessie-twee' : ''}`} ref={sessieRef}>
         {bovenregel}
         {toets && <Toetsbanner toestand={toestand} />}
         {vondCodewoord && <CodewoordMelding />}
@@ -746,10 +746,12 @@ export function OefenSessie({
   }
 
   return (
-    <section className="kaart sessie" ref={sessieRef}>
+    // Liggend staat de vraag links en het antwoord rechts (spec layout, beslissing 13).
+    <section className={`kaart sessie ${leermoment ? '' : 'sessie-twee'}`} ref={sessieRef}>
       {bovenregel}
       {toets && <Toetsbanner toestand={toestand} />}
-      {!(leermoment && !benoemen) && <p className="vraaglabel">
+      <div className="sessie-vraag">
+      {!leermoment && <p className="vraaglabel">
         {raden ? (
           <span className="chip">✨ nieuw · raad maar!</span>
         ) : goedGegokt ? (
@@ -763,9 +765,10 @@ export function OefenSessie({
           {benoemen ? `${SOORTEN[item.plek!.soort].emoji} ${SOORTEN[item.plek!.soort].naam}` : `${TAALNAAM[item.oefenrichting.van]} → ${taal}`}
         </span>
       </p>}
-      {benoemen && benoemKaart ? (
+      {/* Bij een nieuwe plek toont de uitleg zelf de kaart; niet twee keer. */}
+      {benoemen && benoemKaart && !leermoment ? (
         <>
-          <p className="vraag vraag-kaart">{leermoment ? 'Nieuwe plek' : 'Wat ligt hier?'}</p>
+          <p className="vraag vraag-kaart">Wat ligt hier?</p>
           <KaartUitsnede kaart={benoemKaart} plek={item.plek!} naam={leermoment || toestand.afgesloten ? goedAntwoord : undefined} />
         </>
       ) : leermoment ? null : (
@@ -775,7 +778,9 @@ export function OefenSessie({
           <Voorleesknop tekst={item.vraag} taal={item.oefenrichting.van} vanzelf={item.oefenrichting.van === 'en'} />
         </p>
       )}
+      </div>
 
+      <div className="sessie-antwoord">
       {vondCodewoord && <CodewoordMelding />}
       {feedback && !leermoment && (
         <div className={`feedback feedback-${laatste!.oordeel.replace(' ', '-')}`} role="status">
@@ -953,6 +958,7 @@ export function OefenSessie({
           )}
         </form>
       )}
+      </div>
     </section>
   )
 }
