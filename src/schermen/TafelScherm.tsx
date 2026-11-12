@@ -8,7 +8,6 @@ import {
   tafelplannen,
   tafelplanVraag,
   tafelstand,
-  trucopties,
   trucVoor,
   uitkomstTafelvoornemen,
   type Som,
@@ -16,7 +15,7 @@ import {
   type Tafelstand,
   type Tafeluitkomst,
   type Tafelvoornemen,
-  type Trucoptie,
+  type Truc,
 } from '../leerlogica'
 import type { Database } from '../opslag/database'
 
@@ -149,8 +148,7 @@ export function TafelScherm({ db, onTerug, onBezig }: { db: Database; onTerug: (
   }
 
   const bewijs = klaar ? rondebewijs(pogingen, klaar.id, TZ) : null
-  const gekozen = klaar ? pogingen.filter((p) => p.rondeId === klaar.id && p.truc) : []
-  const goedGekozen = gekozen.filter((p) => p.trucPaste).length
+  const trucs = klaar ? [...new Set(pogingen.filter((p) => p.rondeId === klaar.id && p.truc).map((p) => p.truc!))] : []
   const planUitkomst = klaar?.voornemen ? uitkomstTafelvoornemen(klaar.voornemen, pogingen) : null
   const planSom = klaar?.voornemen?.som.replace('x', ' × ')
   const beheerst = [...stand.sommen.values()].filter((s) => s.beheerst).length
@@ -181,16 +179,7 @@ export function TafelScherm({ db, onTerug, onBezig }: { db: Database; onTerug: (
           {klaar?.instap && stand.snel.length > 0 && (
             <p>Deze tafels kon je al vlot: {stand.snel.join(', ')}. Daar ga je meteen sneller mee verder.</p>
           )}
-          {gekozen.length > 0 && (
-            <p>
-              🧰 Je koos {gekozen.length === 1 ? 'één keer' : `${gekozen.length} keer`} zelf een truc
-              {goedGekozen === gekozen.length
-                ? ', en die paste elke keer.'
-                : goedGekozen === 0
-                  ? '. Tip: kijk eerst welke getallen in de som staan. Bij die tafels hoort de truc.'
-                  : `; ${goedGekozen} keer paste hij meteen.`}
-            </p>
-          )}
+          {trucs.length > 0 && <p>🧰 Trucs die je zag: {trucs.join(', ')}. Probeer ze de volgende keer zelf.</p>}
         </div>
       )}
       {voornemen && !planUitkomst && (
@@ -223,18 +212,9 @@ const sec = (ms: number) => {
   return n === 1 ? '1 seconde' : `${n} seconden`
 }
 
-/** Een uitleg met het antwoord als vraagteken: de leerling rekent het met de truc zelf uit. */
-function zonderAntwoord(uitleg: string, uitkomst: number): string {
-  return uitleg.replace(new RegExp(`${uitkomst}\\.$`), '?')
-}
-
 interface Na {
   uitkomst: Tafeluitkomst
-  poging: Tafelpoging
-  opties: Trucoptie[]
-  gekozen: number | null
-  /** De leerling vroeg om het antwoord. */
-  getoond: boolean
+  truc: Truc
 }
 
 function Ronde({
@@ -251,7 +231,7 @@ function Ronde({
   const [beurten, setBeurten] = useState(ronde.beurten)
   const [index, setIndex] = useState(0)
   const [invoer, setInvoer] = useState('')
-  /** Na een fout of te laat: zelf een truc kiezen, die gebruiken en het antwoord typen (spec tafels, beslissing 6). */
+  /** Na een fout of te laat: het goede antwoord en een truc; de leerling typt het goede antwoord over. */
   const [na, setNa] = useState<Na | null>(null)
   const begin = useRef(0)
   const veld = useRef<HTMLInputElement>(null)
@@ -277,7 +257,8 @@ function Ronde({
       rondeId: ronde.id,
       instap: ronde.instap || undefined,
     }
-    void onPoging(poging)
+    const truc = uitkomst === 'goed' || ronde.instap ? undefined : trucVoor(beurt.som, stand)
+    void onPoging(truc ? { ...poging, truc: truc.naam } : poging)
     // In de instapronde geen uitleg tussendoor: alleen kijken wat er al zit.
     if (uitkomst === 'goed' || ronde.instap) return volgende()
     if (!beurt.terug && !beurten.slice(index + 1).some((b) => b.som.id === beurt.som.id)) {
@@ -286,14 +267,7 @@ function Ronde({
       setBeurten(kopie)
     }
     setInvoer('')
-    setNa({ uitkomst, poging, opties: trucopties(beurt.som, stand, Math.random), gekozen: null, getoond: false })
-  }
-
-  function kies(i: number) {
-    const optie = na!.opties[i]
-    void onPoging({ ...na!.poging, truc: optie.truc.naam, trucPaste: optie.past })
-    setNa({ ...na!, gekozen: i })
-    window.setTimeout(() => veld.current?.focus(), 0)
+    setNa({ uitkomst, truc: truc! })
   }
 
   // De tijd loopt vanaf het moment dat de som verschijnt.
@@ -313,9 +287,6 @@ function Ronde({
   if (!beurt) return null
   const goedAntwoord = String(beurt.som.uitkomst)
   const somTekst = `${beurt.som.a} × ${beurt.som.b}`
-  const gekozen = na && na.gekozen !== null ? na.opties[na.gekozen] : null
-  const handigste = trucVoor(beurt.som, stand).soort
-  const passend = na?.opties.find((o) => o.past && o.truc.soort === handigste) ?? na?.opties.find((o) => o.past)
   const metPlan = !na && ronde.voornemen?.som === beurt.som.id
 
   function typ(waarde: string) {
@@ -335,7 +306,7 @@ function Ronde({
       <div className="sessie-vraag">
       {metPlan && <p className="voornemen">📌 Je plan: {ronde.voornemen!.plan.replace(/^\S+\s/, '').toLowerCase()}</p>}
       <p className="vraag tafelsom" aria-live="polite">
-        {somTekst} {na?.getoond ? `= ${goedAntwoord}` : ''}
+        {somTekst} {na ? `= ${goedAntwoord}` : ''}
       </p>
       {!na && (
         <div className="tafeltijd" aria-hidden="true">
@@ -344,37 +315,15 @@ function Ronde({
       )}
       </div>
       <div className="sessie-antwoord">
-      {!na ? null : !gekozen ? (
+      {na && (
         <div className="feedback feedback-bijna" role="status">
-          <p>{na.uitkomst === 'te laat' ? 'Nog even oefenen.' : 'Nog niet goed.'} Welke truc helpt bij {somTekst}?</p>
-          <div className="opties-lijst">
-            {na.opties.map((o, i) => (
-              <button key={o.truc.soort} className="knop knop-rustig optie" onClick={() => kies(i)}>
-                🧰 {o.truc.naam}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="feedback feedback-bijna" role="status">
-          {gekozen.past ? (
-            <p className="tafeltruc">
-              ✓ Die past! {zonderAntwoord(gekozen.truc.uitleg, beurt.som.uitkomst)}
-            </p>
-          ) : (
-            <>
-              <p>Die truc hoort bij keer {gekozen.hoortBij}. Hier past {passend!.truc.naam.toLowerCase()}:</p>
-              <p className="tafeltruc">{zonderAntwoord(passend!.truc.uitleg, beurt.som.uitkomst)}</p>
-            </>
-          )}
-          <p className="gedempt">
-            {na.getoond ? `Typ ${goedAntwoord} en je gaat verder.` : 'Reken hem uit en typ het antwoord.'} Deze som komt zo nog een keer.
+          <p>
+            {na.uitkomst === 'te laat' ? 'Nog even oefenen.' : 'Bijna.'} Het is {goedAntwoord}.
           </p>
-          {!na.getoond && (
-            <button className="link" onMouseDown={(e) => e.preventDefault()} onClick={() => setNa({ ...na, getoond: true })}>
-              Laat het antwoord zien
-            </button>
-          )}
+          <p className="tafeltruc">
+            🧰 <strong>{na.truc.naam}:</strong> {na.truc.uitleg}
+          </p>
+          <p className="gedempt">Typ {goedAntwoord} en je gaat verder. Deze som komt zo nog een keer.</p>
         </div>
       )}
       <input
