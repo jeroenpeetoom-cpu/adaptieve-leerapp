@@ -415,3 +415,53 @@ export function somstatus(st: Somstand): Somstatus {
   if (st.vlot) return 'vlot'
   return st.keer === 0 ? 'nieuw' : 'bezig'
 }
+
+/** Zoveel rondes per dag is het dagdoel: kort en vaak, met een duidelijk eindpunt (spec tafels, beslissing 8). */
+export const DAGDOEL_RONDES = 2
+/** Een ronde telt mee voor het dagdoel als er minstens zoveel sommen in zitten (niet na twee sommen gestopt). */
+export const SOMMEN_VOOR_VOLLE_RONDE = 15
+
+/** Hoe lang een ronde duurde: van het begin van de eerste som tot het eind van de laatste. */
+export function rondeduurMs(alle: Tafelpoging[], rondeId: string): number {
+  const ronde = alle.filter((p) => p.rondeId === rondeId).sort((x, y) => x.tijdstip.localeCompare(y.tijdstip))
+  if (ronde.length === 0) return 0
+  return Date.parse(ronde[ronde.length - 1].tijdstip) - (Date.parse(ronde[0].tijdstip) - ronde[0].tijdMs)
+}
+
+/** De rondes van vandaag die meetellen voor het dagdoel, de oudste eerst. */
+export function rondesVandaag(alle: Tafelpoging[], nu: string, tijdzone: string): string[] {
+  const dag = kalenderdag(nu, tijdzone)
+  const aantal = new Map<string, { n: number; eerste: string }>()
+  for (const p of alle) {
+    if (kalenderdag(p.tijdstip, tijdzone) !== dag) continue
+    const r = aantal.get(p.rondeId) ?? { n: 0, eerste: p.tijdstip }
+    r.n++
+    if (p.tijdstip < r.eerste) r.eerste = p.tijdstip
+    aantal.set(p.rondeId, r)
+  }
+  return [...aantal.entries()]
+    .filter(([, r]) => r.n >= SOMMEN_VOOR_VOLLE_RONDE)
+    .sort((a, b) => a[1].eerste.localeCompare(b[1].eerste))
+    .map(([id]) => id)
+}
+
+/** De ronde vóór deze (uit eerdere pogingen, geen instapronde), om de duur mee te vergelijken. */
+export function vorigeRonde(alle: Tafelpoging[], rondeId: string): string | undefined {
+  const start = new Map<string, string>()
+  for (const p of alle) if (!p.instap && (!start.has(p.rondeId) || p.tijdstip < start.get(p.rondeId)!)) start.set(p.rondeId, p.tijdstip)
+  const deze = start.get(rondeId)
+  if (!deze) return undefined
+  const volle = new Set(
+    [...start.keys()].filter((id) => alle.filter((p) => p.rondeId === id).length >= SOMMEN_VOOR_VOLLE_RONDE),
+  )
+  return [...start.entries()]
+    .filter(([id, t]) => id !== rondeId && t < deze && volle.has(id))
+    .sort((a, b) => b[1].localeCompare(a[1]))[0]?.[0]
+}
+
+/** Een duur als "2 min 10 s" of "50 s". */
+export function duurTekst(ms: number): string {
+  const s = Math.max(1, Math.round(ms / 1000))
+  const min = Math.floor(s / 60)
+  return min === 0 ? `${s} s` : `${min} min ${String(s % 60).padStart(2, '0')} s`
+}

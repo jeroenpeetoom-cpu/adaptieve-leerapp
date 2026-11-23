@@ -1948,3 +1948,17 @@ button.regelvak:disabled {
     --uitsnede-hoogte: calc(100dvh - 12.5rem);
   }
 }
+
+.tafeldagdoel {
+  font-weight: 600;
+  margin: 0.75rem 0 0;
+}
+
+.tafeldagdoel > span {
+  color: var(--actie);
+  letter-spacing: 0.1em;
+}
+
+.tafeldagdoel-klaar > span {
+  color: var(--succes);
+}

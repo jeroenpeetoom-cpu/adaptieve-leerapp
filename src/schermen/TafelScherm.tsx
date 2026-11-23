@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  DAGDOEL_RONDES,
+  duurTekst,
   kiesRonde,
+  rondeduurMs,
+  rondesVandaag,
+  vorigeRonde,
   lastigsteSom,
   rondebewijs,
   somstatus,
@@ -152,6 +157,9 @@ export function TafelScherm({ db, onTerug, onBezig }: { db: Database; onTerug: (
   const planUitkomst = klaar?.voornemen ? uitkomstTafelvoornemen(klaar.voornemen, pogingen) : null
   const planSom = klaar?.voornemen?.som.replace('x', ' × ')
   const beheerst = [...stand.sommen.values()].filter((s) => s.beheerst).length
+  const vandaag = rondesVandaag(pogingen, nu(), TZ).length
+  const doelGehaald = vandaag >= DAGDOEL_RONDES
+  const vorige = klaar ? vorigeRonde(pogingen, klaar.id) : undefined
 
   return (
     <section className="kaart tafels">
@@ -160,6 +168,10 @@ export function TafelScherm({ db, onTerug, onBezig }: { db: Database; onTerug: (
         <div className="feedback feedback-goed tafelbewijs" role="status">
           <p>
             <strong>Ronde klaar!</strong> {bewijs.goed} van de {bewijs.totaal} goed, {bewijs.opDoel} binnen 3 seconden.
+          </p>
+          <p>
+            ⏱ Deze ronde duurde {duurTekst(rondeduurMs(pogingen, klaar!.id))}
+            {vorige ? ` (vorige keer ${duurTekst(rondeduurMs(pogingen, vorige))})` : ''}.
           </p>
           {planUitkomst && planUitkomst.poging.rondeId === klaar!.id && (
             <p>
@@ -196,8 +208,24 @@ export function TafelScherm({ db, onTerug, onBezig }: { db: Database; onTerug: (
           wordt, tot 3 seconden. {beheerst > 0 && `${beheerst} van de 100 sommen zitten er al echt in.`}
         </p>
       )}
-      <button className="knop knop-breed" onClick={start}>
-        {!stand.instapGedaan ? 'Laat zien wat je al kunt' : klaar ? 'Nog een ronde' : 'Start een ronde'}
+      {stand.instapGedaan && (
+        <p className={`tafeldagdoel ${doelGehaald ? 'tafeldagdoel-klaar' : ''}`} role="status">
+          <span aria-hidden="true">{Array.from({ length: DAGDOEL_RONDES }, (_, i) => (i < vandaag ? '●' : '○')).join(' ')}</span>{' '}
+          {doelGehaald
+            ? '🎉 Klaar voor vandaag! Morgen weer twee rondes.'
+            : vandaag === 0
+              ? `Vandaag: ${DAGDOEL_RONDES} korte rondes.`
+              : `Vandaag: ${vandaag} van de ${DAGDOEL_RONDES} rondes. Nog één!`}
+        </p>
+      )}
+      <button className={`knop knop-breed ${doelGehaald ? 'knop-rustig' : ''}`} onClick={start}>
+        {!stand.instapGedaan
+          ? 'Laat zien wat je al kunt'
+          : doelGehaald
+            ? 'Extra ronde (mag, hoeft niet)'
+            : vandaag > 0
+              ? 'Nog één ronde voor vandaag'
+              : 'Start een ronde'}
       </button>
       <Raster stand={stand} />
       <button className="link" onClick={onTerug}>

@@ -11,6 +11,10 @@ import {
   lastigsteSom,
   uitkomstTafelvoornemen,
   tafelplanVraag,
+  rondesVandaag,
+  rondeduurMs,
+  vorigeRonde,
+  duurTekst,
   volgendeLimiet,
   type Tafelpoging,
   type Tafeluitkomst,
@@ -188,5 +192,36 @@ describe('zelf een truc kiezen en een plan maken', () => {
   })
   it('wisselt de vraag na de ronde', () => {
     expect(tafelplanVraag(0, som(7, 8))).not.toBe(tafelplanVraag(1, som(7, 8)))
+  })
+})
+
+describe('dagdoel en duur', () => {
+  const ronde = (id: string, dag: number, uur: number, n = 20, tijdMs = 3000) =>
+    Array.from({ length: n }, (_, i): Tafelpoging => ({
+      id: `${id}-${i}`,
+      som: `${(i % 10) + 1}x2`,
+      antwoord: '',
+      uitkomst: 'goed',
+      tijdMs,
+      limietSec: 5,
+      tijdstip: `2026-11-${String(dag).padStart(2, '0')}T${String(uur).padStart(2, '0')}:${String(i * 2).padStart(2, '0')}:00.000Z`,
+      rondeId: id,
+    }))
+  it('telt alleen volle rondes van vandaag', () => {
+    const alle = [...ronde('gisteren', 22, 15), ...ronde('a', 23, 15), ...ronde('kort', 23, 16, 5), ...ronde('b', 23, 17)]
+    expect(rondesVandaag(alle, '2026-11-23T19:00:00.000Z', TZ)).toEqual(['a', 'b'])
+  })
+  it('meet de duur van het begin van de eerste som tot het eind van de laatste', () => {
+    // 20 sommen, elke 2 minuten (in de test), de eerste duurde 3 seconden.
+    expect(rondeduurMs(ronde('a', 23, 15), 'a')).toBe(38 * 60_000 + 3000)
+  })
+  it('vindt de vorige volle ronde', () => {
+    const alle = [...ronde('a', 22, 15), ...ronde('kort', 23, 14, 5), ...ronde('b', 23, 15)]
+    expect(vorigeRonde(alle, 'b')).toBe('a')
+    expect(vorigeRonde(alle, 'a')).toBeUndefined()
+  })
+  it('schrijft een duur kort op', () => {
+    expect(duurTekst(50_000)).toBe('50 s')
+    expect(duurTekst(130_000)).toBe('2 min 10 s')
   })
 })

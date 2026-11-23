@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Leerling } from '../bronnen/leerling'
 import { bronInfo, leeritemsVanBron } from '../bronnen/leeritems'
 import type { Bron, Plek, Woordpaar } from '../bronnen/model'
-import { kalenderdag, STANDAARD_INSTELLINGEN } from '../leerlogica'
+import { DAGDOEL_RONDES, kalenderdag, rondesVandaag, STANDAARD_INSTELLINGEN } from '../leerlogica'
 import { echteDb } from '../opslag/database'
 import { verwijderBron } from '../opslag/verwijderen'
 import { GROEPSCODE, haalGedeeldeBronnen } from '../opslag/delen'
@@ -38,6 +38,7 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
   const [reflectieVoor, setReflectieVoor] = useState<string | null>(null)
 
   const [nieuwVanGroep, setNieuwVanGroep] = useState<string[]>([])
+  const [tafelrondes, setTafelrondes] = useState<number | null>(null)
   const laad = useCallback(async () => {
     setBronnen((await echteDb.bronnen.toArray()).sort((a, b) => b.aangemaakt.localeCompare(a.aangemaakt)))
     setParen(await echteDb.woordparen.toArray())
@@ -45,6 +46,8 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
     setLaatsteBackup(await echteDb.leesMeta<string | null>('laatsteBackup', null))
     setSessieMinuten(await echteDb.leesMeta('sessieMinuten', STANDAARD_INSTELLINGEN.sessieMinuten))
     setPunten((await leesPunten(echteDb, STANDAARD_INSTELLINGEN)).totaal)
+    const tafels = await echteDb.tafelpogingen.toArray()
+    setTafelrondes(tafels.length > 0 ? rondesVandaag(tafels, nu(), STANDAARD_INSTELLINGEN.tijdzone).length : null)
   }, [])
 
   useEffect(() => {
@@ -181,7 +184,13 @@ export function Start({ leerling, onInstellingen, onInzichten, onNieuweBron, onO
           <section className="kaart">
             <button className="bron-knop" onClick={onTafels}>
               <strong>✖️ Tafels oefenen</strong>
-              <span className="gedempt">Elke som een beetje sneller, tot 3 seconden.</span>
+              <span className="gedempt">
+                {tafelrondes === null
+                  ? 'Elke som een beetje sneller, tot 3 seconden.'
+                  : tafelrondes >= DAGDOEL_RONDES
+                    ? '🎉 Vandaag klaar.'
+                    : `Vandaag ${tafelrondes} van de ${DAGDOEL_RONDES} rondes.`}
+              </span>
             </button>
           </section>
           {backupNodig && (
